@@ -1,0 +1,212 @@
+/*
+ * Copyright 2026 NexFlow Contributors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.nexflow.ui.flows.detail.config
+
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AirplanemodeActive
+import androidx.compose.material.icons.outlined.Bluetooth
+import androidx.compose.material.icons.outlined.Brightness6
+import androidx.compose.material.icons.outlined.Call
+import androidx.compose.material.icons.outlined.CallSplit
+import androidx.compose.material.icons.outlined.Chat
+import androidx.compose.material.icons.outlined.Cloud
+import androidx.compose.material.icons.outlined.Code
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.Done
+import androidx.compose.material.icons.outlined.DoNotDisturb
+import androidx.compose.material.icons.outlined.MergeType
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.OpenInBrowser
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.RecordVoiceOver
+import androidx.compose.material.icons.outlined.Repeat
+import androidx.compose.material.icons.outlined.SaveAlt
+import androidx.compose.material.icons.outlined.Screenshot
+import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.Sms
+import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material.icons.outlined.TravelExplore
+import androidx.compose.material.icons.outlined.VolumeUp
+import androidx.compose.material.icons.outlined.Wifi
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.nexflow.core.automation.model.ActionType
+
+data class ActionInfo(
+    val label: String,
+    val icon: ImageVector,
+    val description: String,
+    val fields: List<ConfigField>,
+)
+
+val CONTROL_FLOW_ACTIONS = setOf(
+    ActionType.IF_BLOCK, ActionType.ELSE_BLOCK, ActionType.END_IF,
+    ActionType.REPEAT_BLOCK, ActionType.END_REPEAT,
+)
+
+private val toggleOptions = listOf("ON" to "On", "OFF" to "Off", "TOGGLE" to "Toggle")
+private val httpMethods = listOf("GET" to "GET", "POST" to "POST", "PUT" to "PUT", "DELETE" to "DELETE", "PATCH" to "PATCH")
+
+val ActionType.info: ActionInfo
+    get() = when (this) {
+        ActionType.TOAST -> ActionInfo(
+            "Toast", Icons.Outlined.Chat, "Show a brief on-screen message",
+            listOf(ConfigField.TextInput("message", "Message")),
+        )
+        ActionType.NOTIFICATION -> ActionInfo(
+            "Notification", Icons.Outlined.Notifications, "Post a system notification",
+            listOf(
+                ConfigField.TextInput("title", "Title"),
+                ConfigField.TextInput("message", "Message", multiline = true),
+            ),
+        )
+        ActionType.DELAY -> ActionInfo(
+            "Delay", Icons.Outlined.Timer, "Wait before the next action",
+            listOf(ConfigField.Slider("duration_ms", "Delay", 0, 60_000, "ms")),
+        )
+        ActionType.WIFI_TOGGLE -> ActionInfo(
+            "Wi-Fi", Icons.Outlined.Wifi, "Turn Wi-Fi on or off",
+            listOf(ConfigField.Dropdown("state", "Action", toggleOptions)),
+        )
+        ActionType.BLUETOOTH_TOGGLE -> ActionInfo(
+            "Bluetooth", Icons.Outlined.Bluetooth, "Turn Bluetooth on or off",
+            listOf(ConfigField.Dropdown("state", "Action", toggleOptions)),
+        )
+        ActionType.DND_TOGGLE -> ActionInfo(
+            "Do Not Disturb", Icons.Outlined.DoNotDisturb, "Toggle Do Not Disturb mode",
+            listOf(ConfigField.Dropdown("state", "Action", toggleOptions)),
+        )
+        ActionType.VOLUME_ADJUST -> ActionInfo(
+            "Volume", Icons.Outlined.VolumeUp, "Adjust audio volume",
+            listOf(
+                ConfigField.Dropdown(
+                    "stream", "Stream", listOf(
+                        "RING" to "Ringtone", "MEDIA" to "Media",
+                        "ALARM" to "Alarm", "NOTIFICATION" to "Notification",
+                    ),
+                ),
+                ConfigField.Slider("level", "Volume level", 0, 15),
+            ),
+        )
+        ActionType.OPEN_APP -> ActionInfo(
+            "Open app", Icons.Outlined.TravelExplore, "Launch an application",
+            listOf(ConfigField.TextInput("package_name", "Package name", hint = "com.example.app")),
+        )
+        ActionType.OPEN_URL -> ActionInfo(
+            "Open URL", Icons.Outlined.OpenInBrowser, "Open a link in the browser",
+            listOf(ConfigField.TextInput("url", "URL", hint = "https://")),
+        )
+        ActionType.TTS -> ActionInfo(
+            "Text to speech", Icons.Outlined.RecordVoiceOver, "Speak text aloud",
+            listOf(ConfigField.TextInput("text", "Text to speak", multiline = true)),
+        )
+        ActionType.CLIPBOARD_COPY -> ActionInfo(
+            "Copy to clipboard", Icons.Outlined.ContentCopy, "Copy text to the clipboard",
+            listOf(ConfigField.TextInput("text", "Text to copy", multiline = true)),
+        )
+        ActionType.HTTP_REQUEST -> ActionInfo(
+            "HTTP request", Icons.Outlined.Cloud, "Send an HTTP request",
+            listOf(
+                ConfigField.TextInput("url", "URL", hint = "https://api.example.com/endpoint"),
+                ConfigField.Dropdown("method", "Method", httpMethods),
+                ConfigField.TextInput("body", "Body (optional)", multiline = true),
+            ),
+        )
+        ActionType.BRIGHTNESS_ADJUST -> ActionInfo(
+            "Brightness", Icons.Outlined.Brightness6, "Set screen brightness",
+            listOf(ConfigField.Slider("level", "Brightness", 0, 255)),
+        )
+        ActionType.AIRPLANE_TOGGLE -> ActionInfo(
+            "Airplane mode", Icons.Outlined.AirplanemodeActive, "Toggle airplane mode",
+            listOf(ConfigField.Dropdown("state", "Action", toggleOptions)),
+        )
+        ActionType.MEDIA_PLAY_PAUSE -> ActionInfo(
+            "Media", Icons.Outlined.PlayArrow, "Control media playback",
+            listOf(
+                ConfigField.Dropdown("action", "Action", listOf(
+                    "PLAY" to "Play", "PAUSE" to "Pause", "TOGGLE" to "Play/Pause",
+                )),
+            ),
+        )
+        ActionType.SEND_SMS -> ActionInfo(
+            "Send SMS", Icons.Outlined.Sms, "Send a text message",
+            listOf(
+                ConfigField.TextInput("number", "Phone number"),
+                ConfigField.TextInput("message", "Message", multiline = true),
+            ),
+        )
+        ActionType.CALL_PHONE -> ActionInfo(
+            "Call phone", Icons.Outlined.Call, "Make a phone call",
+            listOf(ConfigField.TextInput("number", "Phone number")),
+        )
+        ActionType.SET_VARIABLE -> ActionInfo(
+            "Set variable", Icons.Outlined.Code, "Assign a value to a flow variable",
+            listOf(
+                ConfigField.TextInput("variable_name", "Variable name"),
+                ConfigField.TextInput("value", "Value"),
+            ),
+        )
+        ActionType.WRITE_FILE -> ActionInfo(
+            "Write file", Icons.Outlined.SaveAlt, "Write text to a file",
+            listOf(
+                ConfigField.TextInput("path", "File path", hint = "/storage/emulated/0/nexflow/output.txt"),
+                ConfigField.TextInput("content", "Content", multiline = true),
+            ),
+        )
+        ActionType.SHARE -> ActionInfo(
+            "Share", Icons.Outlined.Share, "Share text via other apps",
+            listOf(ConfigField.TextInput("text", "Text to share", multiline = true)),
+        )
+        ActionType.SCREENSHOT -> ActionInfo(
+            "Screenshot", Icons.Outlined.Screenshot, "Take a screenshot", emptyList(),
+        )
+        ActionType.IF_BLOCK -> ActionInfo("If", Icons.Outlined.MergeType, "Conditional block", emptyList())
+        ActionType.ELSE_BLOCK -> ActionInfo("Else", Icons.Outlined.CallSplit, "Else block", emptyList())
+        ActionType.END_IF -> ActionInfo("End If", Icons.Outlined.Done, "End of If block", emptyList())
+        ActionType.REPEAT_BLOCK -> ActionInfo(
+            "Repeat", Icons.Outlined.Repeat, "Repeat block",
+            listOf(ConfigField.Slider("count", "Repeat count", 1, 100, "×")),
+        )
+        ActionType.END_REPEAT -> ActionInfo("End Repeat", Icons.Outlined.Done, "End of Repeat block", emptyList())
+    }
+
+fun ActionType.configSummary(config: Map<String, String>): String = when (this) {
+    ActionType.TOAST -> config["message"]?.take(40) ?: "No message"
+    ActionType.NOTIFICATION -> config["title"]?.takeIf { it.isNotBlank() }?.let { "$it" } ?: "Notification"
+    ActionType.DELAY -> "${config["duration_ms"] ?: "0"}ms"
+    ActionType.WIFI_TOGGLE,
+    ActionType.BLUETOOTH_TOGGLE,
+    ActionType.DND_TOGGLE,
+    ActionType.AIRPLANE_TOGGLE -> config["state"]?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "Toggle"
+    ActionType.VOLUME_ADJUST -> {
+        val s = config["stream"]?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "Media"
+        "$s: ${config["level"] ?: "?"}"
+    }
+    ActionType.OPEN_APP -> config["package_name"]?.takeIf { it.isNotBlank() } ?: "Not set"
+    ActionType.OPEN_URL -> config["url"]?.take(40) ?: "No URL"
+    ActionType.TTS -> config["text"]?.take(40) ?: "No text"
+    ActionType.CLIPBOARD_COPY -> config["text"]?.take(40) ?: "No text"
+    ActionType.HTTP_REQUEST -> "${config["method"] ?: "GET"} ${config["url"]?.take(30) ?: "No URL"}"
+    ActionType.BRIGHTNESS_ADJUST -> "Level: ${config["level"] ?: "?"}"
+    ActionType.MEDIA_PLAY_PAUSE -> config["action"]?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "Toggle"
+    ActionType.SEND_SMS -> config["number"]?.takeIf { it.isNotBlank() } ?: "No number"
+    ActionType.CALL_PHONE -> config["number"]?.takeIf { it.isNotBlank() } ?: "No number"
+    ActionType.SET_VARIABLE -> "${config["variable_name"] ?: "?"} = ${config["value"] ?: "?"}"
+    ActionType.WRITE_FILE -> config["path"]?.take(40) ?: "No path"
+    ActionType.SHARE -> config["text"]?.take(40) ?: "No text"
+    ActionType.SCREENSHOT -> "Take screenshot"
+    ActionType.REPEAT_BLOCK -> "${config["count"] ?: "1"}×"
+    ActionType.IF_BLOCK, ActionType.ELSE_BLOCK, ActionType.END_IF, ActionType.END_REPEAT -> ""
+}
