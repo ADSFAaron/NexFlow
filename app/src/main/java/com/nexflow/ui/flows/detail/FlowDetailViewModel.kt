@@ -23,10 +23,21 @@ import com.nexflow.core.automation.model.Flow
 import com.nexflow.core.automation.model.Trigger
 import com.nexflow.core.automation.model.TriggerLogic
 import com.nexflow.core.automation.repository.FlowRepository
+import com.nexflow.core.flowschema.ActionJson
+import com.nexflow.core.flowschema.ConditionJson
+import com.nexflow.core.flowschema.FlowJson
+import com.nexflow.core.flowschema.TriggerJson
+import com.nexflow.core.flowschema.VariableJson
 import com.nexflow.service.FlowEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -74,11 +85,53 @@ class FlowDetailViewModel @Inject constructor(
         viewModelScope.launch { repository.setEnabled(flowId, enabled) }
     }
 
+    private val _isRunning = MutableStateFlow(false)
+    val isRunning: StateFlow<Boolean> = _isRunning.asStateFlow()
+
     fun runNow() {
-        viewModelScope.launch { flowEngine.runNow(flowId) }
+        if (_isRunning.value) return
+        viewModelScope.launch {
+            _isRunning.value = true
+            try {
+                flowEngine.runNow(flowId)
+            } finally {
+                _isRunning.value = false
+            }
+        }
     }
 
     fun rename(name: String, description: String) = edit { copy(name = name, description = description) }
+
+    fun exportAsJson(): String? {
+        val f = flow.value ?: return null
+        val now = java.time.Instant.ofEpochMilli(f.createdAt).toString()
+        val json = Json { prettyPrint = true }
+        val flowJson = FlowJson(
+            schemaVersion = f.schemaVersion,
+            id = f.id,
+            name = f.name,
+            description = f.description,
+            author = f.author,
+            tags = f.tags,
+            enabled = f.enabled,
+            createdAt = now,
+            updatedAt = java.time.Instant.ofEpochMilli(f.updatedAt).toString(),
+            triggers = f.triggers.map { t ->
+                TriggerJson(t.id, t.type.name, JsonObject(t.config.mapValues { JsonPrimitive(it.value) }))
+            },
+            triggerLogic = f.triggerLogic.name,
+            conditions = f.conditions.map { c ->
+                ConditionJson(c.id, c.type, JsonObject(c.config.mapValues { JsonPrimitive(it.value) }), c.negate)
+            },
+            actions = f.actions.map { a ->
+                ActionJson(a.id, a.type.name, JsonObject(a.config.mapValues { JsonPrimitive(it.value) }), a.order, a.enabled)
+            },
+            variables = f.variables.map { v ->
+                VariableJson(v.name, v.type.name, JsonPrimitive(v.defaultValue))
+            },
+        )
+        return json.encodeToString(flowJson)
+    }
 
     private fun edit(transform: Flow.() -> Flow) {
         val current = flow.value ?: return

@@ -25,17 +25,21 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.nexflow.MainActivity
 import com.nexflow.R
+import com.nexflow.core.automation.repository.FlowRepository
+import com.nexflow.widget.NexFlowWidget
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
 class FlowExecutionService : Service() {
 
     @Inject lateinit var flowEngine: FlowEngine
+    @Inject lateinit var repository: FlowRepository
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -46,6 +50,15 @@ class FlowExecutionService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         flowEngine.start(serviceScope)
+        serviceScope.launch {
+            repository.observeAll().collect { flows ->
+                NexFlowWidget.updateCounts(
+                    applicationContext,
+                    flows.count { it.enabled },
+                    flows.size,
+                )
+            }
+        }
         return START_STICKY
     }
 

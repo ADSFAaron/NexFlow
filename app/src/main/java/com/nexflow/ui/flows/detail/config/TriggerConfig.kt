@@ -56,8 +56,13 @@ val TriggerType.info: TriggerInfo
                         "DAILY" to "Every day",
                         "WEEKDAYS" to "Weekdays only",
                         "WEEKENDS" to "Weekends only",
+                        "CUSTOM" to "Custom days…",
                         "ONCE" to "Once",
                     ),
+                ),
+                ConfigField.DayPicker(
+                    "days", "Custom days",
+                    showWhenKey = "repeat", showWhenValue = "CUSTOM",
                 ),
             ),
         )
@@ -85,7 +90,7 @@ val TriggerType.info: TriggerInfo
         TriggerType.WIFI -> TriggerInfo(
             "Wi-Fi", Icons.Outlined.Wifi, "When Wi-Fi network changes",
             listOf(
-                ConfigField.TextInput("ssid", "Network name (optional)", hint = "Leave blank for any network"),
+                ConfigField.WifiSsidInput("ssid", "Network name (optional)"),
                 ConfigField.Dropdown("event", "Event", connectOptions),
             ),
         )
@@ -103,7 +108,7 @@ val TriggerType.info: TriggerInfo
         )
         TriggerType.APP_LAUNCH -> TriggerInfo(
             "App launch", Icons.Outlined.TravelExplore, "When an app is opened",
-            listOf(ConfigField.TextInput("package_name", "Package name", hint = "com.example.app")),
+            listOf(ConfigField.AppPicker("package_name", "App")),
         )
         TriggerType.INCOMING_CALL -> TriggerInfo(
             "Incoming call", Icons.Outlined.Call, "When the phone receives a call",
@@ -115,7 +120,7 @@ val TriggerType.info: TriggerInfo
         )
         TriggerType.NOTIFICATION_RECEIVED -> TriggerInfo(
             "Notification", Icons.Outlined.Notifications, "When a notification arrives",
-            listOf(ConfigField.TextInput("package_name", "App package (optional)", hint = "com.example.app")),
+            listOf(ConfigField.AppPicker("package_name", "App (optional — leave empty for any)")),
         )
         TriggerType.DEVICE_BOOT -> TriggerInfo(
             "Device boot", Icons.Outlined.PowerSettingsNew, "When the device starts up", emptyList(),
@@ -126,11 +131,12 @@ val TriggerType.info: TriggerInfo
         )
         TriggerType.NFC_TAG -> TriggerInfo(
             "NFC tag", Icons.Outlined.Nfc, "When an NFC tag is scanned",
-            listOf(ConfigField.TextInput("tag_id", "Tag ID (optional)", hint = "Leave blank for any tag")),
+            listOf(ConfigField.NfcTagScan("tag_id", "Tag ID (optional)")),
         )
         TriggerType.GEOFENCE -> TriggerInfo(
             "Geofence", Icons.Outlined.LocationOn, "When entering or leaving an area",
             listOf(
+                ConfigField.CurrentLocationButton(latKey = "lat", lngKey = "lng"),
                 ConfigField.TextInput("lat", "Latitude", hint = "37.4219"),
                 ConfigField.TextInput("lng", "Longitude", hint = "-122.0840"),
                 ConfigField.Slider("radius_m", "Radius", 50, 5000, "m"),
@@ -143,8 +149,13 @@ fun TriggerType.configSummary(config: Map<String, String>): String = when (this)
     TriggerType.MANUAL -> "Tap to run"
     TriggerType.TIME -> buildString {
         val t = config["time"]?.takeIf { it.isNotBlank() } ?: "?"
-        val r = config["repeat"]?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "Daily"
-        append("$t · $r")
+        val r = config["repeat"] ?: "DAILY"
+        if (r == "CUSTOM") {
+            val days = config["days"]?.takeIf { it.isNotBlank() } ?: "no days"
+            append("$t · $days")
+        } else {
+            append("$t · ${r.lowercase().replaceFirstChar { it.uppercase() }}")
+        }
     }
     TriggerType.BATTERY -> {
         val dir = if (config["direction"] == "ABOVE") "above" else "below"

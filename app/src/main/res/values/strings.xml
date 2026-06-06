@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">NexFlow</string>
+    <string name="accessibility_service_description">NexFlow uses the Accessibility Service to take screenshots when a flow action requests it. No accessibility events are monitored.</string>
 </resources>

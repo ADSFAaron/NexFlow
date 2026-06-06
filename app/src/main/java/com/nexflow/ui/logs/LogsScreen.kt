@@ -15,10 +15,12 @@
  */
 package com.nexflow.ui.logs
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -123,17 +125,22 @@ private fun LogEntryItem(entry: LogEntry) {
             } else {
                 "${"%.1f".format(entry.log.executionDurationMs / 1000.0)}s"
             }
-            Text(
-                "$timestamp · $duration",
-                style = MaterialTheme.typography.bodySmall,
-            )
-            val errorMessage = entry.log.errorMessage
-            if (entry.log.status == ExecutionStatus.FAIL && errorMessage != null) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
                 Text(
-                    errorMessage,
+                    "$timestamp · $duration",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
                 )
+                val errorMessage = entry.log.errorMessage
+                if (entry.log.status == ExecutionStatus.FAIL && errorMessage != null) {
+                    Text(
+                        errorMessage,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
             }
         },
         leadingContent = {

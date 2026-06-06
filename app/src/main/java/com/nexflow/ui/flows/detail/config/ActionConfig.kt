@@ -74,7 +74,17 @@ val ActionType.info: ActionInfo
         )
         ActionType.DELAY -> ActionInfo(
             "Delay", Icons.Outlined.Timer, "Wait before the next action",
-            listOf(ConfigField.Slider("duration_ms", "Delay", 0, 60_000, "ms")),
+            listOf(
+                ConfigField.UnitSlider(
+                    key = "duration_value",
+                    label = "Delay duration",
+                    unitKey = "duration_unit",
+                    units = listOf(
+                        ConfigField.UnitSlider.UnitDef("MS", "ms", 0, 60_000, "ms"),
+                        ConfigField.UnitSlider.UnitDef("SEC", "s", 0, 3_600, "s"),
+                    ),
+                ),
+            ),
         )
         ActionType.WIFI_TOGGLE -> ActionInfo(
             "Wi-Fi", Icons.Outlined.Wifi, "Turn Wi-Fi on or off",
@@ -102,7 +112,7 @@ val ActionType.info: ActionInfo
         )
         ActionType.OPEN_APP -> ActionInfo(
             "Open app", Icons.Outlined.TravelExplore, "Launch an application",
-            listOf(ConfigField.TextInput("package_name", "Package name", hint = "com.example.app")),
+            listOf(ConfigField.AppPicker("package_name", "App")),
         )
         ActionType.OPEN_URL -> ActionInfo(
             "Open URL", Icons.Outlined.OpenInBrowser, "Open a link in the browser",
@@ -110,7 +120,14 @@ val ActionType.info: ActionInfo
         )
         ActionType.TTS -> ActionInfo(
             "Text to speech", Icons.Outlined.RecordVoiceOver, "Speak text aloud",
-            listOf(ConfigField.TextInput("text", "Text to speak", multiline = true)),
+            listOf(
+                ConfigField.InfoText(
+                    "_lang",
+                    "Language",
+                    "Uses the device's default TTS engine language. To change it go to Settings → Accessibility → Text-to-speech output.",
+                ),
+                ConfigField.TextInput("text", "Text to speak", multiline = true),
+            ),
         )
         ActionType.CLIPBOARD_COPY -> ActionInfo(
             "Copy to clipboard", Icons.Outlined.ContentCopy, "Copy text to the clipboard",
@@ -126,7 +143,24 @@ val ActionType.info: ActionInfo
         )
         ActionType.BRIGHTNESS_ADJUST -> ActionInfo(
             "Brightness", Icons.Outlined.Brightness6, "Set screen brightness",
-            listOf(ConfigField.Slider("level", "Brightness", 0, 255)),
+            listOf(
+                ConfigField.InfoText(
+                    "_perm",
+                    "Permission",
+                    "Requires 'Modify system settings' — grant it in the Permissions section of the Settings tab.",
+                    isWarning = true,
+                ),
+                ConfigField.Toggle("extra_dim", "Extra dim", "Set screen to minimum backlight intensity"),
+                ConfigField.UnitSlider(
+                    key = "level",
+                    label = "Brightness level",
+                    unitKey = "brightness_unit",
+                    units = listOf(
+                        ConfigField.UnitSlider.UnitDef("PCT", "%", 0, 100, "%"),
+                        ConfigField.UnitSlider.UnitDef("RAW", "raw", 0, 255, ""),
+                    ),
+                ),
+            ),
         )
         ActionType.AIRPLANE_TOGGLE -> ActionInfo(
             "Airplane mode", Icons.Outlined.AirplanemodeActive, "Toggle airplane mode",
@@ -170,7 +204,17 @@ val ActionType.info: ActionInfo
             listOf(ConfigField.TextInput("text", "Text to share", multiline = true)),
         )
         ActionType.SCREENSHOT -> ActionInfo(
-            "Screenshot", Icons.Outlined.Screenshot, "Take a screenshot", emptyList(),
+            "Screenshot", Icons.Outlined.Screenshot, "Take a screenshot",
+            listOf(
+                ConfigField.InfoText(
+                    "_screen_info",
+                    "Requirement",
+                    "Screenshot requires the NexFlow Accessibility Service to be enabled. " +
+                        "Go to Settings → Accessibility → Installed apps → NexFlow and toggle it on. " +
+                        "Requires Android 12 or higher.",
+                    isWarning = true,
+                ),
+            ),
         )
         ActionType.IF_BLOCK -> ActionInfo("If", Icons.Outlined.MergeType, "Conditional block", emptyList())
         ActionType.ELSE_BLOCK -> ActionInfo("Else", Icons.Outlined.CallSplit, "Else block", emptyList())
@@ -185,7 +229,11 @@ val ActionType.info: ActionInfo
 fun ActionType.configSummary(config: Map<String, String>): String = when (this) {
     ActionType.TOAST -> config["message"]?.take(40) ?: "No message"
     ActionType.NOTIFICATION -> config["title"]?.takeIf { it.isNotBlank() }?.let { "$it" } ?: "Notification"
-    ActionType.DELAY -> "${config["duration_ms"] ?: "0"}ms"
+    ActionType.DELAY -> {
+        val v = config["duration_value"] ?: config["duration_ms"] ?: "0"
+        val u = when (config["duration_unit"]) { "SEC" -> "s" else -> "ms" }
+        "$v$u"
+    }
     ActionType.WIFI_TOGGLE,
     ActionType.BLUETOOTH_TOGGLE,
     ActionType.DND_TOGGLE,
@@ -199,7 +247,13 @@ fun ActionType.configSummary(config: Map<String, String>): String = when (this) 
     ActionType.TTS -> config["text"]?.take(40) ?: "No text"
     ActionType.CLIPBOARD_COPY -> config["text"]?.take(40) ?: "No text"
     ActionType.HTTP_REQUEST -> "${config["method"] ?: "GET"} ${config["url"]?.take(30) ?: "No URL"}"
-    ActionType.BRIGHTNESS_ADJUST -> "Level: ${config["level"] ?: "?"}"
+    ActionType.BRIGHTNESS_ADJUST -> {
+        if (config["extra_dim"] == "true") "Extra dim"
+        else {
+            val u = if (config["brightness_unit"] == "PCT") "%" else ""
+            "Level: ${config["level"] ?: "?"}$u"
+        }
+    }
     ActionType.MEDIA_PLAY_PAUSE -> config["action"]?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "Toggle"
     ActionType.SEND_SMS -> config["number"]?.takeIf { it.isNotBlank() } ?: "No number"
     ActionType.CALL_PHONE -> config["number"]?.takeIf { it.isNotBlank() } ?: "No number"

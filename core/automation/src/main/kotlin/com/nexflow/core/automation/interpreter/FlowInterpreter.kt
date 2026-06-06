@@ -21,6 +21,7 @@ import com.nexflow.core.automation.model.Action
 import com.nexflow.core.automation.model.ActionType
 import com.nexflow.core.automation.model.Flow
 import com.nexflow.core.automation.model.Variable
+import kotlinx.coroutines.CancellationException
 
 /**
  * Interprets and executes a Flow's action list, including control-flow constructs
@@ -89,7 +90,13 @@ class FlowInterpreter(
                     val interpolatedAction = interpolateAction(action, variables)
                     val executor = executors[action.type]
                         ?: return InterpreterResult.Failure("No executor for ${action.type}")
-                    val result = executor.execute(interpolatedAction, variables)
+                    val result = try {
+                        executor.execute(interpolatedAction, variables)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        ActionResult.Failure("${action.type} threw: ${e.message}", e)
+                    }
                     if (result is ActionResult.Failure) {
                         return InterpreterResult.Failure(result.message, result.cause)
                     }

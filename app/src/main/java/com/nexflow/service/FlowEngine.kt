@@ -23,6 +23,7 @@ import com.nexflow.core.automation.model.ExecutionStatus
 import com.nexflow.core.automation.model.Flow as AutomationFlow
 import com.nexflow.core.automation.repository.FlowRepository
 import com.nexflow.core.automation.trigger.TriggerHandler
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
@@ -82,7 +83,13 @@ class FlowEngine @Inject constructor(
 
     private suspend fun runFlow(flow: AutomationFlow) {
         val startMs = System.currentTimeMillis()
-        val result = interpreter.execute(flow)
+        val result = try {
+            interpreter.execute(flow)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            InterpreterResult.Failure("Unexpected error in flow '${flow.name}': ${e.message}", e)
+        }
         val durationMs = System.currentTimeMillis() - startMs
 
         repository.saveExecutionLog(

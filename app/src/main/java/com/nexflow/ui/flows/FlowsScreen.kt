@@ -15,6 +15,10 @@
  */
 package com.nexflow.ui.flows
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,10 +35,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.FileOpen
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -56,20 +64,34 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.nexflow.core.automation.model.Flow
+import com.nexflow.ui.flowimport.ImportViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FlowsScreen(
     vm: FlowsViewModel = hiltViewModel(),
+    importVm: ImportViewModel = hiltViewModel(),
     onFlowClick: (String) -> Unit = {},
 ) {
     val flows by vm.flows.collectAsState()
+    val importResult by importVm.result.collectAsState()
     var showCreateDialog by rememberSaveable { mutableStateOf(false) }
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    val context = LocalContext.current
+
+    val filePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+    ) { uri: Uri? ->
+        uri ?: return@rememberLauncherForActivityResult
+        val content = context.contentResolver.openInputStream(uri)
+            ?.bufferedReader()?.use { it.readText() } ?: return@rememberLauncherForActivityResult
+        importVm.importMdr(content)
+    }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -77,6 +99,11 @@ fun FlowsScreen(
             TopAppBar(
                 title = { Text("My Flows") },
                 scrollBehavior = scrollBehavior,
+                actions = {
+                    IconButton(onClick = { filePicker.launch(arrayOf("*/*")) }) {
+                        Icon(Icons.Outlined.FileOpen, contentDescription = "Import .mdr")
+                    }
+                },
             )
         },
         floatingActionButton = {
@@ -94,17 +121,74 @@ fun FlowsScreen(
                 modifier = Modifier.fillMaxSize(),
             ) {
                 items(flows, key = { it.id }) { flow ->
-                    FlowCard(
-                        flow = flow,
-                        onClick = { onFlowClick(flow.id) },
-                        onToggle = { vm.toggleEnabled(flow.id, it) },
-                        onDelete = { vm.deleteFlow(flow.id) },
-                        modifier = Modifier.padding(horizontal = 16.dp),
+                    val dismissState = rememberSwipeToDismissBoxState(
+                        confirmValueChange = { value ->
+                            if (value == SwipeToDismissBoxValue.EndToStart) {
+                                vm.deleteFlow(flow.id)
+                                true
+                            } else false
+                        },
                     )
+                    SwipeToDismissBox(
+                        state = dismissState,
+                        enableDismissFromStartToEnd = false,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        backgroundContent = {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(MaterialTheme.colorScheme.errorContainer)
+                                    .padding(end = 24.dp),
+                                contentAlignment = Alignment.CenterEnd,
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Delete,
+                                    contentDescription = "Delete",
+                                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                                )
+                            }
+                        },
+                    ) {
+                        FlowCard(
+                            flow = flow,
+                            onClick = { onFlowClick(flow.id) },
+                            onToggle = { vm.toggleEnabled(flow.id, it) },
+                        )
+                    }
                 }
                 item { Spacer(Modifier.height(88.dp)) }
             }
         }
+    }
+
+    importResult?.let { result ->
+        AlertDialog(
+            onDismissRequest = importVm::clearResult,
+            title = {
+                Text(if (result.error != null) "Import failed" else "Import complete")
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (result.error != null) {
+                        Text(result.error)
+                    } else {
+                        Text("Imported ${result.imported} flow${if (result.imported != 1) "s" else ""}.")
+                        if (result.warnings.isNotEmpty()) {
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "${result.warnings.size} warning${if (result.warnings.size != 1) "s" else ""}:",
+                                style = MaterialTheme.typography.labelMedium,
+                            )
+                            result.warnings.take(5).forEach { Text("• $it", style = MaterialTheme.typography.bodySmall) }
+                            if (result.warnings.size > 5) {
+                                Text("… and ${result.warnings.size - 5} more", style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = importVm::clearResult) { Text("OK") } },
+        )
     }
 
     if (showCreateDialog) {
@@ -145,7 +229,6 @@ private fun FlowCard(
     flow: Flow,
     onClick: () -> Unit,
     onToggle: (Boolean) -> Unit,
-    onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     ElevatedCard(modifier = modifier.fillMaxWidth(), onClick = onClick) {
@@ -164,6 +247,7 @@ private fun FlowCard(
                 Switch(
                     checked = flow.enabled,
                     onCheckedChange = onToggle,
+                    modifier = Modifier.padding(end = 8.dp),
                 )
             }
 
@@ -199,13 +283,6 @@ private fun FlowCard(
                         "${flow.actions.size} action${if (flow.actions.size != 1) "s" else ""}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        Icons.Outlined.Delete,
-                        contentDescription = "Delete",
-                        tint = MaterialTheme.colorScheme.error,
                     )
                 }
             }

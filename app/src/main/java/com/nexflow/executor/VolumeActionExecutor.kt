@@ -41,7 +41,11 @@ class VolumeActionExecutor @Inject constructor(
         }
         val am = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         val maxVolume = am.getStreamMaxVolume(stream)
-        am.setStreamVolume(stream, level.coerceIn(0, maxVolume), 0)
-        return ActionResult.Success
+        return try {
+            am.setStreamVolume(stream, level.coerceIn(0, maxVolume), 0)
+            ActionResult.Success
+        } catch (e: SecurityException) {
+            ActionResult.Failure("Volume adjust blocked — grant Do Not Disturb access in Settings: ${e.message}", e)
+        }
     }
 }

@@ -19,16 +19,28 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
+import androidx.hilt.work.HiltWorkerFactory
+import androidx.work.Configuration
 import com.nexflow.executor.NotificationActionExecutor.Companion.CHANNEL_ACTIONS
 import com.nexflow.service.FlowExecutionService.Companion.CHANNEL_SERVICE
+import com.nexflow.work.LogPrunerWorker
 import dagger.hilt.android.HiltAndroidApp
+import javax.inject.Inject
 
 @HiltAndroidApp
-class NexFlowApplication : Application() {
+class NexFlowApplication : Application(), Configuration.Provider {
+
+    @Inject lateinit var workerFactory: HiltWorkerFactory
+
+    override val workManagerConfiguration: Configuration
+        get() = Configuration.Builder()
+            .setWorkerFactory(workerFactory)
+            .build()
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannels()
+        LogPrunerWorker.schedule(this)
     }
 
     private fun createNotificationChannels() {

@@ -15,7 +15,19 @@
  */
 package com.nexflow.ui.flows.detail
 
+import android.Manifest
+import android.annotation.SuppressLint
+import android.app.Activity
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.location.LocationManager
+import android.net.wifi.WifiManager
+import android.nfc.NfcAdapter
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,9 +50,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.MyLocation
+import androidx.compose.material.icons.outlined.Nfc
+import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.AccessTime
+import androidx.compose.material.icons.outlined.Keyboard
+import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
@@ -59,6 +80,9 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -66,12 +90,15 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.TimeInput
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.TimePickerState
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.TimePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -80,23 +107,27 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.nexflow.core.automation.model.Action
 import com.nexflow.core.automation.model.ActionType
 import com.nexflow.core.automation.model.Trigger
 import com.nexflow.core.automation.model.TriggerLogic
 import com.nexflow.core.automation.model.TriggerType
+import com.nexflow.ui.common.AppPickerDialog
 import com.nexflow.ui.flows.detail.config.ActionInfo
 import com.nexflow.ui.flows.detail.config.CONTROL_FLOW_ACTIONS
 import com.nexflow.ui.flows.detail.config.ConfigField
 import com.nexflow.ui.flows.detail.config.TriggerInfo
 import com.nexflow.ui.flows.detail.config.configSummary
 import com.nexflow.ui.flows.detail.config.info
+import kotlinx.coroutines.launch
 import java.util.UUID
 
 // ---------------------------------------------------------------------------
@@ -119,6 +150,7 @@ fun FlowDetailScreen(
     }
 
     val f = flow!!
+    val isRunning by vm.isRunning.collectAsState()
 
     // --- Dialog states ---
     var showTriggerPicker by rememberSaveable { mutableStateOf(false) }
@@ -127,6 +159,12 @@ fun FlowDetailScreen(
     var showRenameDialog by rememberSaveable { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    val flowVariables = remember(f.actions) {
+        f.actions.filter { it.type == ActionType.SET_VARIABLE }
+            .mapNotNull { it.config["variable_name"]?.takeIf { n -> n.isNotBlank() } }
+    }
 
     Scaffold(
         topBar = {
@@ -140,6 +178,17 @@ fun FlowDetailScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = {
+                        val json = vm.exportAsJson() ?: return@IconButton
+                        val intent = Intent(Intent.ACTION_SEND).apply {
+                            type = "application/json"
+                            putExtra(Intent.EXTRA_TEXT, json)
+                            putExtra(Intent.EXTRA_SUBJECT, "${f.name}.flow")
+                        }
+                        context.startActivity(Intent.createChooser(intent, "Export flow"))
+                    }) {
+                        Icon(Icons.Outlined.Share, contentDescription = "Export")
+                    }
                     IconButton(onClick = { showRenameDialog = true }) {
                         Icon(Icons.Outlined.Edit, contentDescription = "Rename")
                     }
@@ -148,27 +197,33 @@ fun FlowDetailScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
-            BottomAppBar {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        if (f.enabled) "Enabled" else "Disabled",
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Switch(checked = f.enabled, onCheckedChange = { vm.setEnabled(it) })
-                    Spacer(Modifier.width(12.dp))
-                    FilledIconButton(
-                        onClick = {
-                            vm.runNow()
-                            scope.launch { snackbarHostState.showSnackbar("Flow started") }
-                        },
+            Column {
+                if (isRunning) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
+                BottomAppBar {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(Icons.Filled.PlayArrow, contentDescription = "Run flow")
+                        Text(
+                            if (f.enabled) "Enabled" else "Disabled",
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Switch(checked = f.enabled, onCheckedChange = { vm.setEnabled(it) })
+                        Spacer(Modifier.width(12.dp))
+                        FilledIconButton(
+                            onClick = {
+                                vm.runNow()
+                                scope.launch { snackbarHostState.showSnackbar("Flow started") }
+                            },
+                            enabled = !isRunning,
+                        ) {
+                            Icon(Icons.Filled.PlayArrow, contentDescription = "Run flow")
+                        }
                     }
                 }
             }
@@ -290,9 +345,12 @@ fun FlowDetailScreen(
 
     // --- Trigger picker ---
     if (showTriggerPicker) {
+        val alreadyHasManual = f.triggers.any { it.type == TriggerType.MANUAL }
         TypePickerSheet(
             title = "Choose Trigger",
-            items = TriggerType.entries.map { it to it.info },
+            items = TriggerType.entries
+                .filter { !(it == TriggerType.MANUAL && alreadyHasManual) }
+                .map { it to it.info },
             onSelect = { type ->
                 showTriggerPicker = false
                 val ti = type.info
@@ -333,6 +391,7 @@ fun FlowDetailScreen(
                 title = cfg.type.info.label,
                 fields = cfg.type.info.fields,
                 initialValues = emptyMap(),
+                availableVariables = flowVariables,
                 onConfirm = { values ->
                     vm.addTrigger(Trigger(UUID.randomUUID().toString(), cfg.type, values))
                     pendingConfig = null
@@ -343,6 +402,7 @@ fun FlowDetailScreen(
                 title = cfg.trigger.type.info.label,
                 fields = cfg.trigger.type.info.fields,
                 initialValues = cfg.trigger.config,
+                availableVariables = flowVariables,
                 onConfirm = { values ->
                     vm.updateTrigger(cfg.trigger.copy(config = values))
                     pendingConfig = null
@@ -353,6 +413,7 @@ fun FlowDetailScreen(
                 title = cfg.type.info.label,
                 fields = cfg.type.info.fields,
                 initialValues = emptyMap(),
+                availableVariables = flowVariables,
                 onConfirm = { values ->
                     vm.addAction(Action(UUID.randomUUID().toString(), cfg.type, values, f.actions.size, true))
                     pendingConfig = null
@@ -363,6 +424,7 @@ fun FlowDetailScreen(
                 title = cfg.action.type.info.label,
                 fields = cfg.action.type.info.fields,
                 initialValues = cfg.action.config,
+                availableVariables = flowVariables,
                 onConfirm = { values ->
                     vm.updateAction(cfg.action.copy(config = values))
                     pendingConfig = null
@@ -505,6 +567,7 @@ private fun <T> TypePickerSheet(
                             style = MaterialTheme.typography.labelSmall,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
+                            textAlign = TextAlign.Center,
                         )
                     }
                 }
@@ -524,16 +587,29 @@ private fun ConfigDialog(
     title: String,
     fields: List<ConfigField>,
     initialValues: Map<String, String>,
+    availableVariables: List<String>,
     onConfirm: (Map<String, String>) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val context = LocalContext.current
     val values = remember(initialValues) {
         mutableStateMapOf<String, String>().also { it.putAll(initialValues) }
     }
-    // Plain map (not state) — stores TimePickerState refs so we can read them at Save time.
-    // Writing here during composition is safe: it's not a state object and we always write
-    // the same remembered instance, so no recomposition is triggered.
     val timePickerStates = remember { mutableMapOf<String, TimePickerState>() }
+    val timePickerInputModes = remember { mutableStateMapOf<String, Boolean>() }
+
+    // Which AppPicker field is active (null = none)
+    var appPickerKey by remember { mutableStateOf<String?>(null) }
+
+    appPickerKey?.let { key ->
+        AppPickerDialog(
+            onSelect = { pkg ->
+                values[key] = pkg
+                appPickerKey = null
+            },
+            onDismiss = { appPickerKey = null },
+        )
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -548,22 +624,57 @@ private fun ConfigDialog(
                 ) {
                     fields.forEach { field ->
                         when (field) {
-                            is ConfigField.TextInput -> OutlinedTextField(
-                                value = values[field.key] ?: "",
-                                onValueChange = { values[field.key] = it },
-                                label = { Text(field.label) },
-                                placeholder = if (field.hint.isNotBlank()) {
-                                    { Text(field.hint, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                                } else null,
-                                modifier = Modifier.fillMaxWidth(),
-                                minLines = if (field.multiline) 3 else 1,
-                                maxLines = if (field.multiline) 5 else 1,
-                            )
+                            // ── TextInput ────────────────────────────────────────────────
+                            is ConfigField.TextInput -> {
+                                OutlinedTextField(
+                                    value = values[field.key] ?: "",
+                                    onValueChange = { values[field.key] = it },
+                                    label = { Text(field.label) },
+                                    placeholder = if (field.hint.isNotBlank()) {
+                                        { Text(field.hint, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                    } else null,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    minLines = if (field.multiline) 3 else 1,
+                                    maxLines = if (field.multiline) 5 else 1,
+                                )
+                                if (availableVariables.isNotEmpty()) {
+                                    Row(
+                                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Icon(
+                                            Icons.Outlined.Code,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(14.dp),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        availableVariables.forEach { varName ->
+                                            AssistChip(
+                                                onClick = {
+                                                    val cur = values[field.key] ?: ""
+                                                    values[field.key] = cur + "{{$varName}}"
+                                                },
+                                                label = {
+                                                    Text(
+                                                        varName,
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                    )
+                                                },
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            // ── Dropdown ─────────────────────────────────────────────────
                             is ConfigField.Dropdown -> DropdownConfigField(
                                 field = field,
                                 value = values[field.key] ?: field.options.firstOrNull()?.first ?: "",
                                 onValueChange = { values[field.key] = it },
                             )
+
+                            // ── Slider ────────────────────────────────────────────────────
                             is ConfigField.Slider -> {
                                 val current = values[field.key]?.toFloatOrNull() ?: field.min.toFloat()
                                 Column {
@@ -583,6 +694,8 @@ private fun ConfigDialog(
                                     )
                                 }
                             }
+
+                            // ── TimePicker ────────────────────────────────────────────────
                             is ConfigField.TimePicker -> {
                                 val stored = values[field.key] ?: "08:00"
                                 val parts = stored.split(":").map { it.toIntOrNull() ?: 0 }
@@ -591,10 +704,8 @@ private fun ConfigDialog(
                                     initialMinute = parts.getOrElse(1) { 0 },
                                     is24Hour = true,
                                 )
-                                // Store ref so the confirm button can read the final value.
-                                // SideEffect would miss updates because TimeInput manages its
-                                // own inner recomposition scope and never bubbles up to here.
                                 timePickerStates[field.key] = timeState
+                                val isInputMode = timePickerInputModes[field.key] ?: false
                                 Column(
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     modifier = Modifier.fillMaxWidth(),
@@ -605,7 +716,347 @@ private fun ConfigDialog(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                     Spacer(Modifier.height(8.dp))
-                                    TimeInput(state = timeState)
+                                    if (isInputMode) {
+                                        TimeInput(state = timeState)
+                                    } else {
+                                        TimePicker(state = timeState)
+                                    }
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.Start,
+                                    ) {
+                                        IconButton(
+                                            onClick = { timePickerInputModes[field.key] = !isInputMode },
+                                        ) {
+                                            Icon(
+                                                if (isInputMode) Icons.Outlined.AccessTime
+                                                else Icons.Outlined.Keyboard,
+                                                contentDescription = if (isInputMode) "切換為撥盤" else "切換為鍵盤",
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            // ── AppPicker ─────────────────────────────────────────────────
+                            is ConfigField.AppPicker -> {
+                                val pkg = values[field.key] ?: ""
+                                val appLabel = remember(pkg) {
+                                    if (pkg.isBlank()) null
+                                    else runCatching {
+                                        context.packageManager
+                                            .getApplicationLabel(
+                                                context.packageManager.getApplicationInfo(pkg, 0),
+                                            ).toString()
+                                    }.getOrNull()
+                                }
+                                OutlinedButton(
+                                    onClick = { appPickerKey = field.key },
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text(
+                                        if (appLabel != null) "$appLabel  ($pkg)"
+                                        else if (pkg.isNotBlank()) pkg
+                                        else "Choose app…",
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                            }
+
+                            // ── DayPicker ─────────────────────────────────────────────────
+                            is ConfigField.DayPicker -> {
+                                // Respect showWhenKey/showWhenValue visibility condition
+                                if (field.showWhenKey != null &&
+                                    values[field.showWhenKey] != field.showWhenValue
+                                ) return@forEach
+
+                                val days = listOf(
+                                    "MON" to "Mon", "TUE" to "Tue", "WED" to "Wed",
+                                    "THU" to "Thu", "FRI" to "Fri", "SAT" to "Sat", "SUN" to "Sun",
+                                )
+                                val selectedDays = remember {
+                                    mutableStateOf(
+                                        (values[field.key] ?: "")
+                                            .split(",")
+                                            .filter { it.isNotBlank() }
+                                            .toMutableSet(),
+                                    )
+                                }
+                                Column {
+                                    Text(
+                                        field.label,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    Spacer(Modifier.height(6.dp))
+                                    Row(
+                                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    ) {
+                                        days.forEach { (id, label) ->
+                                            FilterChip(
+                                                selected = id in selectedDays.value,
+                                                onClick = {
+                                                    val updated = selectedDays.value.toMutableSet()
+                                                    if (id in updated) updated.remove(id) else updated.add(id)
+                                                    selectedDays.value = updated
+                                                    values[field.key] = updated.joinToString(",")
+                                                },
+                                                label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            // ── WifiSsidInput ─────────────────────────────────────────────
+                            is ConfigField.WifiSsidInput -> {
+                                @Suppress("DEPRECATION")
+                                val currentSsid = remember {
+                                    runCatching {
+                                        val wm = context.applicationContext
+                                            .getSystemService(Context.WIFI_SERVICE) as WifiManager
+                                        wm.connectionInfo?.ssid
+                                            ?.removePrefix("\"")?.removeSuffix("\"")
+                                            ?.takeIf { it.isNotBlank() && it != "<unknown ssid>" }
+                                    }.getOrNull()
+                                }
+                                Column {
+                                    OutlinedTextField(
+                                        value = values[field.key] ?: "",
+                                        onValueChange = { values[field.key] = it },
+                                        label = { Text(field.label) },
+                                        placeholder = { Text("Leave blank for any network") },
+                                        singleLine = true,
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                    if (currentSsid != null) {
+                                        Spacer(Modifier.height(4.dp))
+                                        AssistChip(
+                                            onClick = { values[field.key] = currentSsid },
+                                            label = { Text("Use current: $currentSsid") },
+                                            leadingIcon = {
+                                                Icon(Icons.Outlined.Wifi, null, Modifier.size(16.dp))
+                                            },
+                                        )
+                                    }
+                                }
+                            }
+
+                            // ── NfcTagScan ────────────────────────────────────────────────
+                            is ConfigField.NfcTagScan -> {
+                                val nfcAdapter = remember { NfcAdapter.getDefaultAdapter(context) }
+                                var scanning by remember { mutableStateOf(false) }
+                                val activity = context as? Activity
+
+                                DisposableEffect(scanning) {
+                                    if (scanning && nfcAdapter != null && activity != null) {
+                                        nfcAdapter.enableReaderMode(
+                                            activity,
+                                            { tag ->
+                                                val id = tag.id.joinToString("") { "%02X".format(it) }
+                                                values[field.key] = id
+                                                scanning = false
+                                            },
+                                            NfcAdapter.FLAG_READER_NFC_A or NfcAdapter.FLAG_READER_NFC_B or
+                                                NfcAdapter.FLAG_READER_NFC_F or NfcAdapter.FLAG_READER_NFC_V or
+                                                NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK,
+                                            null,
+                                        )
+                                    }
+                                    onDispose {
+                                        runCatching {
+                                            if (activity != null) nfcAdapter?.disableReaderMode(activity)
+                                        }
+                                    }
+                                }
+
+                                Column {
+                                    OutlinedTextField(
+                                        value = values[field.key] ?: "",
+                                        onValueChange = { values[field.key] = it },
+                                        label = { Text(field.label) },
+                                        placeholder = { Text("Leave blank for any tag") },
+                                        singleLine = true,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        readOnly = scanning,
+                                    )
+                                    Spacer(Modifier.height(8.dp))
+                                    when {
+                                        nfcAdapter == null -> Text(
+                                            "NFC is not available on this device",
+                                            color = MaterialTheme.colorScheme.error,
+                                            style = MaterialTheme.typography.bodySmall,
+                                        )
+                                        !nfcAdapter.isEnabled -> Text(
+                                            "NFC is disabled — enable it in device settings",
+                                            color = MaterialTheme.colorScheme.error,
+                                            style = MaterialTheme.typography.bodySmall,
+                                        )
+                                        scanning -> Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.fillMaxWidth(),
+                                        ) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(18.dp),
+                                                strokeWidth = 2.dp,
+                                            )
+                                            Spacer(Modifier.width(8.dp))
+                                            Text(
+                                                "Hold device near NFC tag…",
+                                                modifier = Modifier.weight(1f),
+                                                style = MaterialTheme.typography.bodySmall,
+                                            )
+                                            TextButton(onClick = { scanning = false }) { Text("Cancel") }
+                                        }
+                                        else -> OutlinedButton(
+                                            onClick = { scanning = true },
+                                            modifier = Modifier.fillMaxWidth(),
+                                        ) {
+                                            Icon(Icons.Outlined.Nfc, contentDescription = null)
+                                            Spacer(Modifier.width(8.dp))
+                                            Text(if ((values[field.key] ?: "").isBlank()) "Scan NFC tag" else "Rescan tag")
+                                        }
+                                    }
+                                }
+                            }
+
+                            // ── CurrentLocationButton ─────────────────────────────────────
+                            is ConfigField.CurrentLocationButton -> {
+                                var locationError by remember { mutableStateOf<String?>(null) }
+                                val locationLauncher = rememberLauncherForActivityResult(
+                                    ActivityResultContracts.RequestPermission(),
+                                ) { granted ->
+                                    if (granted) {
+                                        fillLocation(context, values, field.latKey, field.lngKey) {
+                                            locationError = it
+                                        }
+                                    } else {
+                                        locationError = "Location permission denied"
+                                    }
+                                }
+                                Column {
+                                    OutlinedButton(
+                                        onClick = {
+                                            locationError = null
+                                            if (ContextCompat.checkSelfPermission(
+                                                    context, Manifest.permission.ACCESS_FINE_LOCATION,
+                                                ) == PackageManager.PERMISSION_GRANTED
+                                            ) {
+                                                fillLocation(context, values, field.latKey, field.lngKey) {
+                                                    locationError = it
+                                                }
+                                            } else {
+                                                locationLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                                            }
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                    ) {
+                                        Icon(Icons.Outlined.MyLocation, contentDescription = null)
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(field.label)
+                                    }
+                                    locationError?.let {
+                                        Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                                    }
+                                }
+                            }
+
+                            // ── InfoText ──────────────────────────────────────────────────
+                            is ConfigField.InfoText -> {
+                                Surface(
+                                    color = if (field.isWarning) MaterialTheme.colorScheme.errorContainer
+                                    else MaterialTheme.colorScheme.surfaceVariant,
+                                    shape = MaterialTheme.shapes.small,
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(10.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalAlignment = Alignment.Top,
+                                    ) {
+                                        if (field.isWarning) {
+                                            Icon(
+                                                Icons.Outlined.Warning,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(16.dp),
+                                                tint = MaterialTheme.colorScheme.onErrorContainer,
+                                            )
+                                        }
+                                        Text(
+                                            field.body,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = if (field.isWarning) MaterialTheme.colorScheme.onErrorContainer
+                                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                            }
+
+                            // ── Toggle ────────────────────────────────────────────────────
+                            is ConfigField.Toggle -> {
+                                val checked = values[field.key] == "true"
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(field.label)
+                                        if (field.description.isNotBlank()) {
+                                            Text(
+                                                field.description,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                    }
+                                    Switch(
+                                        checked = checked,
+                                        onCheckedChange = { values[field.key] = it.toString() },
+                                    )
+                                }
+                            }
+
+                            // ── UnitSlider ────────────────────────────────────────────────
+                            is ConfigField.UnitSlider -> {
+                                val selectedUnitId = values[field.unitKey]
+                                    ?: field.units.firstOrNull()?.id ?: ""
+                                val unitDef = field.units.find { it.id == selectedUnitId }
+                                    ?: field.units.first()
+                                val current = (values[field.key]?.toFloatOrNull() ?: unitDef.min.toFloat())
+                                    .coerceIn(unitDef.min.toFloat(), unitDef.max.toFloat())
+
+                                Column {
+                                    Row(modifier = Modifier.fillMaxWidth()) {
+                                        Text(field.label, modifier = Modifier.weight(1f))
+                                        Text(
+                                            "${current.toInt()}${unitDef.suffix}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.primary,
+                                        )
+                                    }
+                                    Spacer(Modifier.height(4.dp))
+                                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                                        field.units.forEachIndexed { idx, udef ->
+                                            SegmentedButton(
+                                                selected = selectedUnitId == udef.id,
+                                                onClick = {
+                                                    values[field.unitKey] = udef.id
+                                                    // Reset value to min of new unit to avoid out-of-range
+                                                    values[field.key] = udef.min.toString()
+                                                },
+                                                shape = SegmentedButtonDefaults.itemShape(idx, field.units.size),
+                                            ) { Text(udef.displayLabel) }
+                                        }
+                                    }
+                                    Slider(
+                                        value = current,
+                                        onValueChange = { values[field.key] = it.toInt().toString() },
+                                        valueRange = unitDef.min.toFloat()..unitDef.max.toFloat(),
+                                        steps = 0,
+                                    )
                                 }
                             }
                         }
@@ -615,8 +1066,6 @@ private fun ConfigDialog(
         },
         confirmButton = {
             TextButton(onClick = {
-                // Commit any TimePicker values: read state directly at click time
-                // so we capture exactly what is shown, regardless of recomposition history.
                 timePickerStates.forEach { (key, state) ->
                     values[key] = "${state.hour.toString().padStart(2, '0')}:${state.minute.toString().padStart(2, '0')}"
                 }
@@ -627,6 +1076,25 @@ private fun ConfigDialog(
             TextButton(onClick = onDismiss) { Text("Cancel") }
         },
     )
+}
+
+@SuppressLint("MissingPermission")
+private fun fillLocation(
+    context: Context,
+    values: MutableMap<String, String>,
+    latKey: String,
+    lngKey: String,
+    onError: (String) -> Unit,
+) {
+    val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+    val loc = lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+        ?: lm.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+    if (loc != null) {
+        values[latKey] = "%.6f".format(loc.latitude)
+        values[lngKey] = "%.6f".format(loc.longitude)
+    } else {
+        onError("Location not available — ensure GPS or network location is on")
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

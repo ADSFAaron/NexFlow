@@ -97,8 +97,10 @@ dependencies {
     implementation(libs.ktor.client.content.negotiation)
     implementation(libs.ktor.serialization.kotlinx.json)
 
-    // WorkManager
+    // WorkManager + Hilt integration
     implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.hilt.work)
+    ksp(libs.hilt.compiler.work)
 
     // Glance Widget (Phase 2)
     implementation(libs.androidx.glance.appwidget)

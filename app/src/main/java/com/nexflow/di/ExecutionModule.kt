@@ -17,8 +17,13 @@ package com.nexflow.di
 
 import com.nexflow.core.automation.executor.ActionExecutor
 import com.nexflow.core.automation.trigger.TriggerHandler
+import com.nexflow.executor.AirplaneModeActionExecutor
+import com.nexflow.executor.ScreenshotActionExecutor
+import com.nexflow.executor.BluetoothActionExecutor
+import com.nexflow.executor.BrightnessActionExecutor
 import com.nexflow.executor.ClipboardActionExecutor
 import com.nexflow.executor.DelayActionExecutor
+import com.nexflow.executor.DndActionExecutor
 import com.nexflow.executor.HttpActionExecutor
 import com.nexflow.executor.MediaActionExecutor
 import com.nexflow.executor.NotificationActionExecutor
@@ -27,6 +32,7 @@ import com.nexflow.executor.OpenUrlActionExecutor
 import com.nexflow.executor.TtsActionExecutor
 import com.nexflow.executor.ToastActionExecutor
 import com.nexflow.executor.VolumeActionExecutor
+import com.nexflow.executor.WifiActionExecutor
 import com.nexflow.trigger.BatteryTriggerHandler
 import com.nexflow.trigger.BootTriggerHandler
 import com.nexflow.trigger.ManualTriggerHandler
@@ -96,6 +102,24 @@ abstract class ExecutionModule {
 
     @Binds @IntoSet
     abstract fun bindMedia(impl: MediaActionExecutor): ActionExecutor
+
+    @Binds @IntoSet
+    abstract fun bindWifi(impl: WifiActionExecutor): ActionExecutor
+
+    @Binds @IntoSet
+    abstract fun bindBluetooth(impl: BluetoothActionExecutor): ActionExecutor
+
+    @Binds @IntoSet
+    abstract fun bindBrightness(impl: BrightnessActionExecutor): ActionExecutor
+
+    @Binds @IntoSet
+    abstract fun bindDnd(impl: DndActionExecutor): ActionExecutor
+
+    @Binds @IntoSet
+    abstract fun bindAirplaneMode(impl: AirplaneModeActionExecutor): ActionExecutor
+
+    @Binds @IntoSet
+    abstract fun bindScreenshot(impl: ScreenshotActionExecutor): ActionExecutor
 
     companion object {
         @Provides

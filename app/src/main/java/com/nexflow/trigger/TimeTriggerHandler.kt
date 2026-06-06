@@ -47,11 +47,19 @@ class TimeTriggerHandler @Inject constructor() : TriggerHandler {
             val minute = now.get(Calendar.MINUTE)
 
             if (hour == targetHour && minute == targetMinute && day != lastFiredDay) {
+                val customDays = trigger.config["days"]?.split(",")?.map { it.trim() } ?: emptyList()
+                val calDayId = when (now.get(Calendar.DAY_OF_WEEK)) {
+                    Calendar.MONDAY -> "MON"; Calendar.TUESDAY -> "TUE"
+                    Calendar.WEDNESDAY -> "WED"; Calendar.THURSDAY -> "THU"
+                    Calendar.FRIDAY -> "FRI"; Calendar.SATURDAY -> "SAT"
+                    else -> "SUN"
+                }
                 val shouldFire = when (repeat) {
                     "WEEKDAYS" -> now.get(Calendar.DAY_OF_WEEK) in Calendar.MONDAY..Calendar.FRIDAY
                     "WEEKENDS" -> now.get(Calendar.DAY_OF_WEEK).let {
                         it == Calendar.SATURDAY || it == Calendar.SUNDAY
                     }
+                    "CUSTOM" -> calDayId in customDays
                     else -> true // DAILY or ONCE
                 }
                 if (shouldFire) {

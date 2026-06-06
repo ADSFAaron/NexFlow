@@ -15,36 +15,349 @@
  */
 package com.nexflow.ui.settings
 
+import android.Manifest
+import android.app.NotificationManager
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
+import android.os.Process
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.nexflow.ui.flowimport.ImportViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen() {
+fun SettingsScreen(importVm: ImportViewModel = hiltViewModel()) {
     var autoStart by rememberSaveable { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    val notifGranted = remember {
+        mutableStateOf(
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS,
+                ) == PackageManager.PERMISSION_GRANTED
+            } else {
+                true
+            },
+        )
+    }
+    val notifPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted -> notifGranted.value = granted }
+
+    val writeSettingsGranted = remember { mutableStateOf(Settings.System.canWrite(context)) }
+    val writeSettingsLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { writeSettingsGranted.value = Settings.System.canWrite(context) }
+
+    val nm = remember { context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager }
+    val dndGranted = remember { mutableStateOf(nm.isNotificationPolicyAccessGranted) }
+    val dndLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { dndGranted.value = nm.isNotificationPolicyAccessGranted }
+
+    val accessibilityGranted = remember {
+        mutableStateOf(
+            Settings.Secure.getString(
+                context.contentResolver,
+                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
+            )?.contains(context.packageName) ?: false,
+        )
+    }
+    val accessibilityLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) {
+        accessibilityGranted.value = Settings.Secure.getString(
+            context.contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
+        )?.contains(context.packageName) ?: false
+    }
+
+    val hasWriteSecure = remember {
+        context.checkPermission(
+            "android.permission.WRITE_SECURE_SETTINGS",
+            Process.myPid(),
+            Process.myUid(),
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    val filePicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri: Uri? ->
+        uri ?: return@rememberLauncherForActivityResult
+        val content = context.contentResolver.openInputStream(uri)
+            ?.bufferedReader()?.use { it.readText() } ?: return@rememberLauncherForActivityResult
+        importVm.importMdr(content)
+    }
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("Settings") }) },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         LazyColumn(contentPadding = innerPadding) {
+
+            // ----- Permissions -----
+            item { SectionHeader("Permissions") }
             item {
-                SectionHeader("Automation")
+                ListItem(
+                    headlineContent = { Text("Notifications") },
+                    supportingContent = {
+                        Text(if (notifGranted.value) "Granted" else "Required for Notification actions")
+                    },
+                    leadingContent = {
+                        Icon(
+                            if (notifGranted.value) Icons.Outlined.CheckCircle else Icons.Outlined.Warning,
+                            contentDescription = null,
+                            tint = if (notifGranted.value) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.error
+                            },
+                        )
+                    },
+                    trailingContent = {
+                        if (!notifGranted.value && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            OutlinedButton(
+                                onClick = {
+                                    notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                },
+                            ) { Text("Grant") }
+                        }
+                    },
+                )
             }
+
+
+            // Accessibility Service (screenshot)
+            item {
+                ListItem(
+                    headlineContent = { Text("Accessibility Service") },
+                    supportingContent = {
+                        Text(
+                            if (accessibilityGranted.value) "Granted — screenshot action available"
+                            else "Required for Screenshot actions",
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            if (accessibilityGranted.value) Icons.Outlined.CheckCircle else Icons.Outlined.Warning,
+                            contentDescription = null,
+                            tint = if (accessibilityGranted.value) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.error,
+                        )
+                    },
+                    trailingContent = {
+                        if (!accessibilityGranted.value) {
+                            OutlinedButton(
+                                onClick = {
+                                    accessibilityLauncher.launch(
+                                        Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS),
+                                    )
+                                },
+                            ) { Text("Enable") }
+                        }
+                    },
+                )
+            }
+
+            // Modify system settings (brightness)
+            item {
+                ListItem(
+                    headlineContent = { Text("Modify system settings") },
+                    supportingContent = {
+                        Text(
+                            if (writeSettingsGranted.value) "Granted"
+                            else "Required for Brightness actions",
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            if (writeSettingsGranted.value) Icons.Outlined.CheckCircle else Icons.Outlined.Warning,
+                            contentDescription = null,
+                            tint = if (writeSettingsGranted.value) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.error,
+                        )
+                    },
+                    trailingContent = {
+                        if (!writeSettingsGranted.value) {
+                            OutlinedButton(
+                                onClick = {
+                                    writeSettingsLauncher.launch(
+                                        Intent(
+                                            Settings.ACTION_MANAGE_WRITE_SETTINGS,
+                                            Uri.parse("package:${context.packageName}"),
+                                        ),
+                                    )
+                                },
+                            ) { Text("Grant") }
+                        }
+                    },
+                )
+            }
+
+            // Do Not Disturb access
+            item {
+                ListItem(
+                    headlineContent = { Text("Do Not Disturb access") },
+                    supportingContent = {
+                        Text(
+                            if (dndGranted.value) "Granted"
+                            else "Required for DND toggle actions",
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            if (dndGranted.value) Icons.Outlined.CheckCircle else Icons.Outlined.Warning,
+                            contentDescription = null,
+                            tint = if (dndGranted.value) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.error,
+                        )
+                    },
+                    trailingContent = {
+                        if (!dndGranted.value) {
+                            OutlinedButton(
+                                onClick = {
+                                    dndLauncher.launch(
+                                        Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS),
+                                    )
+                                },
+                            ) { Text("Grant") }
+                        }
+                    },
+                )
+            }
+
+            // ADB-only: WRITE_SECURE_SETTINGS for Wi-Fi + Airplane mode
+            item {
+                val clipboard = remember {
+                    context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                }
+                val adbCommand =
+                    "adb shell pm grant ${context.packageName} android.permission.WRITE_SECURE_SETTINGS"
+                ListItem(
+                    headlineContent = { Text("Wi-Fi & Airplane mode (ADB)") },
+                    leadingContent = {
+                        Icon(
+                            if (hasWriteSecure) Icons.Outlined.CheckCircle else Icons.Outlined.Lock,
+                            contentDescription = null,
+                            tint = if (hasWriteSecure) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                    supportingContent = {
+                        if (hasWriteSecure) {
+                            Text("WRITE_SECURE_SETTINGS granted — silent toggling active")
+                        } else {
+                            Column {
+                                Text("Run once via ADB to enable silent Wi-Fi / Airplane mode toggling:")
+                                Spacer(Modifier.height(6.dp))
+                                Surface(
+                                    color = MaterialTheme.colorScheme.surfaceVariant,
+                                    shape = MaterialTheme.shapes.small,
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(start = 10.dp, top = 4.dp, bottom = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Text(
+                                            text = adbCommand,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontFamily = FontFamily.Monospace,
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                        IconButton(
+                                            onClick = {
+                                                clipboard.setPrimaryClip(
+                                                    ClipData.newPlainText("ADB command", adbCommand),
+                                                )
+                                                scope.launch {
+                                                    snackbarHostState.showSnackbar("Command copied to clipboard")
+                                                }
+                                            },
+                                        ) {
+                                            Icon(Icons.Outlined.ContentCopy, contentDescription = "Copy command")
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                )
+            }
+
+            item { HorizontalDivider() }
+
+            // ----- Import / Export -----
+            item { SectionHeader("Import / Export") }
+            item {
+                ListItem(
+                    headlineContent = { Text("Import MacroDroid .mdr") },
+                    supportingContent = { Text("Pick a .mdr file to import macros as flows") },
+                    trailingContent = {
+                        OutlinedButton(onClick = { filePicker.launch(arrayOf("*/*")) }) {
+                            Text("Import")
+                        }
+                    },
+                )
+            }
+
+            item { HorizontalDivider() }
+
+            // ----- Automation -----
+            item { SectionHeader("Automation") }
             item {
                 ListItem(
                     headlineContent = { Text("Auto-start on boot") },
@@ -58,13 +371,14 @@ fun SettingsScreen() {
             item {
                 ListItem(
                     headlineContent = { Text("Log retention") },
-                    supportingContent = { Text("Keep the last 200 execution logs") },
+                    supportingContent = { Text("Keep the last 200 execution logs · pruned weekly") },
                 )
             }
+
             item { HorizontalDivider() }
-            item {
-                SectionHeader("About")
-            }
+
+            // ----- About -----
+            item { SectionHeader("About") }
             item {
                 ListItem(
                     headlineContent = { Text("NexFlow") },

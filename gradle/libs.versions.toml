@@ -10,6 +10,7 @@ composeBom = "2026.02.01"
 navigationCompose = "2.9.0"
 hilt = "2.59.2"
 hiltNavigationCompose = "1.2.0"
+hiltWork = "1.2.0"
 room = "2.7.1"
 kotlinxSerialization = "1.7.3"
 ktor = "3.0.3"
@@ -50,6 +51,8 @@ androidx-navigation-compose = { group = "androidx.navigation", name = "navigatio
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-android-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
 hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
+hilt-work = { group = "androidx.hilt", name = "hilt-work", version.ref = "hiltWork" }
+hilt-compiler-work = { group = "androidx.hilt", name = "hilt-compiler", version.ref = "hiltWork" }
 
 # Room
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
