@@ -1,15 +1,66 @@
-*.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+# ============================================================
+# Android / Gradle build outputs
+# ============================================================
+/build/
+**/build/
+
+# ============================================================
+# Gradle wrapper cache & daemon
+# ============================================================
+.gradle/
+**/.gradle/
+
+# ============================================================
+# Local machine config — never commit
+# ============================================================
 local.properties
+keystore.properties
+
+# ============================================================
+# Android compiled/packaged artifacts
+# ============================================================
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+*.aar
+*.jar
+
+# ============================================================
+# Signing keystores
+# ============================================================
+*.jks
+*.keystore
+*.p12
+*.pfx
+
+# ============================================================
+# IntelliJ / Android Studio IDE files
+# Keep: gradle.xml, misc.xml, vcs.xml (shared project config)
+# Ignore: machine-local state
+# ============================================================
+*.iml
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/assetWizardSettings.xml
+.idea/navEditor.xml
+.idea/caches/
+.idea/libraries/
+.idea/deploymentTargetSelector.xml
+.idea/deviceManager.xml
+.idea/appInsightsSettings.xml
+.idea/studiobot.xml
+.idea/runConfigurations.xml
+.idea/kotlinc.xml
+.idea/compiler.xml
+.idea/inspectionProfiles/
+
+# ============================================================
+# macOS / Editor temporaries
+# ============================================================
+.DS_Store
+**/.DS_Store
+*.swp
+*.tmp
+*~
