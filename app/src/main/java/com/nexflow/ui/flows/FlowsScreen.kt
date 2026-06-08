@@ -20,6 +20,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -39,10 +40,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -54,16 +57,15 @@ import androidx.compose.material.icons.outlined.FileOpen
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -85,7 +87,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -100,6 +101,7 @@ import com.nexflow.core.automation.model.Flow
 import com.nexflow.event.ImportEventSource
 import com.nexflow.service.FlowExecutionService
 import com.nexflow.ui.flowimport.ImportViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -115,10 +117,23 @@ fun FlowsScreen(
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val listState = rememberLazyListState()
     val context = LocalContext.current
-
     var fabMenuExpanded by rememberSaveable { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    val serviceRunning by FlowExecutionService.running.collectAsState()
+    // null = 無提示, true = 已啟動, false = 已關閉
+    var serviceNotification by remember { mutableStateOf<Boolean?>(null) }
+    var isInitialServiceState by remember { mutableStateOf(true) }
+    LaunchedEffect(serviceRunning) {
+        if (isInitialServiceState) {
+            isInitialServiceState = false
+            return@LaunchedEffect
+        }
+        serviceNotification = serviceRunning
+        delay(3000L)
+        serviceNotification = null
+    }
 
     val filePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
@@ -153,17 +168,14 @@ fun FlowsScreen(
                 title = { Text("My Flows") },
                 scrollBehavior = scrollBehavior,
                 actions = {
-                    val serviceRunning by FlowExecutionService.running.collectAsState()
-                    IconButton(onClick = {
-                        if (serviceRunning) FlowExecutionService.stop(context)
-                        else FlowExecutionService.start(context)
-                    }) {
-                        Icon(
-                            if (serviceRunning) Icons.Filled.Bolt else Icons.Outlined.Bolt,
-                            contentDescription = if (serviceRunning) "Stop automation service" else "Start automation service",
-                            tint = if (serviceRunning) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+                    ServiceCapsule(
+                        running = serviceRunning,
+                        notification = serviceNotification,
+                        onClick = {
+                            if (serviceRunning) FlowExecutionService.stop(context)
+                            else FlowExecutionService.start(context)
+                        },
+                    )
                 },
             )
         },
@@ -211,13 +223,18 @@ fun FlowsScreen(
                 modifier = Modifier.fillMaxSize(),
             ) {
                 items(flows, key = { it.id }) { flow ->
+                    var lastRunMs by remember { mutableStateOf(0L) }
                     val dismissState = rememberSwipeToDismissBoxState(
                         positionalThreshold = { totalDistance -> totalDistance * 0.15f },
                         confirmValueChange = { value ->
                             when (value) {
                                 SwipeToDismissBoxValue.StartToEnd -> {
-                                    vm.runFlow(flow.id)
-                                    scope.launch { snackbarHostState.showSnackbar("Running: ${flow.name}") }
+                                    val now = System.currentTimeMillis()
+                                    if (now - lastRunMs > 500L) {
+                                        lastRunMs = now
+                                        vm.runFlow(flow.id)
+                                        scope.launch { snackbarHostState.showSnackbar("Running: ${flow.name}") }
+                                    }
                                     false
                                 }
                                 SwipeToDismissBoxValue.EndToStart -> {
@@ -266,6 +283,7 @@ fun FlowsScreen(
                             flow = flow,
                             onClick = { onFlowClick(flow.id) },
                             onToggle = { vm.toggleEnabled(flow.id, it) },
+                            onRun = { vm.runFlow(flow.id) },
                         )
                     }
                 }
@@ -316,6 +334,56 @@ fun FlowsScreen(
 }
 
 @Composable
+private fun ServiceCapsule(
+    running: Boolean,
+    notification: Boolean?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val containerColor = if (running)
+        MaterialTheme.colorScheme.primaryContainer
+    else
+        MaterialTheme.colorScheme.surfaceVariant
+    val contentColor = if (running)
+        MaterialTheme.colorScheme.onPrimaryContainer
+    else
+        MaterialTheme.colorScheme.onSurfaceVariant
+
+    Surface(
+        onClick = onClick,
+        shape = CircleShape,
+        color = containerColor,
+        contentColor = contentColor,
+        modifier = modifier
+            .padding(end = 8.dp)
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMediumLow,
+                ),
+            ),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+        ) {
+            Icon(
+                imageVector = if (running) Icons.Filled.Bolt else Icons.Outlined.Bolt,
+                contentDescription = if (running) "Stop automation service" else "Start automation service",
+                modifier = Modifier.size(20.dp),
+            )
+            if (notification != null) {
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = if (notification) "已啟動" else "已關閉",
+                    style = MaterialTheme.typography.labelMedium,
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun EmptyFlowsContent(modifier: Modifier = Modifier) {
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { visible = true }
@@ -355,8 +423,18 @@ private fun FlowCard(
     flow: Flow,
     onClick: () -> Unit,
     onToggle: (Boolean) -> Unit,
+    onRun: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var runActivated by remember { mutableStateOf(false) }
+
+    LaunchedEffect(runActivated) {
+        if (runActivated) {
+            delay(3000L)
+            runActivated = false
+        }
+    }
+
     ElevatedCard(modifier = modifier.fillMaxWidth(), onClick = onClick) {
         Column(
             modifier = Modifier.padding(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 8.dp),
@@ -404,14 +482,60 @@ private fun FlowCard(
                     )
                 }
                 Spacer(Modifier.weight(1f))
-                if (flow.actions.isNotEmpty()) {
-                    Text(
-                        "${flow.actions.size} action${if (flow.actions.size != 1) "s" else ""}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(end = 8.dp),
-                    )
-                }
+                RunCapsule(
+                    activated = runActivated,
+                    onClick = {
+                        if (!runActivated) {
+                            runActivated = true
+                            onRun()
+                        }
+                    },
+                    modifier = Modifier.padding(end = 8.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RunCapsule(
+    activated: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val containerColor = if (activated)
+        MaterialTheme.colorScheme.primary
+    else
+        MaterialTheme.colorScheme.secondaryContainer
+    val contentColor = if (activated)
+        MaterialTheme.colorScheme.onPrimary
+    else
+        MaterialTheme.colorScheme.onSecondaryContainer
+
+    Surface(
+        onClick = onClick,
+        shape = CircleShape,
+        color = containerColor,
+        contentColor = contentColor,
+        modifier = modifier.animateContentSize(
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMediumLow,
+            ),
+        ),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+        ) {
+            Icon(
+                imageVector = if (activated) Icons.Filled.Bolt else Icons.Filled.PlayArrow,
+                contentDescription = if (activated) "Flow activated" else "Run flow",
+                modifier = Modifier.size(16.dp),
+            )
+            if (activated) {
+                Spacer(Modifier.width(6.dp))
+                Text("Flow 已啟動", style = MaterialTheme.typography.labelMedium)
             }
         }
     }
