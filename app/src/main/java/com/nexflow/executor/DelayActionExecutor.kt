@@ -44,6 +44,6 @@ class DelayActionExecutor @Inject constructor() : ActionExecutor {
 
 /** Replaces {{variable_name}} tokens with values from the variables map. */
 internal fun resolveVariables(value: String, variables: Map<String, String>): String =
-    Regex("""\{\{([^}]+)}}""").replace(value) { mr ->
+    Regex("""\{\{([^}]+)\}\}""").replace(value) { mr ->
         variables[mr.groupValues[1].trim()] ?: mr.value
     }

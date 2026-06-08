@@ -41,6 +41,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.yield
 import javax.inject.Inject
 
 @HiltViewModel
@@ -88,15 +89,34 @@ class FlowDetailViewModel @Inject constructor(
     private val _isRunning = MutableStateFlow(false)
     val isRunning: StateFlow<Boolean> = _isRunning.asStateFlow()
 
+    private var runJob: kotlinx.coroutines.Job? = null
+
     fun runNow() {
         if (_isRunning.value) return
-        viewModelScope.launch {
+        runJob = viewModelScope.launch {
             _isRunning.value = true
+            yield()
             try {
                 flowEngine.runNow(flowId)
             } finally {
                 _isRunning.value = false
+                runJob = null
             }
+        }
+    }
+
+    fun cancelRun() {
+        runJob?.cancel()
+        runJob = null
+    }
+
+    fun reorderActions(fromIndex: Int, toIndex: Int) {
+        val current = flow.value ?: return
+        val sorted = current.actions.sortedBy { it.order }.toMutableList()
+        sorted.add(toIndex, sorted.removeAt(fromIndex))
+        val reordered = sorted.mapIndexed { i, a -> a.copy(order = i) }
+        viewModelScope.launch {
+            repository.save(current.copy(actions = reordered, updatedAt = System.currentTimeMillis()))
         }
     }
 

@@ -18,6 +18,7 @@ package com.nexflow.receiver
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import com.nexflow.prefs.AutoStartPrefs
 import com.nexflow.service.FlowExecutionService
 import com.nexflow.trigger.BootTriggerHandler
 import dagger.hilt.android.AndroidEntryPoint
@@ -31,6 +32,8 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
         bootTriggerHandler.notifyBoot()
-        FlowExecutionService.start(context)
+        if (AutoStartPrefs.get(context)) {
+            FlowExecutionService.start(context)
+        }
     }
 }

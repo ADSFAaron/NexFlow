@@ -9,16 +9,12 @@ plugins {
 
 android {
     namespace = "com.nexflow"
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
-    }
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.nexflow"
         minSdk = 30
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0"
 
@@ -105,6 +101,12 @@ dependencies {
     // Glance Widget (Phase 2)
     implementation(libs.androidx.glance.appwidget)
     implementation(libs.androidx.glance.material3)
+
+    // Drag-to-reorder
+    implementation(libs.reorderable)
+
+    // Google Location Services (Geofencing)
+    implementation(libs.play.services.location)
 
     // Test
     testImplementation(libs.junit)

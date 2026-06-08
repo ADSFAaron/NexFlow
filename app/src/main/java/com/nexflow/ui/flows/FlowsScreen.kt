@@ -16,8 +16,18 @@
 package com.nexflow.ui.flows
 
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,47 +39,67 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.FileOpen
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.SuggestionChip
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.nexflow.core.automation.model.Flow
+import com.nexflow.service.FlowExecutionService
 import com.nexflow.ui.flowimport.ImportViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -81,8 +111,13 @@ fun FlowsScreen(
     val flows by vm.flows.collectAsState()
     val importResult by importVm.result.collectAsState()
     var showCreateDialog by rememberSaveable { mutableStateOf(false) }
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val listState = rememberLazyListState()
     val context = LocalContext.current
+
+    var fabMenuExpanded by rememberSaveable { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     val filePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
@@ -93,22 +128,68 @@ fun FlowsScreen(
         importVm.importMdr(content)
     }
 
+    LaunchedEffect(vm) {
+        vm.navigateToFlow.collect { flowId ->
+            showCreateDialog = false
+            onFlowClick(flowId)
+        }
+    }
+
+    BackHandler(enabled = fabMenuExpanded) { fabMenuExpanded = false }
+
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
+            LargeTopAppBar(
                 title = { Text("My Flows") },
                 scrollBehavior = scrollBehavior,
                 actions = {
-                    IconButton(onClick = { filePicker.launch(arrayOf("*/*")) }) {
-                        Icon(Icons.Outlined.FileOpen, contentDescription = "Import .mdr")
+                    val serviceRunning by FlowExecutionService.running.collectAsState()
+                    IconButton(onClick = {
+                        if (serviceRunning) FlowExecutionService.stop(context)
+                        else FlowExecutionService.start(context)
+                    }) {
+                        Icon(
+                            if (serviceRunning) Icons.Filled.Bolt else Icons.Outlined.Bolt,
+                            contentDescription = if (serviceRunning) "Stop automation service" else "Start automation service",
+                            tint = if (serviceRunning) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 },
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showCreateDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "New flow")
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                AnimatedVisibility(
+                    visible = fabMenuExpanded,
+                    enter = fadeIn() + slideInVertically { it / 2 },
+                    exit = fadeOut() + slideOutVertically { it / 2 },
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.End,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        FabItem(icon = Icons.Outlined.FileOpen, label = "Import .mdr") {
+                            fabMenuExpanded = false
+                            filePicker.launch(arrayOf("*/*"))
+                        }
+                        FabItem(icon = Icons.Default.Add, label = "New Flow") {
+                            fabMenuExpanded = false
+                            showCreateDialog = true
+                        }
+                    }
+                }
+                FloatingActionButton(onClick = { fabMenuExpanded = !fabMenuExpanded }) {
+                    val rotation by animateFloatAsState(
+                        targetValue = if (fabMenuExpanded) 45f else 0f,
+                        label = "fab_rotation",
+                    )
+                    Icon(Icons.Default.Add, contentDescription = "Actions", modifier = Modifier.rotate(rotation))
+                }
             }
         },
     ) { innerPadding ->
@@ -116,36 +197,60 @@ fun FlowsScreen(
             EmptyFlowsContent(modifier = Modifier.padding(innerPadding))
         } else {
             LazyColumn(
+                state = listState,
                 contentPadding = innerPadding,
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxSize(),
             ) {
                 items(flows, key = { it.id }) { flow ->
                     val dismissState = rememberSwipeToDismissBoxState(
+                        positionalThreshold = { totalDistance -> totalDistance * 0.15f },
                         confirmValueChange = { value ->
-                            if (value == SwipeToDismissBoxValue.EndToStart) {
-                                vm.deleteFlow(flow.id)
-                                true
-                            } else false
+                            when (value) {
+                                SwipeToDismissBoxValue.StartToEnd -> {
+                                    vm.runFlow(flow.id)
+                                    scope.launch { snackbarHostState.showSnackbar("Running: ${flow.name}") }
+                                    false
+                                }
+                                SwipeToDismissBoxValue.EndToStart -> {
+                                    vm.deleteFlow(flow.id)
+                                    true
+                                }
+                                else -> false
+                            }
                         },
                     )
                     SwipeToDismissBox(
                         state = dismissState,
-                        enableDismissFromStartToEnd = false,
-                        modifier = Modifier.padding(horizontal = 16.dp),
+                        enableDismissFromStartToEnd = true,
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp)
+                            .animateItem(),
                         backgroundContent = {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(MaterialTheme.colorScheme.errorContainer)
-                                    .padding(end = 24.dp),
-                                contentAlignment = Alignment.CenterEnd,
-                            ) {
-                                Icon(
+                            when (dismissState.dismissDirection) {
+                                SwipeToDismissBoxValue.StartToEnd -> Icon(
+                                    Icons.Filled.PlayArrow,
+                                    contentDescription = "Run",
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(MaterialTheme.shapes.medium)
+                                        .background(MaterialTheme.colorScheme.primaryContainer)
+                                        .wrapContentSize(Alignment.CenterStart)
+                                        .padding(horizontal = 24.dp),
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                )
+                                SwipeToDismissBoxValue.EndToStart -> Icon(
                                     Icons.Outlined.Delete,
                                     contentDescription = "Delete",
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(MaterialTheme.shapes.medium)
+                                        .background(MaterialTheme.colorScheme.errorContainer)
+                                        .wrapContentSize(Alignment.CenterEnd)
+                                        .padding(horizontal = 24.dp),
                                     tint = MaterialTheme.colorScheme.onErrorContainer,
                                 )
+                                SwipeToDismissBoxValue.Settled -> {}
                             }
                         },
                     ) {
@@ -204,22 +309,35 @@ fun FlowsScreen(
 
 @Composable
 private fun EmptyFlowsContent(modifier: Modifier = Modifier) {
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { visible = true }
+
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                imageVector = Icons.Filled.Bolt,
-                contentDescription = null,
-                modifier = Modifier.size(72.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
-            )
-            Spacer(Modifier.height(16.dp))
-            Text("No flows yet", style = MaterialTheme.typography.titleLarge)
-            Spacer(Modifier.height(4.dp))
-            Text(
-                "Tap + to create your first automation",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        AnimatedVisibility(
+            visible = visible,
+            enter = scaleIn(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMediumLow,
+                ),
+            ) + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    imageVector = Icons.Filled.Bolt,
+                    contentDescription = null,
+                    modifier = Modifier.size(72.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
+                )
+                Spacer(Modifier.height(16.dp))
+                Text("No flows yet", style = MaterialTheme.typography.titleLarge)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Tap + to create your first automation",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
@@ -283,6 +401,7 @@ private fun FlowCard(
                         "${flow.actions.size} action${if (flow.actions.size != 1) "s" else ""}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(end = 8.dp),
                     )
                 }
             }
@@ -291,9 +410,34 @@ private fun FlowCard(
 }
 
 @Composable
+private fun FabItem(icon: ImageVector, label: String, onClick: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Surface(
+            shape = MaterialTheme.shapes.small,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            tonalElevation = 2.dp,
+        ) {
+            Text(
+                label,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                style = MaterialTheme.typography.labelLarge,
+            )
+        }
+        SmallFloatingActionButton(onClick = onClick) {
+            Icon(icon, contentDescription = label)
+        }
+    }
+}
+
+@Composable
 private fun CreateFlowDialog(onDismiss: () -> Unit, onCreate: (String, String) -> Unit) {
     var name by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
+    val nameFocusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) { nameFocusRequester.requestFocus() }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -305,7 +449,8 @@ private fun CreateFlowDialog(onDismiss: () -> Unit, onCreate: (String, String) -
                     onValueChange = { name = it },
                     label = { Text("Name") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                    modifier = Modifier.fillMaxWidth().focusRequester(nameFocusRequester),
                 )
                 OutlinedTextField(
                     value = description,

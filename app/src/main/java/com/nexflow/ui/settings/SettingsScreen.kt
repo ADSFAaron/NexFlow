@@ -54,28 +54,31 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.nexflow.prefs.AutoStartPrefs
 import com.nexflow.ui.flowimport.ImportViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(importVm: ImportViewModel = hiltViewModel()) {
-    var autoStart by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
+    var autoStart by remember { mutableStateOf(AutoStartPrefs.get(context)) }
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     val notifGranted = remember {
         mutableStateOf(
@@ -142,7 +145,8 @@ fun SettingsScreen(importVm: ImportViewModel = hiltViewModel()) {
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Settings") }) },
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = { TopAppBar(title = { Text("Settings") }, scrollBehavior = scrollBehavior) },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         LazyColumn(contentPadding = innerPadding) {
@@ -178,8 +182,6 @@ fun SettingsScreen(importVm: ImportViewModel = hiltViewModel()) {
                 )
             }
 
-
-            // Accessibility Service (screenshot)
             item {
                 ListItem(
                     headlineContent = { Text("Accessibility Service") },
@@ -211,7 +213,6 @@ fun SettingsScreen(importVm: ImportViewModel = hiltViewModel()) {
                 )
             }
 
-            // Modify system settings (brightness)
             item {
                 ListItem(
                     headlineContent = { Text("Modify system settings") },
@@ -246,7 +247,6 @@ fun SettingsScreen(importVm: ImportViewModel = hiltViewModel()) {
                 )
             }
 
-            // Do Not Disturb access
             item {
                 ListItem(
                     headlineContent = { Text("Do Not Disturb access") },
@@ -278,7 +278,6 @@ fun SettingsScreen(importVm: ImportViewModel = hiltViewModel()) {
                 )
             }
 
-            // ADB-only: WRITE_SECURE_SETTINGS for Wi-Fi + Airplane mode
             item {
                 val clipboard = remember {
                     context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -363,7 +362,13 @@ fun SettingsScreen(importVm: ImportViewModel = hiltViewModel()) {
                     headlineContent = { Text("Auto-start on boot") },
                     supportingContent = { Text("Resume enabled flows when device starts") },
                     trailingContent = {
-                        Switch(checked = autoStart, onCheckedChange = { autoStart = it })
+                        Switch(
+                            checked = autoStart,
+                            onCheckedChange = { value ->
+                                autoStart = value
+                                AutoStartPrefs.set(context, value)
+                            },
+                        )
                     },
                 )
             }
@@ -399,7 +404,7 @@ fun SettingsScreen(importVm: ImportViewModel = hiltViewModel()) {
 private fun SectionHeader(title: String) {
     Text(
         text = title,
-        style = MaterialTheme.typography.labelMedium,
+        style = MaterialTheme.typography.titleSmall,
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp),
     )

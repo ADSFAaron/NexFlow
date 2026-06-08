@@ -15,12 +15,15 @@
  */
 package com.nexflow
 
+import android.content.Intent
+import android.nfc.NfcAdapter
+import android.nfc.Tag
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import com.nexflow.event.NfcEventSource
 import com.nexflow.service.FlowExecutionService
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -33,8 +36,12 @@ import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    private var nfcAdapter: NfcAdapter? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        nfcAdapter = NfcAdapter.getDefaultAdapter(this)
         FlowExecutionService.start(this)
         enableEdgeToEdge()
         setContent {
@@ -44,13 +51,47 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     bottomBar = { NexFlowBottomBar(navController) },
                 ) { innerPadding ->
-                    // Apply only bottom padding so content doesn't hide behind the nav bar.
-                    // Each screen's own TopAppBar handles the status-bar insets independently.
-                    Box(Modifier.padding(bottom = innerPadding.calculateBottomPadding())) {
-                        NexFlowNavHost(navController)
-                    }
+                    // Each screen's own Scaffold + TopAppBar consumes the top inset.
+                    // We only pass bottom padding here so the NavBar is avoided.
+                    NexFlowNavHost(
+                        navController = navController,
+                        modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding()),
+                    )
                 }
             }
         }
+        handleNfcIntent(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        nfcAdapter?.enableReaderMode(
+            this,
+            { tag -> dispatchNfcTag(tag) },
+            NfcAdapter.FLAG_READER_NFC_A or NfcAdapter.FLAG_READER_NFC_B or
+                NfcAdapter.FLAG_READER_NFC_F or NfcAdapter.FLAG_READER_NFC_V or
+                NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK,
+            null,
+        )
+    }
+
+    override fun onPause() {
+        super.onPause()
+        nfcAdapter?.disableReaderMode(this)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleNfcIntent(intent)
+    }
+
+    private fun handleNfcIntent(intent: Intent?) {
+        val tag = intent?.getParcelableExtra<Tag>(NfcAdapter.EXTRA_TAG) ?: return
+        dispatchNfcTag(tag)
+    }
+
+    private fun dispatchNfcTag(tag: Tag) {
+        val tagId = tag.id.joinToString("") { "%02X".format(it) }
+        NfcEventSource.emit(tagId)
     }
 }

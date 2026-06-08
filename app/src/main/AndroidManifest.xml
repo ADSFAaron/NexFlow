@@ -15,13 +15,15 @@
     <!-- Boot trigger -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
-    <!-- Wi-Fi toggle -->
+    <!-- Wi-Fi toggle + SSID detection -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
 
-    <!-- Bluetooth toggle -->
+    <!-- Bluetooth toggle + device name (BLUETOOTH_SCAN needed on API 31+) -->
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+        tools:ignore="ProtectedPermissions" />
 
     <!-- Screen brightness (WRITE_SETTINGS granted at runtime via special app access UI) -->
     <uses-permission
@@ -43,6 +45,22 @@
     <!-- Geofence + WiFi SSID detection -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Background location required for geofence on Android 10+ -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+
+    <!-- SMS trigger + action -->
+    <uses-permission android:name="android.permission.RECEIVE_SMS" />
+    <uses-permission android:name="android.permission.SEND_SMS" />
+
+    <!-- Incoming call trigger -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+
+    <!-- Call phone action -->
+    <uses-permission android:name="android.permission.CALL_PHONE" />
+
+    <!-- Query all installed apps for AppPicker + APP_LAUNCH trigger -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
 
     <application
         android:name=".NexFlowApplication"
@@ -64,6 +82,11 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- NFC tag dispatch — receives NFC intents when app is in foreground -->
+            <intent-filter>
+                <action android:name="android.nfc.action.TAG_DISCOVERED" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
 
@@ -105,6 +128,41 @@
             <meta-data
                 android:name="android.accessibilityservice"
                 android:resource="@xml/nexflow_accessibility_config" />
+        </service>
+
+        <!-- SMS trigger receiver — exempt from background start restrictions -->
+        <receiver
+            android:name=".receiver.SmsReceiver"
+            android:exported="false"
+            android:permission="android.permission.BROADCAST_SMS">
+            <intent-filter android:priority="999">
+                <action android:name="android.provider.Telephony.SMS_RECEIVED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Incoming call trigger receiver -->
+        <receiver
+            android:name=".receiver.PhoneStateReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.PHONE_STATE" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Geofence transition receiver (woken by Google Play Services) -->
+        <receiver
+            android:name=".receiver.GeofenceTransitionReceiver"
+            android:exported="false" />
+
+        <!-- Notification Listener Service — user enables in Settings → Notifications → Notification access -->
+        <service
+            android:name=".service.NexFlowNotificationListenerService"
+            android:exported="true"
+            android:label="NexFlow"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
         </service>
 
         <!-- WorkManager Hilt integration -->

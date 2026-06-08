@@ -44,13 +44,23 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Code
+import androidx.compose.material.icons.rounded.DragHandle
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.MyLocation
@@ -62,18 +72,23 @@ import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.BottomAppBar
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.ModalBottomSheet
@@ -90,7 +105,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.TimeInput
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TimePickerState
@@ -104,12 +118,22 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -134,7 +158,7 @@ import java.util.UUID
 // Public entry point
 // ---------------------------------------------------------------------------
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun FlowDetailScreen(
     vm: FlowDetailViewModel = hiltViewModel(),
@@ -144,7 +168,7 @@ fun FlowDetailScreen(
 
     if (flow == null) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
+            LoadingIndicator()
         }
         return
     }
@@ -152,7 +176,6 @@ fun FlowDetailScreen(
     val f = flow!!
     val isRunning by vm.isRunning.collectAsState()
 
-    // --- Dialog states ---
     var showTriggerPicker by rememberSaveable { mutableStateOf(false) }
     var showActionPicker by rememberSaveable { mutableStateOf(false) }
     var pendingConfig by remember { mutableStateOf<PendingConfig?>(null) }
@@ -164,6 +187,17 @@ fun FlowDetailScreen(
     val flowVariables = remember(f.actions) {
         f.actions.filter { it.type == ActionType.SET_VARIABLE }
             .mapNotNull { it.config["variable_name"]?.takeIf { n -> n.isNotBlank() } }
+    }
+
+    val lazyListState = rememberLazyListState()
+    val sortedActions = remember(f.actions) { f.actions.sortedBy { it.order } }
+    val reorderState = rememberReorderableLazyListState(lazyListState) { from, to ->
+        val fromId = from.key as? String ?: return@rememberReorderableLazyListState
+        val toId = to.key as? String ?: return@rememberReorderableLazyListState
+        val cur = vm.flow.value?.actions?.sortedBy { it.order } ?: return@rememberReorderableLazyListState
+        val fromIdx = cur.indexOfFirst { it.id == fromId }
+        val toIdx = cur.indexOfFirst { it.id == toId }
+        if (fromIdx >= 0 && toIdx >= 0) vm.reorderActions(fromIdx, toIdx)
     }
 
     Scaffold(
@@ -196,40 +230,24 @@ fun FlowDetailScreen(
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        bottomBar = {
-            Column {
-                if (isRunning) {
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                }
-                BottomAppBar {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            if (f.enabled) "Enabled" else "Disabled",
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.weight(1f),
-                        )
-                        Switch(checked = f.enabled, onCheckedChange = { vm.setEnabled(it) })
-                        Spacer(Modifier.width(12.dp))
-                        FilledIconButton(
-                            onClick = {
-                                vm.runNow()
-                                scope.launch { snackbarHostState.showSnackbar("Flow started") }
-                            },
-                            enabled = !isRunning,
-                        ) {
-                            Icon(Icons.Filled.PlayArrow, contentDescription = "Run flow")
-                        }
-                    }
-                }
-            }
+        floatingActionButton = {
+            FlowControls(
+                enabled = f.enabled,
+                isRunning = isRunning,
+                onToggle = { vm.setEnabled(it) },
+                onRun = {
+                    vm.runNow()
+                    scope.launch { snackbarHostState.showSnackbar("Flow started") }
+                },
+                onStop = {
+                    vm.cancelRun()
+                    scope.launch { snackbarHostState.showSnackbar("Flow stopped") }
+                },
+            )
         },
     ) { innerPadding ->
         LazyColumn(
+            state = lazyListState,
             contentPadding = innerPadding,
             modifier = Modifier.fillMaxSize(),
         ) {
@@ -240,18 +258,10 @@ fun FlowDetailScreen(
                     title = "WHEN",
                     trailing = if (f.triggers.size > 1) {
                         {
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                FilterChip(
-                                    selected = f.triggerLogic == TriggerLogic.ANY,
-                                    onClick = { vm.setTriggerLogic(TriggerLogic.ANY) },
-                                    label = { Text("ANY") },
-                                )
-                                FilterChip(
-                                    selected = f.triggerLogic == TriggerLogic.ALL,
-                                    onClick = { vm.setTriggerLogic(TriggerLogic.ALL) },
-                                    label = { Text("ALL") },
-                                )
-                            }
+                            TriggerLogicToggle(
+                                logic = f.triggerLogic,
+                                onSelect = { vm.setTriggerLogic(it) },
+                            )
                         }
                     } else null,
                 )
@@ -293,7 +303,6 @@ fun FlowDetailScreen(
                 }
             }
 
-            // ---- DIVIDER ----
             item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
 
             // ---- ACTIONS ----
@@ -310,20 +319,27 @@ fun FlowDetailScreen(
                 }
             }
 
-            items(f.actions.sortedBy { it.order }, key = { it.id }) { action ->
-                val ai = action.type.info
-                TriggerOrActionRow(
-                    icon = {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(ai.icon, contentDescription = null, modifier = Modifier.size(24.dp))
-                        }
-                    },
-                    headline = ai.label,
-                    supporting = action.type.configSummary(action.config),
-                    onEdit = { pendingConfig = PendingConfig.EditAction(action) },
-                    onDelete = { vm.removeAction(action.id) },
-                )
-                HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+            items(sortedActions, key = { it.id }) { action ->
+                val haptic = LocalHapticFeedback.current
+                ReorderableItem(reorderState, key = action.id) { _ ->
+                    val ai = action.type.info
+                    TriggerOrActionRow(
+                        icon = {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(ai.icon, contentDescription = null, modifier = Modifier.size(24.dp))
+                            }
+                        },
+                        headline = ai.label,
+                        supporting = action.type.configSummary(action.config),
+                        onEdit = { pendingConfig = PendingConfig.EditAction(action) },
+                        onDelete = { vm.removeAction(action.id) },
+                        showDragHandle = true,
+                        dragHandleModifier = Modifier.draggableHandle(
+                            onDragStarted = { haptic.performHapticFeedback(HapticFeedbackType.LongPress) },
+                        ),
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+                }
             }
 
             item {
@@ -339,11 +355,10 @@ fun FlowDetailScreen(
                 }
             }
 
-            item { Spacer(Modifier.height(16.dp)) }
+            item { Spacer(Modifier.height(88.dp)) }
         }
     }
 
-    // --- Trigger picker ---
     if (showTriggerPicker) {
         val alreadyHasManual = f.triggers.any { it.type == TriggerType.MANUAL }
         TypePickerSheet(
@@ -364,7 +379,6 @@ fun FlowDetailScreen(
         )
     }
 
-    // --- Action picker ---
     if (showActionPicker) {
         TypePickerSheet(
             title = "Choose Action",
@@ -384,7 +398,6 @@ fun FlowDetailScreen(
         )
     }
 
-    // --- Config dialog ---
     pendingConfig?.let { cfg ->
         when (cfg) {
             is PendingConfig.NewTrigger -> ConfigDialog(
@@ -434,7 +447,6 @@ fun FlowDetailScreen(
         }
     }
 
-    // --- Rename dialog ---
     if (showRenameDialog) {
         RenameDialog(
             initialName = f.name,
@@ -444,6 +456,75 @@ fun FlowDetailScreen(
                 showRenameDialog = false
             },
             onDismiss = { showRenameDialog = false },
+        )
+    }
+}
+
+@Composable
+private fun FlowControls(
+    enabled: Boolean,
+    isRunning: Boolean,
+    onToggle: (Boolean) -> Unit,
+    onRun: () -> Unit,
+    onStop: () -> Unit,
+) {
+    Column(
+        horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        SmallFloatingActionButton(
+            onClick = { onToggle(!enabled) },
+            containerColor = if (enabled) MaterialTheme.colorScheme.primaryContainer
+                else MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = if (enabled) MaterialTheme.colorScheme.onPrimaryContainer
+                else MaterialTheme.colorScheme.onSurface,
+        ) {
+            Icon(
+                imageVector = if (enabled) Icons.Filled.Bolt else Icons.Outlined.Bolt,
+                contentDescription = if (enabled) "Automation enabled" else "Automation disabled",
+            )
+        }
+        FloatingActionButton(
+            onClick = if (isRunning) onStop else onRun,
+            containerColor = if (isRunning) MaterialTheme.colorScheme.errorContainer
+                else MaterialTheme.colorScheme.primaryContainer,
+            contentColor = if (isRunning) MaterialTheme.colorScheme.onErrorContainer
+                else MaterialTheme.colorScheme.onPrimaryContainer,
+        ) {
+            AnimatedContent(
+                targetState = isRunning,
+                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                label = "play_stop",
+            ) { running ->
+                Icon(
+                    imageVector = if (running) Icons.Filled.Stop else Icons.Filled.PlayArrow,
+                    contentDescription = if (running) "Stop flow" else "Run flow",
+                )
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// M3 Expressive ButtonGroup — ANY / ALL trigger logic toggle (E3)
+// ---------------------------------------------------------------------------
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun TriggerLogicToggle(
+    logic: TriggerLogic,
+    onSelect: (TriggerLogic) -> Unit,
+) {
+    ButtonGroup(overflowIndicator = {}) {
+        toggleableItem(
+            checked = logic == TriggerLogic.ANY,
+            onCheckedChange = { onSelect(TriggerLogic.ANY) },
+            label = "ANY",
+        )
+        toggleableItem(
+            checked = logic == TriggerLogic.ALL,
+            onCheckedChange = { onSelect(TriggerLogic.ALL) },
+            label = "ALL",
         )
     }
 }
@@ -470,13 +551,23 @@ private fun TriggerOrActionRow(
     supporting: String,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
+    showDragHandle: Boolean = false,
+    dragHandleModifier: Modifier = Modifier,
 ) {
     ListItem(
         leadingContent = icon,
         headlineContent = { Text(headline) },
         supportingContent = { Text(supporting, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         trailingContent = {
-            Row {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (showDragHandle) {
+                    Icon(
+                        Icons.Rounded.DragHandle,
+                        contentDescription = "Reorder",
+                        modifier = dragHandleModifier.size(24.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 IconButton(onClick = onEdit) {
                     Icon(Icons.Outlined.Edit, contentDescription = "Edit", modifier = Modifier.size(20.dp))
                 }
@@ -516,7 +607,7 @@ private fun SectionHeader(title: String, trailing: (@Composable () -> Unit)? = n
 }
 
 // ---------------------------------------------------------------------------
-// Type picker bottom sheet (shared for triggers and actions)
+// Type picker bottom sheet — breakpoint-aware grid columns (S3)
 // ---------------------------------------------------------------------------
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -528,6 +619,12 @@ private fun <T> TypePickerSheet(
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val screenWidthDp = LocalConfiguration.current.screenWidthDp
+    val columns = when {
+        screenWidthDp >= 840 -> 5
+        screenWidthDp >= 600 -> 4
+        else -> 3
+    }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Text(
@@ -536,7 +633,7 @@ private fun <T> TypePickerSheet(
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
         )
         LazyVerticalGrid(
-            columns = GridCells.Fixed(3),
+            columns = GridCells.Fixed(columns),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp),
@@ -581,7 +678,7 @@ private fun <T> TypePickerSheet(
 // Generic config dialog
 // ---------------------------------------------------------------------------
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ConfigDialog(
     title: String,
@@ -598,7 +695,14 @@ private fun ConfigDialog(
     val timePickerStates = remember { mutableMapOf<String, TimePickerState>() }
     val timePickerInputModes = remember { mutableStateMapOf<String, Boolean>() }
 
-    // Which AppPicker field is active (null = none)
+    val firstTextInputKey = remember(fields) {
+        fields.filterIsInstance<ConfigField.TextInput>().firstOrNull()?.key
+    }
+    val firstFieldFocusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        if (firstTextInputKey != null) firstFieldFocusRequester.requestFocus()
+    }
+
     var appPickerKey by remember { mutableStateOf<String?>(null) }
 
     appPickerKey?.let { key ->
@@ -624,7 +728,6 @@ private fun ConfigDialog(
                 ) {
                     fields.forEach { field ->
                         when (field) {
-                            // ── TextInput ────────────────────────────────────────────────
                             is ConfigField.TextInput -> {
                                 OutlinedTextField(
                                     value = values[field.key] ?: "",
@@ -633,7 +736,12 @@ private fun ConfigDialog(
                                     placeholder = if (field.hint.isNotBlank()) {
                                         { Text(field.hint, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                                     } else null,
-                                    modifier = Modifier.fillMaxWidth(),
+                                    keyboardOptions = KeyboardOptions(
+                                        imeAction = if (field.multiline) ImeAction.Default else ImeAction.Next,
+                                    ),
+                                    modifier = Modifier.fillMaxWidth().let {
+                                        if (field.key == firstTextInputKey) it.focusRequester(firstFieldFocusRequester) else it
+                                    },
                                     minLines = if (field.multiline) 3 else 1,
                                     maxLines = if (field.multiline) 5 else 1,
                                 )
@@ -667,14 +775,12 @@ private fun ConfigDialog(
                                 }
                             }
 
-                            // ── Dropdown ─────────────────────────────────────────────────
                             is ConfigField.Dropdown -> DropdownConfigField(
                                 field = field,
                                 value = values[field.key] ?: field.options.firstOrNull()?.first ?: "",
                                 onValueChange = { values[field.key] = it },
                             )
 
-                            // ── Slider ────────────────────────────────────────────────────
                             is ConfigField.Slider -> {
                                 val current = values[field.key]?.toFloatOrNull() ?: field.min.toFloat()
                                 Column {
@@ -695,7 +801,6 @@ private fun ConfigDialog(
                                 }
                             }
 
-                            // ── TimePicker ────────────────────────────────────────────────
                             is ConfigField.TimePicker -> {
                                 val stored = values[field.key] ?: "08:00"
                                 val parts = stored.split(":").map { it.toIntOrNull() ?: 0 }
@@ -738,7 +843,6 @@ private fun ConfigDialog(
                                 }
                             }
 
-                            // ── AppPicker ─────────────────────────────────────────────────
                             is ConfigField.AppPicker -> {
                                 val pkg = values[field.key] ?: ""
                                 val appLabel = remember(pkg) {
@@ -764,9 +868,7 @@ private fun ConfigDialog(
                                 }
                             }
 
-                            // ── DayPicker ─────────────────────────────────────────────────
                             is ConfigField.DayPicker -> {
-                                // Respect showWhenKey/showWhenValue visibility condition
                                 if (field.showWhenKey != null &&
                                     values[field.showWhenKey] != field.showWhenValue
                                 ) return@forEach
@@ -810,7 +912,6 @@ private fun ConfigDialog(
                                 }
                             }
 
-                            // ── WifiSsidInput ─────────────────────────────────────────────
                             is ConfigField.WifiSsidInput -> {
                                 @Suppress("DEPRECATION")
                                 val currentSsid = remember {
@@ -844,7 +945,6 @@ private fun ConfigDialog(
                                 }
                             }
 
-                            // ── NfcTagScan ────────────────────────────────────────────────
                             is ConfigField.NfcTagScan -> {
                                 val nfcAdapter = remember { NfcAdapter.getDefaultAdapter(context) }
                                 var scanning by remember { mutableStateOf(false) }
@@ -898,10 +998,7 @@ private fun ConfigDialog(
                                             verticalAlignment = Alignment.CenterVertically,
                                             modifier = Modifier.fillMaxWidth(),
                                         ) {
-                                            CircularProgressIndicator(
-                                                modifier = Modifier.size(18.dp),
-                                                strokeWidth = 2.dp,
-                                            )
+                                            LoadingIndicator(modifier = Modifier.size(18.dp))
                                             Spacer(Modifier.width(8.dp))
                                             Text(
                                                 "Hold device near NFC tag…",
@@ -922,7 +1019,6 @@ private fun ConfigDialog(
                                 }
                             }
 
-                            // ── CurrentLocationButton ─────────────────────────────────────
                             is ConfigField.CurrentLocationButton -> {
                                 var locationError by remember { mutableStateOf<String?>(null) }
                                 val locationLauncher = rememberLauncherForActivityResult(
@@ -963,7 +1059,6 @@ private fun ConfigDialog(
                                 }
                             }
 
-                            // ── InfoText ──────────────────────────────────────────────────
                             is ConfigField.InfoText -> {
                                 Surface(
                                     color = if (field.isWarning) MaterialTheme.colorScheme.errorContainer
@@ -995,7 +1090,6 @@ private fun ConfigDialog(
                                 }
                             }
 
-                            // ── Toggle ────────────────────────────────────────────────────
                             is ConfigField.Toggle -> {
                                 val checked = values[field.key] == "true"
                                 Row(
@@ -1019,7 +1113,6 @@ private fun ConfigDialog(
                                 }
                             }
 
-                            // ── UnitSlider ────────────────────────────────────────────────
                             is ConfigField.UnitSlider -> {
                                 val selectedUnitId = values[field.unitKey]
                                     ?: field.units.firstOrNull()?.id ?: ""
@@ -1028,13 +1121,28 @@ private fun ConfigDialog(
                                 val current = (values[field.key]?.toFloatOrNull() ?: unitDef.min.toFloat())
                                     .coerceIn(unitDef.min.toFloat(), unitDef.max.toFloat())
 
+                                var inputText by remember(field.key) { mutableStateOf(current.toInt().toString()) }
+
                                 Column {
-                                    Row(modifier = Modifier.fillMaxWidth()) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
                                         Text(field.label, modifier = Modifier.weight(1f))
-                                        Text(
-                                            "${current.toInt()}${unitDef.suffix}",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.primary,
+                                        OutlinedTextField(
+                                            value = inputText,
+                                            onValueChange = { text ->
+                                                inputText = text
+                                                text.toIntOrNull()
+                                                    ?.coerceIn(unitDef.min, unitDef.max)
+                                                    ?.let { v -> values[field.key] = v.toString() }
+                                            },
+                                            suffix = if (unitDef.suffix.isNotBlank()) {
+                                                { Text(unitDef.suffix) }
+                                            } else null,
+                                            singleLine = true,
+                                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                            modifier = Modifier.width(96.dp),
                                         )
                                     }
                                     Spacer(Modifier.height(4.dp))
@@ -1044,8 +1152,9 @@ private fun ConfigDialog(
                                                 selected = selectedUnitId == udef.id,
                                                 onClick = {
                                                     values[field.unitKey] = udef.id
-                                                    // Reset value to min of new unit to avoid out-of-range
-                                                    values[field.key] = udef.min.toString()
+                                                    val minVal = udef.min.toString()
+                                                    values[field.key] = minVal
+                                                    inputText = minVal
                                                 },
                                                 shape = SegmentedButtonDefaults.itemShape(idx, field.units.size),
                                             ) { Text(udef.displayLabel) }
@@ -1053,7 +1162,11 @@ private fun ConfigDialog(
                                     }
                                     Slider(
                                         value = current,
-                                        onValueChange = { values[field.key] = it.toInt().toString() },
+                                        onValueChange = {
+                                            val intVal = it.toInt().toString()
+                                            values[field.key] = intVal
+                                            inputText = intVal
+                                        },
                                         valueRange = unitDef.min.toFloat()..unitDef.max.toFloat(),
                                         steps = 0,
                                     )

@@ -16,7 +16,13 @@
 package com.nexflow.ui.navigation
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
@@ -31,6 +37,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -56,9 +63,42 @@ sealed class Screen(
 
 val bottomNavScreens = listOf(Screen.Flows, Screen.Logs, Screen.Settings)
 
+private val slideSpec = spring<Float>(
+    dampingRatio = Spring.DampingRatioNoBouncy,
+    stiffness = Spring.StiffnessMedium,
+)
+
 @Composable
-fun NexFlowNavHost(navController: NavHostController) {
-    NavHost(navController = navController, startDestination = Screen.Flows.route) {
+fun NexFlowNavHost(navController: NavHostController, modifier: Modifier = Modifier) {
+    NavHost(
+        navController = navController,
+        startDestination = Screen.Flows.route,
+        modifier = modifier,
+        enterTransition = {
+            slideInHorizontally(
+                initialOffsetX = { it / 4 },
+                animationSpec = spring(stiffness = Spring.StiffnessMedium, dampingRatio = Spring.DampingRatioNoBouncy),
+            ) + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMedium))
+        },
+        exitTransition = {
+            slideOutHorizontally(
+                targetOffsetX = { -it / 4 },
+                animationSpec = spring(stiffness = Spring.StiffnessMedium, dampingRatio = Spring.DampingRatioNoBouncy),
+            ) + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMedium))
+        },
+        popEnterTransition = {
+            slideInHorizontally(
+                initialOffsetX = { -it / 4 },
+                animationSpec = spring(stiffness = Spring.StiffnessMedium, dampingRatio = Spring.DampingRatioNoBouncy),
+            ) + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMedium))
+        },
+        popExitTransition = {
+            slideOutHorizontally(
+                targetOffsetX = { it / 4 },
+                animationSpec = spring(stiffness = Spring.StiffnessMedium, dampingRatio = Spring.DampingRatioNoBouncy),
+            ) + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMedium))
+        },
+    ) {
         composable(Screen.Flows.route) {
             FlowsScreen(
                 onFlowClick = { flowId -> navController.navigate("flows/$flowId") },
@@ -80,8 +120,20 @@ fun NexFlowBottomBar(navController: NavController) {
 
     AnimatedVisibility(
         visible = isTopLevel,
-        enter = slideInVertically(initialOffsetY = { it }),
-        exit = slideOutVertically(targetOffsetY = { it }),
+        enter = slideInVertically(
+            initialOffsetY = { it },
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMedium,
+            ),
+        ) + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMedium)),
+        exit = slideOutVertically(
+            targetOffsetY = { it },
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioNoBouncy,
+                stiffness = Spring.StiffnessMedium,
+            ),
+        ) + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMedium)),
     ) {
         NavigationBar {
             bottomNavScreens.forEach { screen ->

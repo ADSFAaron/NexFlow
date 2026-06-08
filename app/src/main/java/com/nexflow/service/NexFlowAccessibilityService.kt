@@ -21,6 +21,7 @@ import android.graphics.Bitmap
 import android.os.Build
 import android.provider.MediaStore
 import android.view.accessibility.AccessibilityEvent
+import com.nexflow.event.AppLaunchEventSource
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import dagger.hilt.EntryPoint
@@ -99,7 +100,15 @@ class NexFlowAccessibilityService : AccessibilityService() {
         )
     }
 
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            val pkg = event.packageName?.toString()
+            if (!pkg.isNullOrBlank() && pkg != applicationContext.packageName) {
+                AppLaunchEventSource.emit(pkg)
+            }
+        }
+    }
+
     override fun onInterrupt() {}
 
     override fun onDestroy() {

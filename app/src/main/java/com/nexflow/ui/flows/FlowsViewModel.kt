@@ -22,9 +22,13 @@ import com.nexflow.core.automation.model.Trigger
 import com.nexflow.core.automation.model.TriggerLogic
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.automation.repository.FlowRepository
+import com.nexflow.service.FlowEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -33,10 +37,14 @@ import javax.inject.Inject
 @HiltViewModel
 class FlowsViewModel @Inject constructor(
     private val repository: FlowRepository,
+    private val flowEngine: FlowEngine,
 ) : ViewModel() {
 
     val flows: StateFlow<List<Flow>> = repository.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    private val _navigateToFlow = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val navigateToFlow: SharedFlow<String> = _navigateToFlow.asSharedFlow()
 
     fun toggleEnabled(id: String, enabled: Boolean) {
         viewModelScope.launch { repository.setEnabled(id, enabled) }
@@ -46,12 +54,17 @@ class FlowsViewModel @Inject constructor(
         viewModelScope.launch { repository.delete(id) }
     }
 
+    fun runFlow(id: String) {
+        viewModelScope.launch { flowEngine.runNow(id) }
+    }
+
     fun createFlow(name: String, description: String) {
         viewModelScope.launch {
+            val id = UUID.randomUUID().toString()
             val now = System.currentTimeMillis()
             repository.save(
                 Flow(
-                    id = UUID.randomUUID().toString(),
+                    id = id,
                     schemaVersion = 1,
                     name = name,
                     description = description,
@@ -73,6 +86,7 @@ class FlowsViewModel @Inject constructor(
                     variables = emptyList(),
                 ),
             )
+            _navigateToFlow.emit(id)
         }
     }
 }

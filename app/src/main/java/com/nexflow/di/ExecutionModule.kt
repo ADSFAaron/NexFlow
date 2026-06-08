@@ -18,9 +18,9 @@ package com.nexflow.di
 import com.nexflow.core.automation.executor.ActionExecutor
 import com.nexflow.core.automation.trigger.TriggerHandler
 import com.nexflow.executor.AirplaneModeActionExecutor
-import com.nexflow.executor.ScreenshotActionExecutor
 import com.nexflow.executor.BluetoothActionExecutor
 import com.nexflow.executor.BrightnessActionExecutor
+import com.nexflow.executor.CallPhoneActionExecutor
 import com.nexflow.executor.ClipboardActionExecutor
 import com.nexflow.executor.DelayActionExecutor
 import com.nexflow.executor.DndActionExecutor
@@ -29,15 +29,28 @@ import com.nexflow.executor.MediaActionExecutor
 import com.nexflow.executor.NotificationActionExecutor
 import com.nexflow.executor.OpenAppActionExecutor
 import com.nexflow.executor.OpenUrlActionExecutor
-import com.nexflow.executor.TtsActionExecutor
+import com.nexflow.executor.ScreenshotActionExecutor
+import com.nexflow.executor.SendSmsActionExecutor
+import com.nexflow.executor.ShareActionExecutor
 import com.nexflow.executor.ToastActionExecutor
+import com.nexflow.executor.TtsActionExecutor
 import com.nexflow.executor.VolumeActionExecutor
 import com.nexflow.executor.WifiActionExecutor
+import com.nexflow.executor.WriteFileActionExecutor
+import com.nexflow.trigger.AppLaunchTriggerHandler
 import com.nexflow.trigger.BatteryTriggerHandler
+import com.nexflow.trigger.BluetoothTriggerHandler
 import com.nexflow.trigger.BootTriggerHandler
+import com.nexflow.trigger.GeofenceTriggerHandler
+import com.nexflow.trigger.HeadsetTriggerHandler
+import com.nexflow.trigger.IncomingCallTriggerHandler
 import com.nexflow.trigger.ManualTriggerHandler
+import com.nexflow.trigger.NfcTagTriggerHandler
+import com.nexflow.trigger.NotificationTriggerHandler
 import com.nexflow.trigger.ScreenTriggerHandler
+import com.nexflow.trigger.SmsReceivedTriggerHandler
 import com.nexflow.trigger.TimeTriggerHandler
+import com.nexflow.trigger.WifiTriggerHandler
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -70,6 +83,33 @@ abstract class ExecutionModule {
 
     @Binds @IntoSet
     abstract fun bindBootTrigger(impl: BootTriggerHandler): TriggerHandler
+
+    @Binds @IntoSet
+    abstract fun bindBluetoothTrigger(impl: BluetoothTriggerHandler): TriggerHandler
+
+    @Binds @IntoSet
+    abstract fun bindWifiTrigger(impl: WifiTriggerHandler): TriggerHandler
+
+    @Binds @IntoSet
+    abstract fun bindAppLaunchTrigger(impl: AppLaunchTriggerHandler): TriggerHandler
+
+    @Binds @IntoSet
+    abstract fun bindIncomingCallTrigger(impl: IncomingCallTriggerHandler): TriggerHandler
+
+    @Binds @IntoSet
+    abstract fun bindSmsReceivedTrigger(impl: SmsReceivedTriggerHandler): TriggerHandler
+
+    @Binds @IntoSet
+    abstract fun bindNotificationTrigger(impl: NotificationTriggerHandler): TriggerHandler
+
+    @Binds @IntoSet
+    abstract fun bindHeadsetTrigger(impl: HeadsetTriggerHandler): TriggerHandler
+
+    @Binds @IntoSet
+    abstract fun bindGeofenceTrigger(impl: GeofenceTriggerHandler): TriggerHandler
+
+    @Binds @IntoSet
+    abstract fun bindNfcTagTrigger(impl: NfcTagTriggerHandler): TriggerHandler
 
     // ----- ActionExecutors -----
 
@@ -120,6 +160,18 @@ abstract class ExecutionModule {
 
     @Binds @IntoSet
     abstract fun bindScreenshot(impl: ScreenshotActionExecutor): ActionExecutor
+
+    @Binds @IntoSet
+    abstract fun bindSendSms(impl: SendSmsActionExecutor): ActionExecutor
+
+    @Binds @IntoSet
+    abstract fun bindCallPhone(impl: CallPhoneActionExecutor): ActionExecutor
+
+    @Binds @IntoSet
+    abstract fun bindWriteFile(impl: WriteFileActionExecutor): ActionExecutor
+
+    @Binds @IntoSet
+    abstract fun bindShare(impl: ShareActionExecutor): ActionExecutor
 
     companion object {
         @Provides
