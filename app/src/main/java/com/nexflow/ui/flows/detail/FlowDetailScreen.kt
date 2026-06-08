@@ -217,7 +217,11 @@ fun FlowDetailScreen(
                     IconButton(onClick = {
                         val json = vm.exportAsJson() ?: return@IconButton
                         val dir = File(context.cacheDir, "flow_exports").also { it.mkdirs() }
-                        val safeName = f.name.replace(Regex("[^a-zA-Z0-9_\\-]"), "_")
+                        // Preserve flow name; only strip characters forbidden in filenames.
+                        val safeName = f.name
+                            .replace(Regex("""[/\\:*?"<>|]"""), "_")
+                            .trim()
+                            .ifBlank { "flow" }
                         val file = File(dir, "$safeName.flow")
                         file.writeText(json)
                         val uri = FileProvider.getUriForFile(
@@ -961,6 +965,7 @@ private fun ConfigDialog(
                                 val activity = context as? Activity
 
                                 DisposableEffect(scanning) {
+                                    var readerModeEnabled = false
                                     if (scanning && nfcAdapter != null && activity != null) {
                                         nfcAdapter.enableReaderMode(
                                             activity,
@@ -974,10 +979,15 @@ private fun ConfigDialog(
                                                 NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK,
                                             null,
                                         )
+                                        readerModeEnabled = true
                                     }
                                     onDispose {
-                                        runCatching {
-                                            if (activity != null) nfcAdapter?.disableReaderMode(activity)
+                                        // Only disable reader mode if this effect actually enabled it.
+                                        // Unconditional disable would kill MainActivity's onResume reader mode.
+                                        if (readerModeEnabled) {
+                                            runCatching {
+                                                if (activity != null) nfcAdapter?.disableReaderMode(activity)
+                                            }
                                         }
                                     }
                                 }
