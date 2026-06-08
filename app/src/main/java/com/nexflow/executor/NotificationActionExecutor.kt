@@ -17,7 +17,10 @@ package com.nexflow.executor
 
 import android.app.NotificationManager
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.nexflow.R
 import com.nexflow.core.automation.executor.ActionExecutor
 import com.nexflow.core.automation.executor.ActionResult
@@ -33,15 +36,25 @@ class NotificationActionExecutor @Inject constructor(
     override val supportedType = ActionType.NOTIFICATION
 
     override suspend fun execute(action: Action, variables: MutableMap<String, String>): ActionResult {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED
+        ) {
+            return ActionResult.Failure("Notification permission not granted — go to Settings → Permissions to enable it")
+        }
+
         val title = action.config["title"]?.takeIf { it.isNotBlank() } ?: "NexFlow"
-        val message = action.config["message"]?.takeIf { it.isNotBlank() }
-            ?: return ActionResult.Skipped
+        val message = action.config["message"]?.trim() ?: ""
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ACTIONS)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(title)
-            .setContentText(message)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+            .apply {
+                if (message.isNotBlank()) {
+                    setContentText(message)
+                    setStyle(NotificationCompat.BigTextStyle().bigText(message))
+                }
+            }
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
             .build()

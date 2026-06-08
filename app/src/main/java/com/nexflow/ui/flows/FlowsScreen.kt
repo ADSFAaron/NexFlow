@@ -97,6 +97,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.nexflow.core.automation.model.Flow
+import com.nexflow.event.ImportEventSource
 import com.nexflow.service.FlowExecutionService
 import com.nexflow.ui.flowimport.ImportViewModel
 import kotlinx.coroutines.launch
@@ -125,7 +126,14 @@ fun FlowsScreen(
         uri ?: return@rememberLauncherForActivityResult
         val content = context.contentResolver.openInputStream(uri)
             ?.bufferedReader()?.use { it.readText() } ?: return@rememberLauncherForActivityResult
-        importVm.importMdr(content)
+        importVm.importAuto(content)
+    }
+
+    val pendingImport by ImportEventSource.pendingContent.collectAsState()
+    LaunchedEffect(pendingImport) {
+        val content = pendingImport ?: return@LaunchedEffect
+        importVm.importAuto(content)
+        ImportEventSource.clear()
     }
 
     LaunchedEffect(vm) {
@@ -173,7 +181,7 @@ fun FlowsScreen(
                         horizontalAlignment = Alignment.End,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        FabItem(icon = Icons.Outlined.FileOpen, label = "Import .mdr") {
+                        FabItem(icon = Icons.Outlined.FileOpen, label = "Import flow") {
                             fabMenuExpanded = false
                             filePicker.launch(arrayOf("*/*"))
                         }

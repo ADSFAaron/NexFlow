@@ -21,6 +21,8 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import androidx.core.content.FileProvider
+import java.io.File
 import android.location.LocationManager
 import android.net.wifi.WifiManager
 import android.nfc.NfcAdapter
@@ -214,10 +216,18 @@ fun FlowDetailScreen(
                 actions = {
                     IconButton(onClick = {
                         val json = vm.exportAsJson() ?: return@IconButton
+                        val dir = File(context.cacheDir, "flow_exports").also { it.mkdirs() }
+                        val safeName = f.name.replace(Regex("[^a-zA-Z0-9_\\-]"), "_")
+                        val file = File(dir, "$safeName.flow")
+                        file.writeText(json)
+                        val uri = FileProvider.getUriForFile(
+                            context, "${context.packageName}.fileprovider", file,
+                        )
                         val intent = Intent(Intent.ACTION_SEND).apply {
                             type = "application/json"
-                            putExtra(Intent.EXTRA_TEXT, json)
-                            putExtra(Intent.EXTRA_SUBJECT, "${f.name}.flow")
+                            putExtra(Intent.EXTRA_STREAM, uri)
+                            putExtra(Intent.EXTRA_SUBJECT, "$safeName.flow")
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         }
                         context.startActivity(Intent.createChooser(intent, "Export flow"))
                     }) {

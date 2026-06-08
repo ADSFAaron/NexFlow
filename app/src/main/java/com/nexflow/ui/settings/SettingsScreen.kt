@@ -141,7 +141,7 @@ fun SettingsScreen(importVm: ImportViewModel = hiltViewModel()) {
         uri ?: return@rememberLauncherForActivityResult
         val content = context.contentResolver.openInputStream(uri)
             ?.bufferedReader()?.use { it.readText() } ?: return@rememberLauncherForActivityResult
-        importVm.importMdr(content)
+        importVm.importAuto(content)
     }
 
     Scaffold(
@@ -343,8 +343,8 @@ fun SettingsScreen(importVm: ImportViewModel = hiltViewModel()) {
             item { SectionHeader("Import / Export") }
             item {
                 ListItem(
-                    headlineContent = { Text("Import MacroDroid .mdr") },
-                    supportingContent = { Text("Pick a .mdr file to import macros as flows") },
+                    headlineContent = { Text("Import flow") },
+                    supportingContent = { Text("Pick a NexFlow JSON or MacroDroid .mdr file") },
                     trailingContent = {
                         OutlinedButton(onClick = { filePicker.launch(arrayOf("*/*")) }) {
                             Text("Import")

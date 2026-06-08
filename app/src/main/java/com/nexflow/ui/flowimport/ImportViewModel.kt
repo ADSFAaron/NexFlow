@@ -26,6 +26,8 @@ import com.nexflow.core.automation.model.TriggerLogic
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.automation.repository.FlowRepository
 import com.nexflow.core.flowschema.FlowJson
+import com.nexflow.core.flowschema.FlowSchemaValidator
+import com.nexflow.core.flowschema.FlowSerializer
 import com.nexflow.core.macrodroid.MdrToFlowConverter
 import com.nexflow.core.macrodroid.parser.MdrParser
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -70,6 +72,29 @@ class ImportViewModel @Inject constructor(
             }
 
             _result.update { ImportResult(imported = imported, warnings = allWarnings) }
+        }
+    }
+
+    fun importFlowJson(content: String) {
+        viewModelScope.launch {
+            val flowJson = FlowSerializer.decode(content).getOrElse { e ->
+                _result.update { ImportResult(error = "Parse failed: ${e.message}") }
+                return@launch
+            }
+
+            val errors = FlowSchemaValidator.validate(flowJson)
+            val warnings = errors.map { "${it.field}: ${it.message}" }.toMutableList()
+
+            repository.save(flowJson.toDomain())
+            _result.update { ImportResult(imported = 1, warnings = warnings) }
+        }
+    }
+
+    fun importAuto(content: String) {
+        if (content.trimStart().startsWith("{")) {
+            importFlowJson(content)
+        } else {
+            importMdr(content)
         }
     }
 

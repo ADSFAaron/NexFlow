@@ -22,6 +22,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import com.nexflow.event.ImportEventSource
 import com.nexflow.event.NfcEventSource
 import com.nexflow.service.FlowExecutionService
 import androidx.compose.foundation.layout.fillMaxSize
@@ -61,6 +62,7 @@ class MainActivity : ComponentActivity() {
             }
         }
         handleNfcIntent(intent)
+        handleShareIntent(intent)
     }
 
     override fun onResume() {
@@ -83,6 +85,36 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleNfcIntent(intent)
+        handleShareIntent(intent)
+    }
+
+    private fun handleShareIntent(intent: Intent?) {
+        intent ?: return
+        when (intent.action) {
+            Intent.ACTION_SEND -> {
+                if (intent.type == "application/json" || intent.type == "text/plain") {
+                    // File-based share (EXTRA_STREAM) takes priority over plain text
+                    @Suppress("DEPRECATION")
+                    val streamUri = intent.getParcelableExtra<android.net.Uri>(Intent.EXTRA_STREAM)
+                    if (streamUri != null) {
+                        val content = runCatching {
+                            contentResolver.openInputStream(streamUri)?.bufferedReader()?.use { it.readText() }
+                        }.getOrNull() ?: return
+                        ImportEventSource.push(content)
+                    } else {
+                        val text = intent.getStringExtra(Intent.EXTRA_TEXT) ?: return
+                        if (text.trimStart().startsWith("{")) ImportEventSource.push(text)
+                    }
+                }
+            }
+            Intent.ACTION_VIEW -> {
+                val uri = intent.data ?: return
+                val content = runCatching {
+                    contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                }.getOrNull() ?: return
+                ImportEventSource.push(content)
+            }
+        }
     }
 
     private fun handleNfcIntent(intent: Intent?) {
