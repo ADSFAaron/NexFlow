@@ -28,6 +28,9 @@ import android.net.wifi.WifiManager
 import android.nfc.NfcAdapter
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -38,6 +41,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -72,6 +76,8 @@ import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material.icons.outlined.Wifi
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -83,8 +89,6 @@ import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.IconButton
@@ -202,6 +206,27 @@ fun FlowDetailScreen(
         if (fromIdx >= 0 && toIdx >= 0) vm.reorderActions(fromIdx, toIdx)
     }
 
+    val onShare = share@{
+        val json = vm.exportAsJson() ?: return@share
+        val dir = File(context.cacheDir, "flow_exports").also { it.mkdirs() }
+        val safeName = f.name
+            .replace(Regex("""[/\\:*?"<>|]"""), "_")
+            .trim()
+            .ifBlank { "flow" }
+        val file = File(dir, "$safeName.flow")
+        file.writeText(json)
+        val uri = FileProvider.getUriForFile(
+            context, "${context.packageName}.fileprovider", file,
+        )
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "application/json"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            putExtra(Intent.EXTRA_SUBJECT, "$safeName.flow")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(Intent.createChooser(intent, "Export flow"))
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -214,29 +239,6 @@ fun FlowDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = {
-                        val json = vm.exportAsJson() ?: return@IconButton
-                        val dir = File(context.cacheDir, "flow_exports").also { it.mkdirs() }
-                        // Preserve flow name; only strip characters forbidden in filenames.
-                        val safeName = f.name
-                            .replace(Regex("""[/\\:*?"<>|]"""), "_")
-                            .trim()
-                            .ifBlank { "flow" }
-                        val file = File(dir, "$safeName.flow")
-                        file.writeText(json)
-                        val uri = FileProvider.getUriForFile(
-                            context, "${context.packageName}.fileprovider", file,
-                        )
-                        val intent = Intent(Intent.ACTION_SEND).apply {
-                            type = "application/json"
-                            putExtra(Intent.EXTRA_STREAM, uri)
-                            putExtra(Intent.EXTRA_SUBJECT, "$safeName.flow")
-                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        }
-                        context.startActivity(Intent.createChooser(intent, "Export flow"))
-                    }) {
-                        Icon(Icons.Outlined.Share, contentDescription = "Export")
-                    }
                     IconButton(onClick = { showRenameDialog = true }) {
                         Icon(Icons.Outlined.Edit, contentDescription = "Rename")
                     }
@@ -244,11 +246,12 @@ fun FlowDetailScreen(
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        floatingActionButton = {
-            FlowControls(
+        bottomBar = {
+            FlowControlsBar(
                 enabled = f.enabled,
                 isRunning = isRunning,
                 onToggle = { vm.setEnabled(it) },
+                onShare = onShare,
                 onRun = {
                     vm.runNow()
                     scope.launch { snackbarHostState.showSnackbar("Flow started") }
@@ -369,7 +372,6 @@ fun FlowDetailScreen(
                 }
             }
 
-            item { Spacer(Modifier.height(88.dp)) }
         }
     }
 
@@ -475,46 +477,109 @@ fun FlowDetailScreen(
 }
 
 @Composable
-private fun FlowControls(
+private fun FlowControlsBar(
     enabled: Boolean,
     isRunning: Boolean,
     onToggle: (Boolean) -> Unit,
+    onShare: () -> Unit,
     onRun: () -> Unit,
     onStop: () -> Unit,
 ) {
-    Column(
-        horizontalAlignment = Alignment.End,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        SmallFloatingActionButton(
-            onClick = { onToggle(!enabled) },
-            containerColor = if (enabled) MaterialTheme.colorScheme.primaryContainer
-                else MaterialTheme.colorScheme.surfaceContainerHigh,
-            contentColor = if (enabled) MaterialTheme.colorScheme.onPrimaryContainer
-                else MaterialTheme.colorScheme.onSurface,
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            tonalElevation = 3.dp,
+            shadowElevation = 8.dp,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                FlowEnabledCapsule(
+                    enabled = enabled,
+                    onClick = { onToggle(!enabled) },
+                )
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = onShare) {
+                    Icon(Icons.Outlined.Share, contentDescription = "Export")
+                }
+                Spacer(Modifier.width(4.dp))
+                FilledIconButton(
+                    onClick = if (isRunning) onStop else onRun,
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = if (isRunning) MaterialTheme.colorScheme.errorContainer
+                            else MaterialTheme.colorScheme.primary,
+                        contentColor = if (isRunning) MaterialTheme.colorScheme.onErrorContainer
+                            else MaterialTheme.colorScheme.onPrimary,
+                    ),
+                ) {
+                    AnimatedContent(
+                        targetState = isRunning,
+                        transitionSpec = { fadeIn() togetherWith fadeOut() },
+                        label = "play_stop",
+                    ) { running ->
+                        Icon(
+                            imageVector = if (running) Icons.Filled.Stop else Icons.Filled.PlayArrow,
+                            contentDescription = if (running) "Stop flow" else "Run flow",
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FlowEnabledCapsule(
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val containerColor = if (enabled)
+        MaterialTheme.colorScheme.primaryContainer
+    else
+        MaterialTheme.colorScheme.surfaceVariant
+    val contentColor = if (enabled)
+        MaterialTheme.colorScheme.onPrimaryContainer
+    else
+        MaterialTheme.colorScheme.onSurfaceVariant
+
+    Surface(
+        onClick = onClick,
+        shape = CircleShape,
+        color = containerColor,
+        contentColor = contentColor,
+        modifier = modifier.animateContentSize(
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMediumLow,
+            ),
+        ),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
             Icon(
                 imageVector = if (enabled) Icons.Filled.Bolt else Icons.Outlined.Bolt,
-                contentDescription = if (enabled) "Automation enabled" else "Automation disabled",
+                contentDescription = if (enabled) "Disable flow" else "Enable flow",
+                modifier = Modifier.size(20.dp),
             )
-        }
-        FloatingActionButton(
-            onClick = if (isRunning) onStop else onRun,
-            containerColor = if (isRunning) MaterialTheme.colorScheme.errorContainer
-                else MaterialTheme.colorScheme.primaryContainer,
-            contentColor = if (isRunning) MaterialTheme.colorScheme.onErrorContainer
-                else MaterialTheme.colorScheme.onPrimaryContainer,
-        ) {
-            AnimatedContent(
-                targetState = isRunning,
-                transitionSpec = { fadeIn() togetherWith fadeOut() },
-                label = "play_stop",
-            ) { running ->
-                Icon(
-                    imageVector = if (running) Icons.Filled.Stop else Icons.Filled.PlayArrow,
-                    contentDescription = if (running) "Stop flow" else "Run flow",
-                )
-            }
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = if (enabled) "Enabled" else "Disabled",
+                style = MaterialTheme.typography.labelMedium,
+            )
         }
     }
 }
