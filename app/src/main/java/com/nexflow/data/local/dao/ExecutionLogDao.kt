@@ -55,4 +55,7 @@ interface ExecutionLogDao {
 
     @Query("DELETE FROM execution_logs WHERE flow_id = :flowId")
     suspend fun deleteByFlowId(flowId: String)
+
+    @Query("DELETE FROM execution_logs")
+    suspend fun deleteAll()
 }

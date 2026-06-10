@@ -78,7 +78,9 @@ class FlowInterpreter(
                 }
 
                 ActionType.SET_VARIABLE -> {
-                    val name = action.config["name"] ?: return InterpreterResult.Failure("SET_VARIABLE missing name")
+                    // UI writes "variable_name"; older flows and MacroDroid imports may use "name"
+                    val name = action.config["variable_name"] ?: action.config["name"]
+                        ?: return InterpreterResult.Failure("SET_VARIABLE missing name")
                     val rawValue = action.config["value"] ?: ""
                     variables[name] = interpolate(rawValue, variables)
                     i++
@@ -121,9 +123,46 @@ class FlowInterpreter(
         return action.copy(config = interpolatedConfig)
     }
 
-    // Minimal boolean expression evaluator: supports "true"/"false" literals and variable references.
-    private fun evaluateExpression(expression: String, variables: Map<String, String>): Boolean {
+    /**
+     * Evaluates a boolean expression after variable interpolation.
+     *
+     * Supported forms (see docs/FLOW_SCHEMA.md):
+     * - "true" / "false" literals (case-insensitive)
+     * - binary comparisons: ==, !=, <=, >=, <, > — numeric when both sides parse
+     *   as numbers, otherwise case-insensitive string comparison
+     */
+    internal fun evaluateExpression(expression: String, variables: Map<String, String>): Boolean {
         val resolved = interpolate(expression.trim(), variables)
+
+        // Two-char operators must be matched before their single-char prefixes.
+        for (op in listOf("==", "!=", "<=", ">=", "<", ">")) {
+            val idx = resolved.indexOf(op)
+            if (idx <= 0) continue
+            val left = resolved.substring(0, idx).trim().removeSurrounding("\"")
+            val right = resolved.substring(idx + op.length).trim().removeSurrounding("\"")
+            val leftNum = left.toDoubleOrNull()
+            val rightNum = right.toDoubleOrNull()
+            return if (leftNum != null && rightNum != null) {
+                when (op) {
+                    "==" -> leftNum == rightNum
+                    "!=" -> leftNum != rightNum
+                    "<=" -> leftNum <= rightNum
+                    ">=" -> leftNum >= rightNum
+                    "<" -> leftNum < rightNum
+                    else -> leftNum > rightNum
+                }
+            } else {
+                val cmp = left.compareTo(right, ignoreCase = true)
+                when (op) {
+                    "==" -> cmp == 0
+                    "!=" -> cmp != 0
+                    "<=" -> cmp <= 0
+                    ">=" -> cmp >= 0
+                    "<" -> cmp < 0
+                    else -> cmp > 0
+                }
+            }
+        }
         return resolved.equals("true", ignoreCase = true)
     }
 

@@ -1,0 +1,144 @@
+# NexFlow
+
+開源的 Android 自動化 App（類似 MacroDroid / Tasker）：用「觸發條件（WHEN）→ 動作（THEN）」組合出自動化流程（Flow），支援變數、條件分支與迴圈，並可匯入 MacroDroid 的 `.mdr` 檔。
+
+## 功能總覽
+
+### 觸發條件（Trigger，14 種）
+
+| 類別 | 觸發條件 |
+|------|----------|
+| 時間 | 指定時間（每天／平日／週末／自訂星期／單次） |
+| 裝置狀態 | 電量高低（含充電狀態）、螢幕開關／解鎖、開機、耳機插拔 |
+| 連線 | Wi-Fi 連線／斷線（可指定 SSID）、藍牙裝置連線／斷線 |
+| 通訊 | 來電（可指定聯絡人）、收到簡訊（可指定發信人）、收到通知（可指定 App） |
+| 其他 | App 啟動、NFC 標籤掃描、地理圍欄（進入／離開）、手動執行 |
+
+### 動作（Action，25 種）
+
+| 類別 | 動作 |
+|------|------|
+| 通知與提示 | Toast、系統通知、TTS 朗讀 |
+| 裝置控制 | Wi-Fi、藍牙、勿擾模式、飛航模式、音量、亮度、媒體播放控制、截圖 |
+| 通訊 | 撥打電話、傳送簡訊 |
+| 網路與資料 | HTTP 請求、開啟網址、剪貼簿、寫入檔案、分享 |
+| App | 開啟 App |
+| 流程控制 | 延遲、If／Else／End If、Repeat／End Repeat、設定變數 |
+
+### 變數與條件式
+
+- Flow 可宣告變數（含預設值），在任何欄位用 `{{變數名}}` 引用
+- `SET_VARIABLE` 動作可在執行中改變變數值
+- `IF_BLOCK` 條件式支援 `==`、`!=`、`<`、`>`、`<=`、`>=`（兩側皆為數字時做數值比較，否則不分大小寫字串比較），例如 `{{battery}} < 20`
+
+### 匯入／匯出
+
+- 自有格式：`.flow`（JSON），規格見 [docs/FLOW_SCHEMA.md](docs/FLOW_SCHEMA.md)
+- MacroDroid 相容：可解析並轉換 `.mdr` 匯出檔（`core/macrodroid-compat`）
+- 支援檔案選擇器匯入、系統分享（Share）匯入、Flow 詳細頁直接匯出分享
+
+## 技術棧
+
+| 項目 | 版本 |
+|------|------|
+| Kotlin | 2.2.10（KSP，無 kapt） |
+| AGP / Gradle | 9.2.1 / 9.5 |
+| UI | Jetpack Compose（BOM 2026.02.01）+ Material 3（含 Expressive alpha） |
+| DI | Hilt 2.59.2 |
+| 資料庫 | Room 2.7.1 |
+| 其他 | Navigation Compose、kotlinx.serialization、Ktor、WorkManager、Glance（桌面小工具）、play-services-location（地理圍欄） |
+| SDK | minSdk 30（Android 11）／ targetSdk 37 |
+
+## Module 結構
+
+```
+app/                        # Android App：UI、Room、Hilt、trigger/executor 實作、Service
+core/automation/            # 純 Kotlin JVM：領域模型、FlowInterpreter（IF/REPEAT/變數）、repository 介面
+core/flow-schema/           # 純 Kotlin JVM：.flow JSON 序列化與驗證
+core/macrodroid-compat/     # 純 Kotlin JVM：MacroDroid .mdr 解析與轉換
+```
+
+### 架構重點
+
+- **Trigger 系統**：`TriggerHandler` 介面 + Hilt multibinding（`@Binds @IntoSet`，註冊於 `app/.../di/ExecutionModule.kt`）。Android 元件（AccessibilityService、NotificationListener、BroadcastReceiver…）透過 singleton EventSource（`MutableSharedFlow`）橋接到 handler
+- **Action 系統**：`ActionExecutor` 介面 + 同樣的 multibinding。控制流程動作（IF/REPEAT/SET_VARIABLE）由 `FlowInterpreter` 直接處理，不需要 executor
+- **執行引擎**：`FlowEngine` 觀察啟用中的 Flow，把每個 (flow, trigger) 配對成事件串流，觸發時交給 `FlowInterpreter` 執行並寫入執行記錄
+- **新增型別時**：在 `TriggerType`/`ActionType` 加 enum → 實作 handler/executor → `ExecutionModule` 加綁定 → `TriggerConfig`/`ActionConfig` 加 UI 欄位定義。少做任何一步都會被自動化測試抓到（見下方）
+
+## 建置
+
+```bash
+git clone <repo>
+cd StudioProject
+./gradlew :app:assembleDebug      # 產出 app/build/outputs/apk/debug/
+```
+
+需求：JDK 17+（Gradle toolchain 會自動處理 module 的 JVM 11 目標）、Android SDK Platform 37。
+
+## 測試
+
+### JVM 單元測試（不需裝置）
+
+```bash
+./gradlew :core:automation:test        # FlowInterpreter：條件式、IF/ELSE、REPEAT、變數
+./gradlew :app:testDebugUnitTest       # 設定 UI 的全型別覆蓋與 interpreter key 契約
+```
+
+涵蓋內容：
+
+- `FlowInterpreterTest` — 條件式求值（比較運算子、數值/字串）、IF/ELSE 分支、REPEAT 次數、SET_VARIABLE 新舊 key 相容
+- `TriggerConfigTest` / `ActionConfigTest` — **每一種** TriggerType（14）與 ActionType（25）的 picker 資訊、欄位 key 唯一性、空設定與填滿設定的摘要產生，以及與 interpreter 的 key 契約（IF 的 `expression`、REPEAT 的 `count`、SET_VARIABLE 的 `variable_name`/`value`）
+
+### 裝置 instrumented 測試（需要實機或模擬器）
+
+**執行前必須先關閉系統動畫**，否則 Compose 文字輸入測試會因 Espresso 等不到 main looper idle 而逾時：
+
+```bash
+adb shell settings put global window_animation_scale 0
+adb shell settings put global transition_animation_scale 0
+adb shell settings put global animator_duration_scale 0
+```
+
+執行：
+
+```bash
+./gradlew :app:connectedDebugAndroidTest
+```
+
+涵蓋內容：
+
+- `ExecutionBindingsTest` — 從真實 Hilt graph 驗證每個 TriggerType 都有 TriggerHandler、每個可執行 ActionType 都有 ActionExecutor 且無重複綁定（抓「忘了在 ExecutionModule 註冊」這類只會在執行期爆炸的錯）
+- `ConfigDialogRenderTest` — 在裝置上實際 render 全部 39 種 trigger/action 的設定對話框，驗證每個欄位元件都有顯示，並測試輸入值能正確存進 config
+
+instrumented 測試使用 `com.nexflow.HiltTestRunner`（HiltTestApplication）；新增 Hilt 相關測試標上 `@HiltAndroidTest` 即可。
+
+測完可還原動畫：
+
+```bash
+adb shell settings put global window_animation_scale 1.0
+adb shell settings put global transition_animation_scale 1.0
+adb shell settings put global animator_duration_scale 1.0
+```
+
+## 權限說明
+
+部分功能需要使用者手動授權（App 的 Settings 分頁有逐項引導）：
+
+| 功能 | 需要的權限 |
+|------|-----------|
+| App 啟動觸發、截圖動作 | 無障礙服務（Accessibility Service） |
+| 通知觸發 | 通知存取權限（Notification Listener） |
+| 地理圍欄 | 精確定位 + 背景定位 |
+| 亮度調整 | 修改系統設定（WRITE_SETTINGS） |
+| 勿擾模式 | 勿擾存取權限 |
+| Wi-Fi／飛航模式靜默切換 | `WRITE_SECURE_SETTINGS`（需透過 ADB 授權一次，App 內有指令可複製） |
+| NFC 觸發 | 僅 App 在前景時有效 |
+
+## 已知限制（規劃中）
+
+- Flow 層級的 `conditions`（執行前置條件）已有資料模型與 .mdr 匯入，但引擎尚未評估、也沒有編輯 UI
+- 全域變數（跨 Flow 共用）的資料表已預留，功能尚未實作
+
+## 授權
+
+Apache License 2.0

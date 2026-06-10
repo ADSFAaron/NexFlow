@@ -22,6 +22,7 @@ import com.nexflow.core.automation.model.Action
 import com.nexflow.core.automation.model.Flow
 import com.nexflow.core.automation.model.Trigger
 import com.nexflow.core.automation.model.TriggerLogic
+import com.nexflow.core.automation.model.Variable
 import com.nexflow.core.automation.repository.FlowRepository
 import com.nexflow.core.flowschema.ActionJson
 import com.nexflow.core.flowschema.ConditionJson
@@ -80,6 +81,16 @@ class FlowDetailViewModel @Inject constructor(
             actions = actions.filter { it.id != id }
                 .mapIndexed { i, a -> a.copy(order = i) },
         )
+    }
+
+    /** Adds a new variable ([originalName] = null) or replaces the one named [originalName]. */
+    fun saveVariable(originalName: String?, variable: Variable) = edit {
+        val others = variables.filter { it.name != originalName }
+        copy(variables = others.filter { it.name != variable.name } + variable)
+    }
+
+    fun removeVariable(name: String) = edit {
+        copy(variables = variables.filter { it.name != name })
     }
 
     fun setEnabled(enabled: Boolean) {

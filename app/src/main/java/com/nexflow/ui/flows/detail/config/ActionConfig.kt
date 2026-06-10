@@ -51,11 +51,6 @@ data class ActionInfo(
     val fields: List<ConfigField>,
 )
 
-val CONTROL_FLOW_ACTIONS = setOf(
-    ActionType.IF_BLOCK, ActionType.ELSE_BLOCK, ActionType.END_IF,
-    ActionType.REPEAT_BLOCK, ActionType.END_REPEAT,
-)
-
 private val toggleOptions = listOf("ON" to "On", "OFF" to "Off", "TOGGLE" to "Toggle")
 private val httpMethods = listOf("GET" to "GET", "POST" to "POST", "PUT" to "PUT", "DELETE" to "DELETE", "PATCH" to "PATCH")
 
@@ -216,7 +211,19 @@ val ActionType.info: ActionInfo
                 ),
             ),
         )
-        ActionType.IF_BLOCK -> ActionInfo("If", Icons.Outlined.MergeType, "Conditional block", emptyList())
+        ActionType.IF_BLOCK -> ActionInfo(
+            "If", Icons.Outlined.MergeType, "Run following actions only when a condition holds",
+            listOf(
+                ConfigField.InfoText(
+                    "_expr_help",
+                    "Condition",
+                    "Examples: {{battery}} < 20 · {{status}} == ok · true. " +
+                        "Supports ==, !=, <, >, <=, >= — numbers compare numerically. " +
+                        "Close the block with an End If action.",
+                ),
+                ConfigField.TextInput("expression", "Condition", hint = "{{battery}} < 20"),
+            ),
+        )
         ActionType.ELSE_BLOCK -> ActionInfo("Else", Icons.Outlined.CallSplit, "Else block", emptyList())
         ActionType.END_IF -> ActionInfo("End If", Icons.Outlined.Done, "End of If block", emptyList())
         ActionType.REPEAT_BLOCK -> ActionInfo(
@@ -262,5 +269,8 @@ fun ActionType.configSummary(config: Map<String, String>): String = when (this) 
     ActionType.SHARE -> config["text"]?.take(40) ?: "No text"
     ActionType.SCREENSHOT -> "Take screenshot"
     ActionType.REPEAT_BLOCK -> "${config["count"] ?: "1"}×"
-    ActionType.IF_BLOCK, ActionType.ELSE_BLOCK, ActionType.END_IF, ActionType.END_REPEAT -> ""
+    ActionType.IF_BLOCK -> config["expression"]?.takeIf { it.isNotBlank() } ?: "No condition"
+    ActionType.ELSE_BLOCK -> "Otherwise"
+    ActionType.END_IF -> "Closes If"
+    ActionType.END_REPEAT -> "Closes Repeat"
 }

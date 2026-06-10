@@ -36,14 +36,18 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.RemoveCircle
+import androidx.compose.material.icons.outlined.DeleteSweep
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -67,6 +71,24 @@ import java.util.Locale
 fun LogsScreen(vm: LogsViewModel = hiltViewModel()) {
     val entries by vm.logEntries.collectAsState()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    var showClearDialog by remember { mutableStateOf(false) }
+
+    if (showClearDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearDialog = false },
+            title = { Text("Clear all logs?") },
+            text = { Text("This removes all execution history. It cannot be undone.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.clearAll()
+                    showClearDialog = false
+                }) { Text("Clear") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearDialog = false }) { Text("Cancel") }
+            },
+        )
+    }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -74,6 +96,13 @@ fun LogsScreen(vm: LogsViewModel = hiltViewModel()) {
             LargeTopAppBar(
                 title = { Text("Execution Logs") },
                 scrollBehavior = scrollBehavior,
+                actions = {
+                    if (entries.isNotEmpty()) {
+                        IconButton(onClick = { showClearDialog = true }) {
+                            Icon(Icons.Outlined.DeleteSweep, contentDescription = "Clear all logs")
+                        }
+                    }
+                },
             )
         },
     ) { innerPadding ->

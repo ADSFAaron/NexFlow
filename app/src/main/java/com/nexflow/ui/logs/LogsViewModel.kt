@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class LogEntry(
@@ -33,7 +34,7 @@ data class LogEntry(
 
 @HiltViewModel
 class LogsViewModel @Inject constructor(
-    repository: FlowRepository,
+    private val repository: FlowRepository,
 ) : ViewModel() {
 
     val logEntries: StateFlow<List<LogEntry>> = combine(
@@ -43,4 +44,8 @@ class LogsViewModel @Inject constructor(
         val nameById = flows.associate { it.id to it.name }
         logs.map { log -> LogEntry(log, nameById[log.flowId] ?: "Unknown Flow") }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun clearAll() {
+        viewModelScope.launch { repository.deleteAllLogs() }
+    }
 }

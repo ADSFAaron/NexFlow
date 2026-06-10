@@ -30,4 +30,5 @@ interface FlowRepository {
     fun observeLogsForFlow(flowId: String): KFlow<List<ExecutionLog>>
     fun observeRecentLogs(limit: Int = 100): KFlow<List<ExecutionLog>>
     suspend fun deleteOldLogs(keepCount: Int, olderThanMs: Long)
+    suspend fun deleteAllLogs()
 }

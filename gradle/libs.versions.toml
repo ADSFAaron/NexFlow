@@ -24,6 +24,7 @@ junit = "4.13.2"
 junitVersion = "1.2.1"
 espressoCore = "3.6.1"
 junit5 = "5.10.0"
+junit5Platform = "1.10.0"
 mockk = "1.13.10"
 turbine = "1.1.0"
 kotlinxCoroutines = "1.8.0"
@@ -53,6 +54,7 @@ androidx-navigation-compose = { group = "androidx.navigation", name = "navigatio
 # Hilt
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-android-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
+hilt-android-testing = { group = "com.google.dagger", name = "hilt-android-testing", version.ref = "hilt" }
 hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
 hilt-work = { group = "androidx.hilt", name = "hilt-work", version.ref = "hiltWork" }
 hilt-compiler-work = { group = "androidx.hilt", name = "hilt-compiler", version.ref = "hiltWork" }
@@ -84,6 +86,7 @@ play-services-location = { group = "com.google.android.gms", name = "play-servic
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 junit5-api = { group = "org.junit.jupiter", name = "junit-jupiter-api", version.ref = "junit5" }
 junit5-engine = { group = "org.junit.jupiter", name = "junit-jupiter-engine", version.ref = "junit5" }
+junit5-platform-launcher = { group = "org.junit.platform", name = "junit-platform-launcher", version.ref = "junit5Platform" }
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }

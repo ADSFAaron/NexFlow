@@ -88,6 +88,10 @@ class FlowRepositoryImpl @Inject constructor(
         logDao.deleteOlderThan(olderThanMs)
     }
 
+    override suspend fun deleteAllLogs() {
+        logDao.deleteAll()
+    }
+
     // --- Entity → Domain ---
 
     private fun FlowEntity.toDomain(): AutomationFlow = AutomationFlow(

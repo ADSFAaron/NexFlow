@@ -151,8 +151,9 @@ import com.nexflow.core.automation.model.Trigger
 import com.nexflow.core.automation.model.TriggerLogic
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.ui.common.AppPickerDialog
+import com.nexflow.core.automation.model.Variable
+import com.nexflow.core.automation.model.VariableType
 import com.nexflow.ui.flows.detail.config.ActionInfo
-import com.nexflow.ui.flows.detail.config.CONTROL_FLOW_ACTIONS
 import com.nexflow.ui.flows.detail.config.ConfigField
 import com.nexflow.ui.flows.detail.config.TriggerInfo
 import com.nexflow.ui.flows.detail.config.configSummary
@@ -186,13 +187,18 @@ fun FlowDetailScreen(
     var showActionPicker by rememberSaveable { mutableStateOf(false) }
     var pendingConfig by remember { mutableStateOf<PendingConfig?>(null) }
     var showRenameDialog by rememberSaveable { mutableStateOf(false) }
+    // null = closed; Variable with blank name = creating a new one
+    var editingVariable by remember { mutableStateOf<Variable?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
-    val flowVariables = remember(f.actions) {
-        f.actions.filter { it.type == ActionType.SET_VARIABLE }
-            .mapNotNull { it.config["variable_name"]?.takeIf { n -> n.isNotBlank() } }
+    val flowVariables = remember(f.actions, f.variables) {
+        (
+            f.variables.map { it.name } +
+                f.actions.filter { it.type == ActionType.SET_VARIABLE }
+                    .mapNotNull { it.config["variable_name"]?.takeIf { n -> n.isNotBlank() } }
+            ).distinct()
     }
 
     val lazyListState = rememberLazyListState()
@@ -372,6 +378,46 @@ fun FlowDetailScreen(
                 }
             }
 
+            item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
+
+            // ---- VARIABLES ----
+            item { SectionHeader("VARIABLES") }
+
+            if (f.variables.isEmpty()) {
+                item {
+                    Text(
+                        "No variables. Define defaults usable as {{name}} in any field.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    )
+                }
+            }
+
+            items(f.variables, key = { "var_${it.name}" }) { variable ->
+                TriggerOrActionRow(
+                    icon = { Icon(Icons.Outlined.Code, contentDescription = null, modifier = Modifier.size(24.dp)) },
+                    headline = variable.name,
+                    supporting = variable.defaultValue.ifBlank { "(empty)" },
+                    onEdit = { editingVariable = variable },
+                    onDelete = { vm.removeVariable(variable.name) },
+                )
+                HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+            }
+
+            item {
+                OutlinedButton(
+                    onClick = { editingVariable = Variable("", VariableType.STRING, "") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Add Variable")
+                }
+            }
+
         }
     }
 
@@ -398,9 +444,7 @@ fun FlowDetailScreen(
     if (showActionPicker) {
         TypePickerSheet(
             title = "Choose Action",
-            items = ActionType.entries
-                .filter { it !in CONTROL_FLOW_ACTIONS }
-                .map { it to it.info },
+            items = ActionType.entries.map { it to it.info },
             onSelect = { type ->
                 showActionPicker = false
                 val ai = type.info
@@ -461,6 +505,18 @@ fun FlowDetailScreen(
                 onDismiss = { pendingConfig = null },
             )
         }
+    }
+
+    editingVariable?.let { variable ->
+        VariableDialog(
+            variable = variable,
+            existingNames = f.variables.map { it.name },
+            onConfirm = { updated ->
+                vm.saveVariable(originalName = variable.name.ifBlank { null }, variable = updated)
+                editingVariable = null
+            },
+            onDismiss = { editingVariable = null },
+        )
     }
 
     if (showRenameDialog) {
@@ -759,7 +815,7 @@ private fun <T> TypePickerSheet(
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun ConfigDialog(
+internal fun ConfigDialog(
     title: String,
     fields: List<ConfigField>,
     initialValues: Map<String, String>,
@@ -1328,6 +1384,62 @@ private fun DropdownConfigField(
             }
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Variable editor dialog
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun VariableDialog(
+    variable: Variable,
+    existingNames: List<String>,
+    onConfirm: (Variable) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val isNew = variable.name.isBlank()
+    var name by remember { mutableStateOf(variable.name) }
+    var value by remember { mutableStateOf(variable.defaultValue) }
+
+    val trimmedName = name.trim()
+    val nameTaken = isNew && trimmedName in existingNames
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (isNew) "New Variable" else "Edit Variable") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Name") },
+                    singleLine = true,
+                    isError = nameTaken,
+                    supportingText = if (nameTaken) {
+                        { Text("A variable with this name already exists") }
+                    } else {
+                        { Text("Use as {{$trimmedName}} in trigger and action fields") }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = value,
+                    onValueChange = { value = it },
+                    label = { Text("Default value") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(Variable(trimmedName, variable.type, value)) },
+                enabled = trimmedName.isNotBlank() && !nameTaken,
+            ) { Text("Save") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
 }
 
 // ---------------------------------------------------------------------------

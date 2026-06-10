@@ -46,7 +46,21 @@ core/macrodroid-compat/     # MacroDroid .mdr 格式解析
 | `sh.calvin.reorderable` v3.x `draggableHandle` | v3 改成 `ReorderableItemScope` member，不能 top-level import | 在 `ReorderableItem { }` lambda 內直接用，不 import |
 | `Regex("""\{\{([^}]+)}}""")` | 某些 Android regex engine 對 `))}}` 報 syntax error | 改為 `\}\}` 明確 escape |
 
-### 3. Git 規則
+### 3. 測試
+
+- JVM 單元測試：`./gradlew :core:automation:test :app:testDebugUnitTest`
+- 裝置 instrumented 測試：`./gradlew :app:connectedDebugAndroidTest`
+  - **執行前必須關閉系統動畫**，否則 Compose 文字輸入測試會因 Espresso 等不到 idle 而逾時：
+
+    ```bash
+    adb shell settings put global window_animation_scale 0
+    adb shell settings put global transition_animation_scale 0
+    adb shell settings put global animator_duration_scale 0
+    ```
+
+  - instrumented 測試用 `com.nexflow.HiltTestRunner`（HiltTestApplication），新的 Hilt 測試直接標 `@HiltAndroidTest` 即可
+
+### 4. Git 規則
 
 - **`**/build/` 不進 repo** — .gitignore 已設定
 - `*.dex`, `*.bin`, `*.class`, `*.jar`, `*.apk`, `*.aab`, `*.jks` 都不進 repo
