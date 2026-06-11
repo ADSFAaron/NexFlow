@@ -64,3 +64,5 @@ keystore.properties
 *.swp
 *.tmp
 *~
+appicon.psd
+appicon.png
