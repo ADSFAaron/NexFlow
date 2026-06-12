@@ -7,4 +7,6 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <!-- Matches Compose backgroundLight (Color.kt); night variant in values-night/colors.xml -->
+    <color name="splash_background">#FFFFF9EE</color>
 </resources>

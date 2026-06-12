@@ -57,8 +57,9 @@ import androidx.compose.material.icons.outlined.FileOpen
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LargeFloatingActionButton
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -110,10 +111,12 @@ fun FlowsScreen(
     vm: FlowsViewModel = hiltViewModel(),
     importVm: ImportViewModel = hiltViewModel(),
     onFlowClick: (String) -> Unit = {},
+    onOpenSettings: () -> Unit = {},
 ) {
     val flows by vm.flows.collectAsState()
     val importResult by importVm.result.collectAsState()
     var showCreateDialog by rememberSaveable { mutableStateOf(false) }
+    var permissionReminder by remember { mutableStateOf<PermissionReminder?>(null) }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val listState = rememberLazyListState()
     val context = LocalContext.current
@@ -134,6 +137,10 @@ fun FlowsScreen(
         delay(3000L)
         serviceNotification = null
     }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { permissionReminder = null }
 
     val filePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
@@ -156,6 +163,10 @@ fun FlowsScreen(
             showCreateDialog = false
             onFlowClick(flowId)
         }
+    }
+
+    LaunchedEffect(vm) {
+        vm.permissionReminder.collect { permissionReminder = it }
     }
 
     BackHandler(enabled = fabMenuExpanded) { fabMenuExpanded = false }
@@ -203,12 +214,18 @@ fun FlowsScreen(
                         }
                     }
                 }
-                FloatingActionButton(onClick = { fabMenuExpanded = !fabMenuExpanded }) {
+                LargeFloatingActionButton(onClick = { fabMenuExpanded = !fabMenuExpanded }) {
                     val rotation by animateFloatAsState(
                         targetValue = if (fabMenuExpanded) 45f else 0f,
                         label = "fab_rotation",
                     )
-                    Icon(Icons.Default.Add, contentDescription = "Actions", modifier = Modifier.rotate(rotation))
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = "Actions",
+                        modifier = Modifier
+                            .size(FloatingActionButtonDefaults.LargeIconSize)
+                            .rotate(rotation),
+                    )
                 }
             }
         },
@@ -287,7 +304,7 @@ fun FlowsScreen(
                         )
                     }
                 }
-                item { Spacer(Modifier.height(88.dp)) }
+                item { Spacer(Modifier.height(128.dp)) }
             }
         }
     }
@@ -319,6 +336,40 @@ fun FlowsScreen(
                 }
             },
             confirmButton = { TextButton(onClick = importVm::clearResult) { Text("OK") } },
+        )
+    }
+
+    permissionReminder?.let { reminder ->
+        AlertDialog(
+            onDismissRequest = { permissionReminder = null },
+            title = { Text("Permissions needed") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("\"${reminder.flowName}\" uses triggers or actions that need permissions you haven't granted yet:")
+                    Spacer(Modifier.height(4.dp))
+                    reminder.missing.forEach {
+                        Text("• ${it.label}", style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            },
+            confirmButton = {
+                val runtime = reminder.missing.flatMap { it.runtimePermissions }
+                if (runtime.isNotEmpty()) {
+                    TextButton(
+                        onClick = { permissionLauncher.launch(runtime.toTypedArray()) },
+                    ) { Text("Grant") }
+                } else {
+                    TextButton(
+                        onClick = {
+                            permissionReminder = null
+                            onOpenSettings()
+                        },
+                    ) { Text("Open Settings") }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { permissionReminder = null }) { Text("Later") }
+            },
         )
     }
 

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.NexFlow" parent="android:Theme.Material.Light.NoActionBar">
+    <style name="Theme.NexFlow" parent="android:Theme.Material.NoActionBar">
         <!-- Android 12+ 的系統 splash 背景會 fallback 到 windowBackground（單色） -->
         <item name="android:windowBackground">@color/splash_background</item>
     </style>

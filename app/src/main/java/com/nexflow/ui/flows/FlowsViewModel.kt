@@ -22,6 +22,8 @@ import com.nexflow.core.automation.model.Trigger
 import com.nexflow.core.automation.model.TriggerLogic
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.automation.repository.FlowRepository
+import com.nexflow.permissions.FlowPermissionChecker
+import com.nexflow.permissions.MissingPermission
 import com.nexflow.service.FlowEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -34,10 +36,13 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
 
+data class PermissionReminder(val flowName: String, val missing: List<MissingPermission>)
+
 @HiltViewModel
 class FlowsViewModel @Inject constructor(
     private val repository: FlowRepository,
     private val flowEngine: FlowEngine,
+    private val permissionChecker: FlowPermissionChecker,
 ) : ViewModel() {
 
     val flows: StateFlow<List<Flow>> = repository.observeAll()
@@ -46,8 +51,14 @@ class FlowsViewModel @Inject constructor(
     private val _navigateToFlow = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val navigateToFlow: SharedFlow<String> = _navigateToFlow.asSharedFlow()
 
+    private val _permissionReminder = MutableSharedFlow<PermissionReminder>(extraBufferCapacity = 1)
+    val permissionReminder: SharedFlow<PermissionReminder> = _permissionReminder.asSharedFlow()
+
     fun toggleEnabled(id: String, enabled: Boolean) {
-        viewModelScope.launch { repository.setEnabled(id, enabled) }
+        viewModelScope.launch {
+            repository.setEnabled(id, enabled)
+            if (enabled) remindIfMissingPermissions(id)
+        }
     }
 
     fun deleteFlow(id: String) {
@@ -55,7 +66,18 @@ class FlowsViewModel @Inject constructor(
     }
 
     fun runFlow(id: String) {
-        viewModelScope.launch { flowEngine.runNow(id) }
+        viewModelScope.launch {
+            remindIfMissingPermissions(id)
+            flowEngine.runNow(id)
+        }
+    }
+
+    private suspend fun remindIfMissingPermissions(id: String) {
+        val flow = repository.getById(id) ?: return
+        val missing = permissionChecker.missingPermissions(flow)
+        if (missing.isNotEmpty()) {
+            _permissionReminder.emit(PermissionReminder(flow.name, missing))
+        }
     }
 
     fun createFlow(name: String, description: String) {

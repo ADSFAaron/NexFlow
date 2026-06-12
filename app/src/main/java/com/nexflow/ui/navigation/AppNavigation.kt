@@ -102,6 +102,13 @@ fun NexFlowNavHost(navController: NavHostController, modifier: Modifier = Modifi
         composable(Screen.Flows.route) {
             FlowsScreen(
                 onFlowClick = { flowId -> navController.navigate("flows/$flowId") },
+                onOpenSettings = {
+                    navController.navigate(Screen.Settings.route) {
+                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
             )
         }
         composable(Screen.Logs.route) { LogsScreen() }
