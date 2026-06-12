@@ -27,6 +27,10 @@ data class Flow(
     val name: String,
     val description: String,
     val author: String?,
+    /** Key into the built-in icon catalog (see app FlowIcons); null = default icon. */
+    val icon: String? = null,
+    /** Background color as ARGB hex, e.g. "#FF6750A4"; null = theme default. */
+    val iconColor: String? = null,
     val tags: List<String>,
     val enabled: Boolean,
     val createdAt: Long,

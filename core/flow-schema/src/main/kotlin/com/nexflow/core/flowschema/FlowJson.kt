@@ -27,6 +27,8 @@ data class FlowJson(
     val name: String,
     val description: String,
     val author: String? = null,
+    val icon: String? = null,
+    @SerialName("icon_color") val iconColor: String? = null,
     val tags: List<String>,
     val enabled: Boolean,
     @SerialName("created_at") val createdAt: String,

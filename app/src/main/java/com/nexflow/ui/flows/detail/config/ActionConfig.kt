@@ -51,6 +51,48 @@ data class ActionInfo(
     val fields: List<ConfigField>,
 )
 
+/** Picker groupings, in display order. */
+enum class ActionCategory(val label: String) {
+    CONTROL_FLOW("Control Flow"),
+    CONNECTIVITY("Connectivity"),
+    DEVICE("Device"),
+    COMMUNICATION("Communication"),
+    ALERTS("Alerts"),
+    WEB("Web"),
+    APPS_MEDIA("Apps & Media"),
+    FILES_DATA("Files & Data"),
+}
+
+val ActionType.category: ActionCategory
+    get() = when (this) {
+        ActionType.IF_BLOCK, ActionType.ELSE_BLOCK, ActionType.END_IF,
+        ActionType.REPEAT_BLOCK, ActionType.END_REPEAT,
+        ActionType.DELAY, ActionType.SET_VARIABLE,
+        -> ActionCategory.CONTROL_FLOW
+
+        ActionType.WIFI_TOGGLE, ActionType.BLUETOOTH_TOGGLE, ActionType.AIRPLANE_TOGGLE,
+        -> ActionCategory.CONNECTIVITY
+
+        ActionType.VOLUME_ADJUST, ActionType.BRIGHTNESS_ADJUST,
+        ActionType.DND_TOGGLE, ActionType.SCREENSHOT,
+        -> ActionCategory.DEVICE
+
+        ActionType.SEND_SMS, ActionType.CALL_PHONE,
+        -> ActionCategory.COMMUNICATION
+
+        ActionType.NOTIFICATION, ActionType.TOAST, ActionType.TTS,
+        -> ActionCategory.ALERTS
+
+        ActionType.HTTP_REQUEST, ActionType.OPEN_URL,
+        -> ActionCategory.WEB
+
+        ActionType.OPEN_APP, ActionType.MEDIA_PLAY_PAUSE, ActionType.SHARE,
+        -> ActionCategory.APPS_MEDIA
+
+        ActionType.WRITE_FILE, ActionType.CLIPBOARD_COPY,
+        -> ActionCategory.FILES_DATA
+    }
+
 private val toggleOptions = listOf("ON" to "On", "OFF" to "Off", "TOGGLE" to "Toggle")
 private val httpMethods = listOf("GET" to "GET", "POST" to "POST", "PUT" to "PUT", "DELETE" to "DELETE", "PATCH" to "PATCH")
 

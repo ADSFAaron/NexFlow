@@ -117,6 +117,8 @@ private fun FlowJson.toDomain(): AutomationFlow {
         name = name,
         description = description,
         author = author,
+        icon = icon,
+        iconColor = iconColor,
         tags = tags,
         enabled = enabled,
         createdAt = createdAt.toEpochMs(),

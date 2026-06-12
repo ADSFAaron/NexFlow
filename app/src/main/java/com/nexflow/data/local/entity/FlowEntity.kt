@@ -33,6 +33,10 @@ data class FlowEntity(
     val name: String,
     val description: String,
     val author: String?,
+    /** Key into the built-in icon catalog; null = default icon */
+    @ColumnInfo(defaultValue = "NULL") val icon: String? = null,
+    /** ARGB hex background color, e.g. "#FF6750A4"; null = theme default */
+    @ColumnInfo(name = "icon_color", defaultValue = "NULL") val iconColor: String? = null,
     /** Serialized as a JSON array of strings, e.g. ["morning","daily"] */
     val tags: String,
     val enabled: Boolean,

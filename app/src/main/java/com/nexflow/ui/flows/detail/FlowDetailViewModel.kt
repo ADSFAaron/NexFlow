@@ -131,7 +131,11 @@ class FlowDetailViewModel @Inject constructor(
         }
     }
 
-    fun rename(name: String, description: String) = edit { copy(name = name, description = description) }
+    fun updateDetails(name: String, description: String, icon: String?, iconColor: String?) = edit {
+        copy(name = name, description = description, icon = icon, iconColor = iconColor)
+    }
+
+    fun setIcon(icon: String?, iconColor: String?) = edit { copy(icon = icon, iconColor = iconColor) }
 
     fun exportAsJson(): String? {
         val f = flow.value ?: return null
@@ -143,6 +147,8 @@ class FlowDetailViewModel @Inject constructor(
             name = f.name,
             description = f.description,
             author = f.author,
+            icon = f.icon,
+            iconColor = f.iconColor,
             tags = f.tags,
             enabled = f.enabled,
             createdAt = now,

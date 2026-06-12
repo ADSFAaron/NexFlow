@@ -91,6 +91,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
@@ -100,6 +101,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.nexflow.core.automation.model.Flow
 import com.nexflow.event.ImportEventSource
+import com.nexflow.ui.common.FlowIcons
 import com.nexflow.service.FlowExecutionService
 import com.nexflow.ui.flowimport.ImportViewModel
 import kotlinx.coroutines.delay
@@ -492,6 +494,23 @@ private fun FlowCard(
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .padding(end = 12.dp)
+                        .size(36.dp)
+                        .background(
+                            FlowIcons.color(flow.iconColor) ?: MaterialTheme.colorScheme.primary,
+                            CircleShape,
+                        ),
+                ) {
+                    Icon(
+                        FlowIcons.vector(flow.icon),
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
                 Text(
                     text = flow.name,
                     style = MaterialTheme.typography.titleMedium,

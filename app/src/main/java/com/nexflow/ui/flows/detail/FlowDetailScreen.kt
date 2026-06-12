@@ -31,6 +31,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -38,18 +39,18 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.animation.AnimatedContent
@@ -62,7 +63,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Code
@@ -88,12 +91,12 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
@@ -131,7 +134,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
@@ -140,7 +142,6 @@ import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -151,11 +152,15 @@ import com.nexflow.core.automation.model.Trigger
 import com.nexflow.core.automation.model.TriggerLogic
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.ui.common.AppPickerDialog
+import com.nexflow.ui.common.FlowIconPickerDialog
+import com.nexflow.ui.common.FlowIcons
 import com.nexflow.core.automation.model.Variable
 import com.nexflow.core.automation.model.VariableType
+import androidx.compose.ui.graphics.Color
 import com.nexflow.ui.flows.detail.config.ActionInfo
 import com.nexflow.ui.flows.detail.config.ConfigField
 import com.nexflow.ui.flows.detail.config.TriggerInfo
+import com.nexflow.ui.flows.detail.config.category
 import com.nexflow.ui.flows.detail.config.configSummary
 import com.nexflow.ui.flows.detail.config.info
 import kotlinx.coroutines.launch
@@ -187,6 +192,7 @@ fun FlowDetailScreen(
     var showActionPicker by rememberSaveable { mutableStateOf(false) }
     var pendingConfig by remember { mutableStateOf<PendingConfig?>(null) }
     var showRenameDialog by rememberSaveable { mutableStateOf(false) }
+    var showIconPicker by rememberSaveable { mutableStateOf(false) }
     // null = closed; Variable with blank name = creating a new one
     var editingVariable by remember { mutableStateOf<Variable?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -237,7 +243,27 @@ fun FlowDetailScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(f.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .padding(end = 12.dp)
+                                .size(34.dp)
+                                .background(
+                                    FlowIcons.color(f.iconColor) ?: MaterialTheme.colorScheme.primary,
+                                    CircleShape,
+                                )
+                                .clickable { showIconPicker = true },
+                        ) {
+                            Icon(
+                                FlowIcons.vector(f.icon),
+                                contentDescription = "Change icon",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                        Text(f.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -246,7 +272,7 @@ fun FlowDetailScreen(
                 },
                 actions = {
                     IconButton(onClick = { showRenameDialog = true }) {
-                        Icon(Icons.Outlined.Edit, contentDescription = "Rename")
+                        Icon(Icons.Outlined.Edit, contentDescription = "Edit flow")
                     }
                 },
             )
@@ -275,6 +301,18 @@ fun FlowDetailScreen(
             modifier = Modifier.fillMaxSize(),
         ) {
 
+            // ---- DESCRIPTION ----
+            if (f.description.isNotBlank()) {
+                item {
+                    Text(
+                        f.description,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    )
+                }
+            }
+
             // ---- TRIGGERS ----
             item {
                 SectionHeader(
@@ -301,32 +339,30 @@ fun FlowDetailScreen(
                 }
             }
 
-            items(f.triggers, key = { it.id }) { trigger ->
+            itemsIndexed(f.triggers, key = { _, t -> t.id }) { index, trigger ->
                 val ti = trigger.type.info
-                TriggerOrActionRow(
-                    icon = { Icon(ti.icon, contentDescription = null, modifier = Modifier.size(24.dp)) },
-                    headline = ti.label,
-                    supporting = trigger.type.configSummary(trigger.config),
-                    onEdit = { pendingConfig = PendingConfig.EditTrigger(trigger) },
-                    onDelete = { vm.removeTrigger(trigger.id) },
-                )
-                HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
-            }
-
-            item {
-                OutlinedButton(
-                    onClick = { showTriggerPicker = true },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Add Trigger")
+                GroupedItem(index = index, count = f.triggers.size + 1) {
+                    TriggerOrActionRow(
+                        icon = { Icon(ti.icon, contentDescription = null, modifier = Modifier.size(24.dp)) },
+                        headline = ti.label,
+                        supporting = trigger.type.configSummary(trigger.config),
+                        onEdit = { pendingConfig = PendingConfig.EditTrigger(trigger) },
+                        onDelete = { vm.removeTrigger(trigger.id) },
+                    )
                 }
             }
 
-            item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
+            item {
+                GroupedItem(
+                    index = f.triggers.size,
+                    count = f.triggers.size + 1,
+                    onClick = { showTriggerPicker = true },
+                ) {
+                    AddRowContent("Add Trigger")
+                }
+            }
+
+            item { Spacer(Modifier.height(20.dp)) }
 
             // ---- ACTIONS ----
             item { SectionHeader("THEN") }
@@ -342,43 +378,41 @@ fun FlowDetailScreen(
                 }
             }
 
-            items(sortedActions, key = { it.id }) { action ->
+            itemsIndexed(sortedActions, key = { _, a -> a.id }) { index, action ->
                 val haptic = LocalHapticFeedback.current
                 ReorderableItem(reorderState, key = action.id) { _ ->
                     val ai = action.type.info
-                    TriggerOrActionRow(
-                        icon = {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(ai.icon, contentDescription = null, modifier = Modifier.size(24.dp))
-                            }
-                        },
-                        headline = ai.label,
-                        supporting = action.type.configSummary(action.config),
-                        onEdit = { pendingConfig = PendingConfig.EditAction(action) },
-                        onDelete = { vm.removeAction(action.id) },
-                        showDragHandle = true,
-                        dragHandleModifier = Modifier.draggableHandle(
-                            onDragStarted = { haptic.performHapticFeedback(HapticFeedbackType.LongPress) },
-                        ),
-                    )
-                    HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+                    GroupedItem(index = index, count = sortedActions.size + 1) {
+                        TriggerOrActionRow(
+                            icon = {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(ai.icon, contentDescription = null, modifier = Modifier.size(24.dp))
+                                }
+                            },
+                            headline = ai.label,
+                            supporting = action.type.configSummary(action.config),
+                            onEdit = { pendingConfig = PendingConfig.EditAction(action) },
+                            onDelete = { vm.removeAction(action.id) },
+                            showDragHandle = true,
+                            dragHandleModifier = Modifier.draggableHandle(
+                                onDragStarted = { haptic.performHapticFeedback(HapticFeedbackType.LongPress) },
+                            ),
+                        )
+                    }
                 }
             }
 
             item {
-                OutlinedButton(
+                GroupedItem(
+                    index = sortedActions.size,
+                    count = sortedActions.size + 1,
                     onClick = { showActionPicker = true },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Add Action")
+                    AddRowContent("Add Action")
                 }
             }
 
-            item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
+            item { Spacer(Modifier.height(20.dp)) }
 
             // ---- VARIABLES ----
             item { SectionHeader("VARIABLES") }
@@ -394,40 +428,45 @@ fun FlowDetailScreen(
                 }
             }
 
-            items(f.variables, key = { "var_${it.name}" }) { variable ->
-                TriggerOrActionRow(
-                    icon = { Icon(Icons.Outlined.Code, contentDescription = null, modifier = Modifier.size(24.dp)) },
-                    headline = variable.name,
-                    supporting = variable.defaultValue.ifBlank { "(empty)" },
-                    onEdit = { editingVariable = variable },
-                    onDelete = { vm.removeVariable(variable.name) },
-                )
-                HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+            itemsIndexed(f.variables, key = { _, v -> "var_${v.name}" }) { index, variable ->
+                GroupedItem(index = index, count = f.variables.size + 1) {
+                    TriggerOrActionRow(
+                        icon = { Icon(Icons.Outlined.Code, contentDescription = null, modifier = Modifier.size(24.dp)) },
+                        headline = variable.name,
+                        supporting = variable.defaultValue.ifBlank { "(empty)" },
+                        onEdit = { editingVariable = variable },
+                        onDelete = { vm.removeVariable(variable.name) },
+                    )
+                }
             }
 
             item {
-                OutlinedButton(
+                GroupedItem(
+                    index = f.variables.size,
+                    count = f.variables.size + 1,
                     onClick = { editingVariable = Variable("", VariableType.STRING, "") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Add Variable")
+                    AddRowContent("Add Variable")
                 }
             }
+
+            item { Spacer(Modifier.height(8.dp)) }
 
         }
     }
 
     if (showTriggerPicker) {
         val alreadyHasManual = f.triggers.any { it.type == TriggerType.MANUAL }
-        TypePickerSheet(
-            title = "Choose Trigger",
-            items = TriggerType.entries
-                .filter { !(it == TriggerType.MANUAL && alreadyHasManual) }
-                .map { it to it.info },
+        SearchPickerSheet(
+            entries = remember(alreadyHasManual) {
+                TriggerType.entries
+                    .filter { !(it == TriggerType.MANUAL && alreadyHasManual) }
+                    .map {
+                        val ti = it.info
+                        PickerEntry(it, ti.label, ti.icon, ti.description, it.category.label, it.category.ordinal)
+                    }
+            },
+            searchPlaceholder = "Search triggers",
             onSelect = { type ->
                 showTriggerPicker = false
                 val ti = type.info
@@ -442,9 +481,14 @@ fun FlowDetailScreen(
     }
 
     if (showActionPicker) {
-        TypePickerSheet(
-            title = "Choose Action",
-            items = ActionType.entries.map { it to it.info },
+        SearchPickerSheet(
+            entries = remember {
+                ActionType.entries.map {
+                    val ai = it.info
+                    PickerEntry(it, ai.label, ai.icon, ai.description, it.category.label, it.category.ordinal)
+                }
+            },
+            searchPlaceholder = "Search actions",
             onSelect = { type ->
                 showActionPicker = false
                 val ai = type.info
@@ -519,12 +563,26 @@ fun FlowDetailScreen(
         )
     }
 
+    if (showIconPicker) {
+        FlowIconPickerDialog(
+            initialIcon = f.icon,
+            initialColor = f.iconColor,
+            onConfirm = { icon, color ->
+                vm.setIcon(icon, color)
+                showIconPicker = false
+            },
+            onDismiss = { showIconPicker = false },
+        )
+    }
+
     if (showRenameDialog) {
-        RenameDialog(
+        EditFlowDialog(
             initialName = f.name,
             initialDescription = f.description,
-            onConfirm = { name, desc ->
-                vm.rename(name, desc)
+            initialIcon = f.icon,
+            initialIconColor = f.iconColor,
+            onConfirm = { name, desc, icon, color ->
+                vm.updateDetails(name, desc, icon, color)
                 showRenameDialog = false
             },
             onDismiss = { showRenameDialog = false },
@@ -676,6 +734,71 @@ private sealed class PendingConfig {
 }
 
 // ---------------------------------------------------------------------------
+// Segmented rounded card group (M3 expressive list style): first/last items get
+// large corners, middle items small ones, separated by a 2dp gap.
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun GroupedItem(
+    index: Int,
+    count: Int,
+    onClick: (() -> Unit)? = null,
+    content: @Composable () -> Unit,
+) {
+    val large = 18.dp
+    val small = 5.dp
+    val shape = RoundedCornerShape(
+        topStart = if (index == 0) large else small,
+        topEnd = if (index == 0) large else small,
+        bottomStart = if (index == count - 1) large else small,
+        bottomEnd = if (index == count - 1) large else small,
+    )
+    val modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 16.dp)
+        .padding(bottom = 2.dp)
+    if (onClick != null) {
+        Surface(
+            onClick = onClick,
+            shape = shape,
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            modifier = modifier,
+        ) { content() }
+    } else {
+        Surface(
+            shape = shape,
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            modifier = modifier,
+        ) { content() }
+    }
+}
+
+/** Centered "+ Add …" row used as the trailing segment of each group. */
+@Composable
+private fun AddRowContent(label: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 14.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            Icons.Default.Add,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+            tint = MaterialTheme.colorScheme.primary,
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            label,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+        )
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Reusable row for a single trigger or action
 // ---------------------------------------------------------------------------
 
@@ -690,6 +813,7 @@ private fun TriggerOrActionRow(
     dragHandleModifier: Modifier = Modifier,
 ) {
     ListItem(
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         leadingContent = icon,
         headlineContent = { Text(headline) },
         supportingContent = { Text(supporting, maxLines = 1, overflow = TextOverflow.Ellipsis) },
@@ -742,71 +866,124 @@ private fun SectionHeader(title: String, trailing: (@Composable () -> Unit)? = n
 }
 
 // ---------------------------------------------------------------------------
-// Type picker bottom sheet — breakpoint-aware grid columns (S3)
+// Trigger/action picker — full-height sheet with search and category groups
 // ---------------------------------------------------------------------------
+
+private data class PickerEntry<T>(
+    val type: T,
+    val label: String,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val description: String,
+    val categoryLabel: String,
+    val categoryOrder: Int,
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun <T> TypePickerSheet(
-    title: String,
-    items: List<Pair<T, Any>>,
+private fun <T : Any> SearchPickerSheet(
+    entries: List<PickerEntry<T>>,
+    searchPlaceholder: String,
     onSelect: (T) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val screenWidthDp = LocalConfiguration.current.screenWidthDp
-    val columns = when {
-        screenWidthDp >= 840 -> 5
-        screenWidthDp >= 600 -> 4
-        else -> 3
+    var query by rememberSaveable { mutableStateOf("") }
+
+    val grouped = remember(entries) {
+        entries.sortedBy { it.categoryOrder }.groupBy { it.categoryLabel }.toList()
     }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
-        )
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(columns),
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                .fillMaxHeight(0.92f)
+                .imePadding(),
         ) {
-            items(items) { (type, info) ->
-                val (label, icon) = when (info) {
-                    is TriggerInfo -> info.label to info.icon
-                    is ActionInfo -> info.label to info.icon
-                    else -> "" to Icons.Default.Add
-                }
-                Surface(
-                    shape = MaterialTheme.shapes.medium,
-                    tonalElevation = 1.dp,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onSelect(type) },
-                ) {
-                    Column(
-                        modifier = Modifier.padding(12.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        Icon(icon, contentDescription = null, modifier = Modifier.size(28.dp))
-                        Text(
-                            label,
-                            style = MaterialTheme.typography.labelSmall,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                            textAlign = TextAlign.Center,
-                        )
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                placeholder = { Text(searchPlaceholder) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                trailingIcon = {
+                    if (query.isNotEmpty()) {
+                        IconButton(onClick = { query = "" }) {
+                            Icon(Icons.Default.Close, contentDescription = "Clear search")
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(28.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 4.dp),
+            )
+
+            val q = query.trim()
+            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                if (q.isEmpty()) {
+                    grouped.forEach { (categoryLabel, categoryEntries) ->
+                        item(key = "header_$categoryLabel") {
+                            Text(
+                                categoryLabel,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp),
+                            )
+                        }
+                        items(categoryEntries, key = { it.type.toString() }) { entry ->
+                            PickerRow(entry = entry, onClick = { onSelect(entry.type) })
+                        }
+                    }
+                } else {
+                    val matches = entries.filter { entry ->
+                        entry.label.contains(q, ignoreCase = true) ||
+                            entry.description.contains(q, ignoreCase = true)
+                    }
+                    if (matches.isEmpty()) {
+                        item {
+                            Text(
+                                "Nothing matches “$q”",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(16.dp),
+                            )
+                        }
+                    }
+                    items(matches, key = { it.type.toString() }) { entry ->
+                        PickerRow(entry = entry, onClick = { onSelect(entry.type) })
                     }
                 }
+                item { Spacer(Modifier.height(24.dp)) }
             }
         }
-        Spacer(Modifier.height(24.dp))
     }
+}
+
+@Composable
+private fun <T> PickerRow(entry: PickerEntry<T>, onClick: () -> Unit) {
+    ListItem(
+        leadingContent = {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(MaterialTheme.colorScheme.secondaryContainer, CircleShape),
+            ) {
+                Icon(
+                    entry.icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+        },
+        headlineContent = { Text(entry.label) },
+        supportingContent = {
+            Text(entry.description, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        },
+        modifier = Modifier.clickable(onClick = onClick),
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -1443,24 +1620,77 @@ private fun VariableDialog(
 }
 
 // ---------------------------------------------------------------------------
-// Rename dialog
+// Edit Flow dialog — name, description, icon and color
 // ---------------------------------------------------------------------------
 
 @Composable
-private fun RenameDialog(
+private fun EditFlowDialog(
     initialName: String,
     initialDescription: String,
-    onConfirm: (String, String) -> Unit,
+    initialIcon: String?,
+    initialIconColor: String?,
+    onConfirm: (name: String, description: String, icon: String, iconColor: String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var name by remember { mutableStateOf(initialName) }
     var description by remember { mutableStateOf(initialDescription) }
+    var icon by rememberSaveable { mutableStateOf(initialIcon ?: FlowIcons.DEFAULT_KEY) }
+    var iconColor by rememberSaveable {
+        mutableStateOf(initialIconColor ?: FlowIcons.colorPalette.first())
+    }
+    var showIconPicker by rememberSaveable { mutableStateOf(false) }
+
+    if (showIconPicker) {
+        FlowIconPickerDialog(
+            initialIcon = icon,
+            initialColor = iconColor,
+            onConfirm = { newIcon, newColor ->
+                icon = newIcon
+                iconColor = newColor
+                showIconPicker = false
+            },
+            onDismiss = { showIconPicker = false },
+        )
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Rename Flow") },
+        title = { Text("Edit Flow") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showIconPicker = true }
+                        .padding(vertical = 4.dp),
+                ) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(
+                                FlowIcons.color(iconColor) ?: MaterialTheme.colorScheme.primary,
+                                CircleShape,
+                            ),
+                    ) {
+                        Icon(
+                            FlowIcons.vector(icon),
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(26.dp),
+                        )
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text("Icon", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            "Tap to customize",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
@@ -1479,7 +1709,7 @@ private fun RenameDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onConfirm(name.trim(), description.trim()) },
+                onClick = { onConfirm(name.trim(), description.trim(), icon, iconColor) },
                 enabled = name.isNotBlank(),
             ) { Text("Save") }
         },

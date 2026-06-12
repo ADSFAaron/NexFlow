@@ -15,6 +15,7 @@
  */
 package com.nexflow.data.local
 
+import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import com.nexflow.data.local.dao.ExecutionLogDao
@@ -30,8 +31,11 @@ import com.nexflow.data.local.entity.VariableEntity
         ExecutionLogEntity::class,
         VariableEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
+    autoMigrations = [
+        AutoMigration(from = 1, to = 2),
+    ],
 )
 abstract class NexFlowDatabase : RoomDatabase() {
     abstract fun flowDao(): FlowDao

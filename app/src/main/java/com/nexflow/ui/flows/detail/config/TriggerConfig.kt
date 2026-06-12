@@ -40,6 +40,38 @@ data class TriggerInfo(
     val fields: List<ConfigField>,
 )
 
+/** Picker groupings, in display order. */
+enum class TriggerCategory(val label: String) {
+    MANUAL("Manual"),
+    TIME("Time"),
+    DEVICE("Device State"),
+    CONNECTIVITY("Connectivity"),
+    COMMUNICATION("Communication"),
+    APPS("Apps"),
+    LOCATION("Location"),
+}
+
+val TriggerType.category: TriggerCategory
+    get() = when (this) {
+        TriggerType.MANUAL -> TriggerCategory.MANUAL
+
+        TriggerType.TIME -> TriggerCategory.TIME
+
+        TriggerType.BATTERY, TriggerType.SCREEN,
+        TriggerType.DEVICE_BOOT, TriggerType.HEADSET_PLUG,
+        -> TriggerCategory.DEVICE
+
+        TriggerType.BLUETOOTH, TriggerType.WIFI, TriggerType.NFC_TAG,
+        -> TriggerCategory.CONNECTIVITY
+
+        TriggerType.INCOMING_CALL, TriggerType.SMS_RECEIVED, TriggerType.NOTIFICATION_RECEIVED,
+        -> TriggerCategory.COMMUNICATION
+
+        TriggerType.APP_LAUNCH -> TriggerCategory.APPS
+
+        TriggerType.GEOFENCE -> TriggerCategory.LOCATION
+    }
+
 private val connectOptions = listOf("CONNECTED" to "Connected", "DISCONNECTED" to "Disconnected")
 
 val TriggerType.info: TriggerInfo
