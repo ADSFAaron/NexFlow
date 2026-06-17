@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "id": "e5f6a7b8-c9d0-4123-8def-234567890123",
+  "name": "螢幕喚醒記錄",
+  "description": "每次螢幕點亮時自動將事件附加寫入 /sdcard/nexflow_screen_log.txt，並顯示 Toast 確認。測試 SCREEN 觸發與 WRITE_FILE 動作。",
+  "author": "NexFlow Test",
+  "icon": "brightness_high",
+  "icon_color": "FF2196F3",
+  "tags": ["螢幕", "記錄", "測試"],
+  "enabled": true,
+  "created_at": "2026-06-17T07:00:00Z",
+  "updated_at": "2026-06-17T07:00:00Z",
+  "triggers": [
+    {
+      "id": "55555555-5555-4555-8555-555555555555",
+      "type": "SCREEN",
+      "config": {"event": "ON"}
+    }
+  ],
+  "trigger_logic": "ANY",
+  "conditions": [],
+  "actions": [
+    {
+      "id": "a5111111-1111-4111-8111-111111111111",
+      "type": "WRITE_FILE",
+      "config": {
+        "path": "/sdcard/nexflow_screen_log.txt",
+        "content": "螢幕喚醒事件\n",
+        "append": true
+      },
+      "order": 0,
+      "enabled": true
+    },
+    {
+      "id": "a5222222-2222-4222-8222-222222222222",
+      "type": "TOAST",
+      "config": {"text": "已記錄螢幕喚醒事件"},
+      "order": 1,
+      "enabled": true
+    }
+  ],
+  "variables": []
+}

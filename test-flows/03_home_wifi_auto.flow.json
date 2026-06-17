@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "id": "c3d4e5f6-a7b8-4901-abcd-f01234567890",
+  "name": "回家 WiFi 自動調整",
+  "description": "連上家裡 WiFi（HomeWifi）時自動調高媒體音量、關閉勿擾模式並顯示歡迎訊息。測試 WIFI 觸發功能。",
+  "author": "NexFlow Test",
+  "icon": "home",
+  "icon_color": "FF4CAF50",
+  "tags": ["WiFi", "回家", "測試"],
+  "enabled": true,
+  "created_at": "2026-06-17T07:00:00Z",
+  "updated_at": "2026-06-17T07:00:00Z",
+  "triggers": [
+    {
+      "id": "33333333-3333-4333-8333-333333333333",
+      "type": "WIFI",
+      "config": {"ssid": "HomeWifi", "event": "CONNECTED"}
+    }
+  ],
+  "trigger_logic": "ANY",
+  "conditions": [],
+  "actions": [
+    {
+      "id": "a3111111-1111-4111-8111-111111111111",
+      "type": "VOLUME_ADJUST",
+      "config": {"stream": "MEDIA", "level": 10},
+      "order": 0,
+      "enabled": true
+    },
+    {
+      "id": "a3222222-2222-4222-8222-222222222222",
+      "type": "DND_TOGGLE",
+      "config": {"enabled": false},
+      "order": 1,
+      "enabled": true
+    },
+    {
+      "id": "a3333333-3333-4333-8333-333333333333",
+      "type": "TOAST",
+      "config": {"text": "歡迎回家！已自動調整音量與通知設定"},
+      "order": 2,
+      "enabled": true
+    }
+  ],
+  "variables": []
+}

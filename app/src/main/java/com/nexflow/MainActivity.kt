@@ -63,6 +63,7 @@ class MainActivity : ComponentActivity() {
         }
         handleNfcIntent(intent)
         handleShareIntent(intent)
+        handleRunFlowIntent(intent)
     }
 
     override fun onResume() {
@@ -86,6 +87,16 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         handleNfcIntent(intent)
         handleShareIntent(intent)
+        handleRunFlowIntent(intent)
+    }
+
+    private fun handleRunFlowIntent(intent: Intent?) {
+        if (intent?.action != FlowExecutionService.ACTION_RUN_FLOW) return
+        val flowId = intent.getStringExtra(FlowExecutionService.EXTRA_FLOW_ID) ?: return
+        startForegroundService(Intent(this, FlowExecutionService::class.java).apply {
+            action = FlowExecutionService.ACTION_RUN_FLOW
+            putExtra(FlowExecutionService.EXTRA_FLOW_ID, flowId)
+        })
     }
 
     private fun handleShareIntent(intent: Intent?) {

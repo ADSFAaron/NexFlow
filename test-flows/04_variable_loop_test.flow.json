@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "id": "d4e5f6a7-b8c9-4012-bcde-012345678901",
+  "name": "變數與控制流測試",
+  "description": "手動觸發的測試 Flow：以 SET_VARIABLE 初始化計數器，REPEAT_BLOCK 執行 3 次遞增，再用 IF_BLOCK 驗證最終值是否等於 3。完整測試控制流與變數功能。",
+  "author": "NexFlow Test",
+  "icon": "code",
+  "icon_color": "FF9C27B0",
+  "tags": ["測試", "變數", "控制流", "手動"],
+  "enabled": true,
+  "created_at": "2026-06-17T07:00:00Z",
+  "updated_at": "2026-06-17T07:00:00Z",
+  "triggers": [
+    {
+      "id": "44444444-4444-4444-8444-444444444444",
+      "type": "MANUAL",
+      "config": {}
+    }
+  ],
+  "trigger_logic": "ANY",
+  "conditions": [],
+  "actions": [
+    {
+      "id": "a4111111-1111-4111-8111-111111111111",
+      "type": "SET_VARIABLE",
+      "config": {"variable_name": "counter", "value": "0"},
+      "order": 0,
+      "enabled": true
+    },
+    {
+      "id": "a4222222-2222-4222-8222-222222222222",
+      "type": "REPEAT_BLOCK",
+      "config": {"count": 3},
+      "order": 1,
+      "enabled": true
+    },
+    {
+      "id": "a4333333-3333-4333-8333-333333333333",
+      "type": "SET_VARIABLE",
+      "config": {"variable_name": "counter", "value": "{{counter}} + 1"},
+      "order": 2,
+      "enabled": true
+    },
+    {
+      "id": "a4444444-4444-4444-8444-444444444444",
+      "type": "TOAST",
+      "config": {"text": "迴圈計數中：{{counter}}"},
+      "order": 3,
+      "enabled": true
+    },
+    {
+      "id": "a4555555-5555-4555-8555-555555555555",
+      "type": "END_REPEAT",
+      "config": {},
+      "order": 4,
+      "enabled": true
+    },
+    {
+      "id": "a4666666-6666-4666-8666-666666666666",
+      "type": "IF_BLOCK",
+      "config": {"expression": "{{counter}} == 3"},
+      "order": 5,
+      "enabled": true
+    },
+    {
+      "id": "a4777777-7777-4777-8777-777777777777",
+      "type": "TOAST",
+      "config": {"text": "✓ 控制流測試通過！計數器最終值：{{counter}}"},
+      "order": 6,
+      "enabled": true
+    },
+    {
+      "id": "a4888888-8888-4888-8888-888888888888",
+      "type": "END_IF",
+      "config": {},
+      "order": 7,
+      "enabled": true
+    }
+  ],
+  "variables": [
+    {
+      "name": "counter",
+      "type": "INTEGER",
+      "default_value": 0
+    }
+  ]
+}

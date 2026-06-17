@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import com.nexflow.R
 import com.nexflow.core.automation.repository.FlowRepository
+import com.nexflow.shortcut.ShortcutSyncManager
 import com.nexflow.widget.NexFlowWidget
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -43,8 +44,10 @@ class FlowExecutionService : Service() {
 
     @Inject lateinit var flowEngine: FlowEngine
     @Inject lateinit var repository: FlowRepository
+    @Inject lateinit var shortcutSyncManager: ShortcutSyncManager
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private var engineStarted = false
 
     override fun onCreate() {
         super.onCreate()
@@ -57,14 +60,23 @@ class FlowExecutionService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
-        flowEngine.start(serviceScope)
-        serviceScope.launch {
-            repository.observeAll().collect { flows ->
-                NexFlowWidget.updateCounts(
-                    applicationContext,
-                    flows.count { it.enabled },
-                    flows.size,
-                )
+        if (intent?.action == ACTION_RUN_FLOW) {
+            val flowId = intent.getStringExtra(EXTRA_FLOW_ID) ?: return START_STICKY
+            serviceScope.launch { flowEngine.runNow(flowId) }
+            return START_STICKY
+        }
+        if (!engineStarted) {
+            engineStarted = true
+            flowEngine.start(serviceScope)
+            shortcutSyncManager.startSync(serviceScope)
+            serviceScope.launch {
+                repository.observeAll().collect { flows ->
+                    NexFlowWidget.updateCounts(
+                        applicationContext,
+                        flows.count { it.enabled },
+                        flows.size,
+                    )
+                }
             }
         }
         return START_STICKY
@@ -105,6 +117,8 @@ class FlowExecutionService : Service() {
         const val CHANNEL_SERVICE = "nexflow_service"
         const val SERVICE_NOTIFICATION_ID = 1
         const val ACTION_STOP = "com.nexflow.action.STOP_SERVICE"
+        const val ACTION_RUN_FLOW = "com.nexflow.action.RUN_FLOW"
+        const val EXTRA_FLOW_ID = "flow_id"
 
         private val _running = MutableStateFlow(false)
         val running: StateFlow<Boolean> = _running.asStateFlow()

@@ -22,13 +22,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -57,14 +53,14 @@ import androidx.compose.material.icons.outlined.FileOpen
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FloatingActionButtonMenu
+import androidx.compose.material3.FloatingActionButtonMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LargeFloatingActionButton
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SuggestionChip
@@ -74,6 +70,8 @@ import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.ToggleFloatingActionButton
+import androidx.compose.material3.ToggleFloatingActionButtonDefaults
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
@@ -92,7 +90,6 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
@@ -107,7 +104,7 @@ import com.nexflow.ui.flowimport.ImportViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun FlowsScreen(
     vm: FlowsViewModel = hiltViewModel(),
@@ -193,42 +190,42 @@ fun FlowsScreen(
             )
         },
         floatingActionButton = {
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                AnimatedVisibility(
-                    visible = fabMenuExpanded,
-                    enter = fadeIn() + slideInVertically { it / 2 },
-                    exit = fadeOut() + slideOutVertically { it / 2 },
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.End,
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+            FloatingActionButtonMenu(
+                expanded = fabMenuExpanded,
+                button = {
+                    ToggleFloatingActionButton(
+                        checked = fabMenuExpanded,
+                        onCheckedChange = { fabMenuExpanded = it },
+                        containerSize = ToggleFloatingActionButtonDefaults.containerSizeLarge(),
+                        containerCornerRadius = ToggleFloatingActionButtonDefaults.containerCornerRadiusLarge(),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        FabItem(icon = Icons.Outlined.FileOpen, label = "Import flow") {
-                            fabMenuExpanded = false
-                            filePicker.launch(arrayOf("*/*"))
-                        }
-                        FabItem(icon = Icons.Default.Add, label = "New Flow") {
-                            fabMenuExpanded = false
-                            showCreateDialog = true
-                        }
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = if (fabMenuExpanded) "Close menu" else "Open actions",
+                            modifier = Modifier
+                                .size(ToggleFloatingActionButtonDefaults.iconSizeLarge()(checkedProgress))
+                                .rotate(checkedProgress * 45f),
+                        )
                     }
-                }
-                LargeFloatingActionButton(onClick = { fabMenuExpanded = !fabMenuExpanded }) {
-                    val rotation by animateFloatAsState(
-                        targetValue = if (fabMenuExpanded) 45f else 0f,
-                        label = "fab_rotation",
-                    )
-                    Icon(
-                        Icons.Default.Add,
-                        contentDescription = "Actions",
-                        modifier = Modifier
-                            .size(FloatingActionButtonDefaults.LargeIconSize)
-                            .rotate(rotation),
-                    )
-                }
+                },
+            ) {
+                FloatingActionButtonMenuItem(
+                    onClick = {
+                        fabMenuExpanded = false
+                        filePicker.launch(arrayOf("*/*"))
+                    },
+                    text = { Text("Import flow") },
+                    icon = { Icon(Icons.Outlined.FileOpen, contentDescription = null) },
+                )
+                FloatingActionButtonMenuItem(
+                    onClick = {
+                        fabMenuExpanded = false
+                        showCreateDialog = true
+                    },
+                    text = { Text("New Flow") },
+                    icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                )
             }
         },
     ) { innerPadding ->
@@ -607,29 +604,6 @@ private fun RunCapsule(
                 Spacer(Modifier.width(6.dp))
                 Text("Flow 已啟動", style = MaterialTheme.typography.labelMedium)
             }
-        }
-    }
-}
-
-@Composable
-private fun FabItem(icon: ImageVector, label: String, onClick: () -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Surface(
-            shape = MaterialTheme.shapes.small,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            tonalElevation = 2.dp,
-        ) {
-            Text(
-                label,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                style = MaterialTheme.typography.labelLarge,
-            )
-        }
-        SmallFloatingActionButton(onClick = onClick) {
-            Icon(icon, contentDescription = label)
         }
     }
 }
