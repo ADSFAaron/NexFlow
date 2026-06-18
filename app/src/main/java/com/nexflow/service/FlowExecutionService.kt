@@ -103,13 +103,13 @@ class FlowExecutionService : Service() {
             PendingIntent.FLAG_IMMUTABLE,
         )
         return NotificationCompat.Builder(this, CHANNEL_SERVICE)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("NexFlow")
             .setContentText("Automation is active")
             .setContentIntent(openIntent)
             .setOngoing(true)
             .setSilent(true)
-            .addAction(R.drawable.ic_launcher_foreground, "Stop", stopIntent)
+            .addAction(R.drawable.ic_notification, "Stop", stopIntent)
             .build()
     }
 

@@ -1,4 +1,10 @@
 <resources>
     <string name="app_name">NexFlow</string>
     <string name="accessibility_service_description">NexFlow uses the Accessibility Service to take screenshots when a flow action requests it. No accessibility events are monitored.</string>
+    <string name="widget_overview_description">顯示近期流程並快速啟動</string>
+    <string name="widget_single_description">單一流程快速啟動捷徑</string>
+    <string name="widget_wide_description">寬版單一流程快速啟動捷徑</string>
+    <string name="widget_not_configured">點此設定流程</string>
+    <string name="widget_configure_title">選擇流程</string>
+    <string name="widget_no_flows">尚無流程，請先在 App 內建立流程</string>
 </resources>

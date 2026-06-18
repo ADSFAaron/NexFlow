@@ -63,7 +63,7 @@ class ShortcutSyncManager @Inject constructor(
             ShortcutInfo.Builder(context, "flow_${flow.id}")
                 .setShortLabel(flow.name.take(25))
                 .setLongLabel(flow.name)
-                .setIcon(Icon.createWithResource(context, R.drawable.ic_launcher_foreground))
+                .setIcon(Icon.createWithResource(context, R.mipmap.ic_launcher))
                 .setIntent(
                     Intent(context, MainActivity::class.java).apply {
                         action = FlowExecutionService.ACTION_RUN_FLOW

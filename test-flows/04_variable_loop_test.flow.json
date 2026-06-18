@@ -44,7 +44,7 @@
     {
       "id": "a4444444-4444-4444-8444-444444444444",
       "type": "TOAST",
-      "config": {"text": "迴圈計數中：{{counter}}"},
+      "config": {"message": "迴圈計數中：{{counter}}"},
       "order": 3,
       "enabled": true
     },
@@ -65,7 +65,7 @@
     {
       "id": "a4777777-7777-4777-8777-777777777777",
       "type": "TOAST",
-      "config": {"text": "✓ 控制流測試通過！計數器最終值：{{counter}}"},
+      "config": {"message": "✓ 控制流測試通過！計數器最終值：{{counter}}"},
       "order": 6,
       "enabled": true
     },

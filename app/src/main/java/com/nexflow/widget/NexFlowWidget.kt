@@ -1,18 +1,3 @@
-/*
- * Copyright 2026 NexFlow Contributors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package com.nexflow.widget
 
 import android.content.Context
@@ -27,12 +12,16 @@ import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
-import androidx.glance.appwidget.action.actionStartService
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.action.actionStartService
+import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.background
 import androidx.glance.currentState
+import androidx.glance.ColorFilter
+import androidx.glance.Image
+import androidx.glance.ImageProvider
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
@@ -41,14 +30,15 @@ import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.padding
+import androidx.glance.layout.size
 import androidx.glance.layout.width
-import androidx.glance.material3.ColorProviders
 import androidx.glance.state.GlanceStateDefinition
 import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import com.nexflow.MainActivity
+import com.nexflow.R
 import com.nexflow.core.automation.model.Flow
 import com.nexflow.service.FlowExecutionService
 
@@ -80,11 +70,11 @@ class NexFlowWidget : GlanceAppWidget() {
                 modifier = GlanceModifier
                     .fillMaxSize()
                     .background(GlanceTheme.colors.background)
-                    .padding(12.dp),
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
             ) {
                 // Header row
                 Row(
-                    modifier = GlanceModifier.fillMaxWidth(),
+                    modifier = GlanceModifier.fillMaxWidth().padding(bottom = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
@@ -106,7 +96,6 @@ class NexFlowWidget : GlanceAppWidget() {
                 }
 
                 if (recentFlows.isEmpty()) {
-                    // Fallback: tap to open app
                     Box(
                         modifier = GlanceModifier
                             .fillMaxSize()
@@ -119,27 +108,30 @@ class NexFlowWidget : GlanceAppWidget() {
                         )
                     }
                 } else {
-                    recentFlows.forEach { (flowId, flowName) ->
+                    // Limit to 4 items to ensure each row has enough vertical room
+                    recentFlows.take(4).forEach { (flowId, flowName) ->
                         Row(
                             modifier = GlanceModifier
                                 .fillMaxWidth()
-                                .padding(top = 6.dp),
+                                .padding(vertical = 5.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
                                 text = flowName,
                                 style = TextStyle(
                                     color = GlanceTheme.colors.onBackground,
-                                    fontSize = 13.sp,
+                                    fontSize = 14.sp,
                                 ),
                                 modifier = GlanceModifier.defaultWeight(),
                                 maxLines = 1,
                             )
-                            Spacer(modifier = GlanceModifier.width(8.dp))
+                            Spacer(modifier = GlanceModifier.width(10.dp))
+                            // 40dp meets the 40dp minimum touch target for compact widget rows
                             Box(
                                 modifier = GlanceModifier
+                                    .size(40.dp)
                                     .background(GlanceTheme.colors.primary)
-                                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                                    .cornerRadius(20.dp)
                                     .clickable(
                                         actionStartService(
                                             Intent(context, FlowExecutionService::class.java).apply {
@@ -151,12 +143,11 @@ class NexFlowWidget : GlanceAppWidget() {
                                     ),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Text(
-                                    text = "▶",
-                                    style = TextStyle(
-                                        color = GlanceTheme.colors.onPrimary,
-                                        fontSize = 12.sp,
-                                    ),
+                                Image(
+                                    provider = ImageProvider(R.drawable.ic_play),
+                                    contentDescription = null,
+                                    modifier = GlanceModifier.size(20.dp),
+                                    colorFilter = ColorFilter.tint(GlanceTheme.colors.onPrimary),
                                 )
                             }
                         }

@@ -123,7 +123,7 @@
             </intent-filter>
         </receiver>
 
-        <!-- Home-screen widget -->
+        <!-- Overview widget (4×2): shows recent flows with run buttons -->
         <receiver
             android:name=".widget.NexFlowWidgetReceiver"
             android:exported="true">
@@ -134,6 +134,44 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/nexflow_widget_info" />
         </receiver>
+
+        <!-- Single-flow shortcut widget (1×1): user picks a flow after placement -->
+        <receiver
+            android:name=".widget.NexFlowSingleWidgetReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/nexflow_widget_single_info" />
+        </receiver>
+
+        <!-- Wide single-flow shortcut widget (2×1): user picks a flow after placement -->
+        <receiver
+            android:name=".widget.NexFlowWideWidgetReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/nexflow_widget_wide_info" />
+        </receiver>
+
+        <!-- Widget configuration activity: lets users select a flow for single/wide widgets.
+             taskAffinity="" isolates this activity in its own task so finishing it does not
+             surface the main app's back-stack (prevents the "jumps to home screen" bug). -->
+        <activity
+            android:name=".widget.WidgetConfigureActivity"
+            android:exported="true"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.NexFlow">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
 
         <!-- Accessibility Service for screenshot action -->
         <service
@@ -183,6 +221,21 @@
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
             </intent-filter>
         </service>
+
+        <!-- Tile configuration activity: lets users pick which flow the QS tile runs.
+             QS_TILE_PREFERENCES intent-filter makes Android 13+ show an "Edit" button
+             on long-press. On older versions, the tile itself opens this activity when
+             no flow is configured. taskAffinity="" prevents surfacing the main app task. -->
+        <activity
+            android:name=".service.TileConfigureActivity"
+            android:exported="true"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.NexFlow">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE_PREFERENCES" />
+            </intent-filter>
+        </activity>
 
         <!-- Notification Listener Service — user enables in Settings → Notifications → Notification access -->
         <service

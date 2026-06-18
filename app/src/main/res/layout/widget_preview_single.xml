@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Preview for 1x1 single-flow shortcut widget. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/bg_widget_preview"
+    android:gravity="center"
+    android:padding="8dp">
+
+    <ImageView
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="@drawable/bg_widget_play_btn"
+        android:src="@android:drawable/ic_media_play"
+        android:padding="10dp"
+        android:tint="#1C1B1F" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text="我的流程"
+        android:textColor="#E6E1E5"
+        android:textSize="10sp"
+        android:gravity="center"
+        android:singleLine="true"
+        android:ellipsize="end" />
+
+</LinearLayout>

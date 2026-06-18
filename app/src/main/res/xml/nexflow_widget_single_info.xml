@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/widget_single_description"
+    android:minWidth="56dp"
+    android:minHeight="56dp"
+    android:maxResizeWidth="306dp"
+    android:maxResizeHeight="276dp"
+    android:targetCellWidth="1"
+    android:targetCellHeight="1"
+    android:resizeMode="horizontal|vertical"
+    android:updatePeriodMillis="0"
+    android:widgetCategory="home_screen"
+    android:widgetFeatures="reconfigurable"
+    android:previewLayout="@layout/widget_preview_single"
+    android:configure="com.nexflow.widget.WidgetConfigureActivity" />

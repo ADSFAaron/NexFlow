@@ -30,14 +30,14 @@
     {
       "id": "a3222222-2222-4222-8222-222222222222",
       "type": "DND_TOGGLE",
-      "config": {"enabled": false},
+      "config": {"state": "OFF"},
       "order": 1,
       "enabled": true
     },
     {
       "id": "a3333333-3333-4333-8333-333333333333",
       "type": "TOAST",
-      "config": {"text": "歡迎回家！已自動調整音量與通知設定"},
+      "config": {"message": "歡迎回家！已自動調整音量與通知設定"},
       "order": 2,
       "enabled": true
     }

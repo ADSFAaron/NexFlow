@@ -14,7 +14,7 @@
     {
       "id": "22222222-2222-4222-8222-222222222222",
       "type": "BATTERY",
-      "config": {"threshold": 20, "direction": "BELOW"}
+      "config": {"level": 20, "direction": "BELOW"}
     }
   ],
   "trigger_logic": "ANY",
@@ -23,7 +23,7 @@
     {
       "id": "a2111111-1111-4111-8111-111111111111",
       "type": "BLUETOOTH_TOGGLE",
-      "config": {"enabled": false},
+      "config": {"state": "OFF"},
       "order": 0,
       "enabled": true
     },
@@ -37,14 +37,14 @@
     {
       "id": "a2333333-3333-4333-8333-333333333333",
       "type": "NOTIFICATION",
-      "config": {"title": "電量不足", "body": "已自動啟動省電模式，關閉藍牙並降低螢幕亮度"},
+      "config": {"title": "電量不足", "message": "已自動啟動省電模式，關閉藍牙並降低螢幕亮度"},
       "order": 2,
       "enabled": true
     },
     {
       "id": "a2444444-4444-4444-8444-444444444444",
       "type": "TOAST",
-      "config": {"text": "省電模式已開啟"},
+      "config": {"message": "省電模式已開啟"},
       "order": 3,
       "enabled": true
     }

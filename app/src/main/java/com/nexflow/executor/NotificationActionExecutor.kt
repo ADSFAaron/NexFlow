@@ -47,7 +47,7 @@ class NotificationActionExecutor @Inject constructor(
         val message = action.config["message"]?.trim() ?: ""
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ACTIONS)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .apply {
                 if (message.isNotBlank()) {

@@ -34,7 +34,7 @@
     {
       "id": "a5222222-2222-4222-8222-222222222222",
       "type": "TOAST",
-      "config": {"text": "已記錄螢幕喚醒事件"},
+      "config": {"message": "已記錄螢幕喚醒事件"},
       "order": 1,
       "enabled": true
     }
