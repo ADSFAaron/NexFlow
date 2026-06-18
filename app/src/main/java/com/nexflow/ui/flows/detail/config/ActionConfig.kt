@@ -27,6 +27,7 @@ import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Done
 import androidx.compose.material.icons.outlined.DoNotDisturb
+import androidx.compose.material.icons.outlined.List
 import androidx.compose.material.icons.outlined.MergeType
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.OpenInBrowser
@@ -68,6 +69,7 @@ val ActionType.category: ActionCategory
         ActionType.IF_BLOCK, ActionType.ELSE_BLOCK, ActionType.END_IF,
         ActionType.REPEAT_BLOCK, ActionType.END_REPEAT,
         ActionType.DELAY, ActionType.SET_VARIABLE,
+        ActionType.SHOW_MENU, ActionType.MENU_CASE, ActionType.END_MENU,
         -> ActionCategory.CONTROL_FLOW
 
         ActionType.WIFI_TOGGLE, ActionType.BLUETOOTH_TOGGLE, ActionType.AIRPLANE_TOGGLE,
@@ -273,6 +275,18 @@ val ActionType.info: ActionInfo
             listOf(ConfigField.Slider("count", "Repeat count", 1, 100, "×")),
         )
         ActionType.END_REPEAT -> ActionInfo("End Repeat", Icons.Outlined.Done, "End of Repeat block", emptyList())
+        ActionType.SHOW_MENU -> ActionInfo(
+            "Show Menu", Icons.Outlined.List, "Ask the user to pick an option, then run the matching branch",
+            listOf(
+                ConfigField.TextInput("title", "Prompt / title", hint = "Choose a payment method"),
+                ConfigField.MenuOptionList("options", "Menu options"),
+            ),
+        )
+        ActionType.MENU_CASE -> ActionInfo(
+            "Menu Case", Icons.Outlined.CallSplit, "Branch executed when the user picks this option",
+            listOf(ConfigField.TextInput("option", "Option label")),
+        )
+        ActionType.END_MENU -> ActionInfo("End Menu", Icons.Outlined.Done, "End of Show Menu block", emptyList())
     }
 
 fun ActionType.configSummary(config: Map<String, String>): String = when (this) {
@@ -315,4 +329,7 @@ fun ActionType.configSummary(config: Map<String, String>): String = when (this) 
     ActionType.ELSE_BLOCK -> "Otherwise"
     ActionType.END_IF -> "Closes If"
     ActionType.END_REPEAT -> "Closes Repeat"
+    ActionType.SHOW_MENU -> config["title"]?.takeIf { it.isNotBlank() } ?: "Choose an option"
+    ActionType.MENU_CASE -> config["option"]?.takeIf { it.isNotBlank() } ?: "Option"
+    ActionType.END_MENU -> "Closes Menu"
 }

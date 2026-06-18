@@ -259,6 +259,16 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
+        <!-- Transparent trampoline for the SHOW_MENU action bottom sheet.
+             taskAffinity="" keeps it out of the main app back-stack.
+             excludeFromRecents prevents the ghost task appearing in Recents. -->
+        <activity
+            android:name=".ui.menu.MenuPickerActivity"
+            android:exported="false"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.NexFlow.Transparent" />
+
         <!-- WorkManager Hilt integration -->
         <provider
             android:name="androidx.startup.InitializationProvider"

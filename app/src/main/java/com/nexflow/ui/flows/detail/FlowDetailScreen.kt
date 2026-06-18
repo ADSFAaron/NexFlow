@@ -32,7 +32,9 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.zIndex
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -54,6 +56,9 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -64,6 +69,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Stop
@@ -97,6 +103,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
@@ -164,6 +171,8 @@ import com.nexflow.ui.flows.detail.config.category
 import com.nexflow.ui.flows.detail.config.configSummary
 import com.nexflow.ui.flows.detail.config.info
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import java.util.UUID
 
 // ---------------------------------------------------------------------------
@@ -187,6 +196,7 @@ fun FlowDetailScreen(
 
     val f = flow!!
     val isRunning by vm.isRunning.collectAsState()
+    val currentActionId by vm.currentActionId.collectAsState()
 
     var showTriggerPicker by rememberSaveable { mutableStateOf(false) }
     var showActionPicker by rememberSaveable { mutableStateOf(false) }
@@ -382,7 +392,12 @@ fun FlowDetailScreen(
                 val haptic = LocalHapticFeedback.current
                 ReorderableItem(reorderState, key = action.id) { _ ->
                     val ai = action.type.info
-                    GroupedItem(index = index, count = sortedActions.size + 1) {
+                    val isExecuting = currentActionId == action.id
+                    GroupedItem(
+                        index = index,
+                        count = sortedActions.size + 1,
+                        highlighted = isExecuting,
+                    ) {
                         TriggerOrActionRow(
                             icon = {
                                 Box(contentAlignment = Alignment.Center) {
@@ -391,6 +406,7 @@ fun FlowDetailScreen(
                             },
                             headline = ai.label,
                             supporting = action.type.configSummary(action.config),
+                            isExecuting = isExecuting,
                             onEdit = { pendingConfig = PendingConfig.EditAction(action) },
                             onDelete = { vm.removeAction(action.id) },
                             showDragHandle = true,
@@ -526,28 +542,63 @@ fun FlowDetailScreen(
                 },
                 onDismiss = { pendingConfig = null },
             )
-            is PendingConfig.NewAction -> ConfigDialog(
-                title = cfg.type.info.label,
-                fields = cfg.type.info.fields,
-                initialValues = emptyMap(),
-                availableVariables = flowVariables,
-                onConfirm = { values ->
-                    vm.addAction(Action(UUID.randomUUID().toString(), cfg.type, values, f.actions.size, true))
-                    pendingConfig = null
-                },
-                onDismiss = { pendingConfig = null },
-            )
-            is PendingConfig.EditAction -> ConfigDialog(
-                title = cfg.action.type.info.label,
-                fields = cfg.action.type.info.fields,
-                initialValues = cfg.action.config,
-                availableVariables = flowVariables,
-                onConfirm = { values ->
-                    vm.updateAction(cfg.action.copy(config = values))
-                    pendingConfig = null
-                },
-                onDismiss = { pendingConfig = null },
-            )
+            is PendingConfig.NewAction -> if (cfg.type == ActionType.SHOW_MENU) {
+                ShowMenuConfigDialog(
+                    initialTitle = "",
+                    initialOptions = listOf("", ""),
+                    onConfirm = { title, options ->
+                        val base = f.actions.size
+                        val menuId = UUID.randomUUID().toString()
+                        val optionsJson = Json.encodeToString(options)
+                        val block = listOf(
+                            Action(menuId, ActionType.SHOW_MENU, mapOf("title" to title, "options" to optionsJson), base, true),
+                        ) + options.mapIndexed { i, opt ->
+                            Action(UUID.randomUUID().toString(), ActionType.MENU_CASE, mapOf("option" to opt), base + 1 + i, true)
+                        } + Action(UUID.randomUUID().toString(), ActionType.END_MENU, emptyMap(), base + 1 + options.size, true)
+                        vm.addActions(block)
+                        pendingConfig = null
+                    },
+                    onDismiss = { pendingConfig = null },
+                )
+            } else {
+                ConfigDialog(
+                    title = cfg.type.info.label,
+                    fields = cfg.type.info.fields,
+                    initialValues = emptyMap(),
+                    availableVariables = flowVariables,
+                    onConfirm = { values ->
+                        vm.addAction(Action(UUID.randomUUID().toString(), cfg.type, values, f.actions.size, true))
+                        pendingConfig = null
+                    },
+                    onDismiss = { pendingConfig = null },
+                )
+            }
+            is PendingConfig.EditAction -> if (cfg.action.type == ActionType.SHOW_MENU) {
+                val currentOptions = runCatching {
+                    Json.decodeFromString<List<String>>(cfg.action.config["options"] ?: "[]")
+                }.getOrElse { listOf("", "") }
+                ShowMenuConfigDialog(
+                    initialTitle = cfg.action.config["title"] ?: "",
+                    initialOptions = currentOptions.ifEmpty { listOf("", "") },
+                    onConfirm = { title, options ->
+                        vm.syncMenuBlock(cfg.action.id, title, options)
+                        pendingConfig = null
+                    },
+                    onDismiss = { pendingConfig = null },
+                )
+            } else {
+                ConfigDialog(
+                    title = cfg.action.type.info.label,
+                    fields = cfg.action.type.info.fields,
+                    initialValues = cfg.action.config,
+                    availableVariables = flowVariables,
+                    onConfirm = { values ->
+                        vm.updateAction(cfg.action.copy(config = values))
+                        pendingConfig = null
+                    },
+                    onDismiss = { pendingConfig = null },
+                )
+            }
         }
     }
 
@@ -742,6 +793,7 @@ private sealed class PendingConfig {
 private fun GroupedItem(
     index: Int,
     count: Int,
+    highlighted: Boolean = false,
     onClick: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
@@ -753,21 +805,45 @@ private fun GroupedItem(
         bottomStart = if (index == count - 1) large else small,
         bottomEnd = if (index == count - 1) large else small,
     )
+
+    val primary = MaterialTheme.colorScheme.primary
+    val surfaceColor by animateColorAsState(
+        targetValue = if (highlighted) primary.copy(alpha = 0.18f)
+                      else MaterialTheme.colorScheme.surfaceContainer,
+        animationSpec = snap(),
+        label = "item_bg",
+    )
+    val shadowElevation by animateDpAsState(
+        targetValue = if (highlighted) 8.dp else 0.dp,
+        animationSpec = snap(),
+        label = "item_shadow",
+    )
+    val borderColor by animateColorAsState(
+        targetValue = if (highlighted) primary else androidx.compose.ui.graphics.Color.Transparent,
+        animationSpec = snap(),
+        label = "item_border",
+    )
+
     val modifier = Modifier
         .fillMaxWidth()
         .padding(horizontal = 16.dp)
         .padding(bottom = 2.dp)
+        .then(if (highlighted) Modifier.zIndex(1f) else Modifier)
+        .border(width = 2.dp, color = borderColor, shape = shape)
+
     if (onClick != null) {
         Surface(
             onClick = onClick,
             shape = shape,
-            color = MaterialTheme.colorScheme.surfaceContainer,
+            color = surfaceColor,
+            shadowElevation = shadowElevation,
             modifier = modifier,
         ) { content() }
     } else {
         Surface(
             shape = shape,
-            color = MaterialTheme.colorScheme.surfaceContainer,
+            color = surfaceColor,
+            shadowElevation = shadowElevation,
             modifier = modifier,
         ) { content() }
     }
@@ -809,17 +885,29 @@ private fun TriggerOrActionRow(
     supporting: String,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
+    isExecuting: Boolean = false,
     showDragHandle: Boolean = false,
     dragHandleModifier: Modifier = Modifier,
 ) {
     ListItem(
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-        leadingContent = icon,
+        leadingContent = {
+            Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                icon()
+                if (isExecuting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(40.dp),
+                        strokeWidth = 3.dp,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
+        },
         headlineContent = { Text(headline) },
         supportingContent = { Text(supporting, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         trailingContent = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (showDragHandle) {
+                if (showDragHandle && !isExecuting) {
                     Icon(
                         Icons.Rounded.DragHandle,
                         contentDescription = "Reorder",
@@ -1408,6 +1496,74 @@ internal fun ConfigDialog(
                                 }
                             }
 
+                            is ConfigField.MenuOptionList -> {
+                                val stored = values[field.key] ?: "[]"
+                                val optionList = remember(stored) {
+                                    mutableStateOf(
+                                        runCatching {
+                                            Json.decodeFromString<List<String>>(stored)
+                                        }.getOrElse { emptyList() }.toMutableList(),
+                                    )
+                                }
+                                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Text(
+                                        field.label,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    optionList.value.forEachIndexed { idx, opt ->
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        ) {
+                                            OutlinedTextField(
+                                                value = opt,
+                                                onValueChange = { newVal ->
+                                                    val updated = optionList.value.toMutableList()
+                                                    updated[idx] = newVal
+                                                    optionList.value = updated
+                                                    values[field.key] = Json.encodeToString(updated.toList())
+                                                },
+                                                label = { Text("Option ${idx + 1}") },
+                                                singleLine = true,
+                                                modifier = Modifier.weight(1f),
+                                            )
+                                            IconButton(
+                                                onClick = {
+                                                    val updated = optionList.value.toMutableList()
+                                                    updated.removeAt(idx)
+                                                    optionList.value = updated
+                                                    values[field.key] = Json.encodeToString(updated.toList())
+                                                },
+                                                enabled = optionList.value.size > 2,
+                                            ) {
+                                                Icon(
+                                                    Icons.Filled.Delete,
+                                                    contentDescription = "Remove option",
+                                                    tint = if (optionList.value.size > 2)
+                                                        MaterialTheme.colorScheme.error
+                                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.size(20.dp),
+                                                )
+                                            }
+                                        }
+                                    }
+                                    TextButton(
+                                        onClick = {
+                                            val updated = optionList.value.toMutableList()
+                                            updated.add("")
+                                            optionList.value = updated
+                                            values[field.key] = Json.encodeToString(updated.toList())
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                    ) {
+                                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                                        Spacer(Modifier.width(4.dp))
+                                        Text("Add option")
+                                    }
+                                }
+                            }
+
                             is ConfigField.Toggle -> {
                                 val checked = values[field.key] == "true"
                                 Row(
@@ -1561,6 +1717,101 @@ private fun DropdownConfigField(
             }
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Dedicated dialog for creating / editing a Show Menu block
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun ShowMenuConfigDialog(
+    initialTitle: String,
+    initialOptions: List<String>,
+    onConfirm: (title: String, options: List<String>) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var title by remember { mutableStateOf(initialTitle) }
+    val options = remember { mutableStateOf(initialOptions.toMutableList()) }
+
+    val isValid = options.value.size >= 2 && options.value.all { it.isNotBlank() }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Show Menu") },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Prompt / title") },
+                    placeholder = { Text("Choose a payment method", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
+                    "Menu options",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                options.value.forEachIndexed { idx, opt ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        OutlinedTextField(
+                            value = opt,
+                            onValueChange = { newVal ->
+                                val updated = options.value.toMutableList()
+                                updated[idx] = newVal
+                                options.value = updated
+                            },
+                            label = { Text("Option ${idx + 1}") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                        )
+                        IconButton(
+                            onClick = {
+                                val updated = options.value.toMutableList()
+                                updated.removeAt(idx)
+                                options.value = updated
+                            },
+                            enabled = options.value.size > 2,
+                        ) {
+                            Icon(
+                                Icons.Filled.Delete,
+                                contentDescription = "Remove option",
+                                tint = if (options.value.size > 2) MaterialTheme.colorScheme.error
+                                       else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                    }
+                }
+                TextButton(
+                    onClick = {
+                        options.value = (options.value + "").toMutableList()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Add option")
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(title.trim(), options.value.map { it.trim() }) },
+                enabled = isValid,
+            ) { Text("Save") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
 }
 
 // ---------------------------------------------------------------------------

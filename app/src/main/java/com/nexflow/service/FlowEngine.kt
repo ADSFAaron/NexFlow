@@ -76,15 +76,21 @@ class FlowEngine @Inject constructor(
     }
 
     /** Directly execute a flow by ID — used by the manual Run button. */
-    suspend fun runNow(flowId: String) {
+    suspend fun runNow(
+        flowId: String,
+        onActionStart: (suspend (actionId: String) -> Unit)? = null,
+    ) {
         val flow = repository.getById(flowId) ?: return
-        runFlow(flow)
+        runFlow(flow, onActionStart)
     }
 
-    private suspend fun runFlow(flow: AutomationFlow) {
+    private suspend fun runFlow(
+        flow: AutomationFlow,
+        onActionStart: (suspend (actionId: String) -> Unit)? = null,
+    ) {
         val startMs = System.currentTimeMillis()
         val result = try {
-            interpreter.execute(flow)
+            interpreter.execute(flow, onActionStart)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

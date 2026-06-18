@@ -42,4 +42,7 @@ enum class ActionType {
     WRITE_FILE,
     SHARE,
     SCREENSHOT,
+    SHOW_MENU,
+    MENU_CASE,
+    END_MENU,
 }

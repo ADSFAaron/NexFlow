@@ -19,6 +19,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexflow.core.automation.model.Action
+import com.nexflow.core.automation.model.ActionType
 import com.nexflow.core.automation.model.Flow
 import com.nexflow.core.automation.model.Trigger
 import com.nexflow.core.automation.model.TriggerLogic
@@ -35,6 +36,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -72,6 +74,79 @@ class FlowDetailViewModel @Inject constructor(
         copy(actions = actions + action.copy(order = actions.size))
     }
 
+    /** Appends a batch of actions, assigning consecutive order indices. */
+    fun addActions(newActions: List<Action>) = edit {
+        val base = actions.size
+        val indexed = newActions.mapIndexed { i, a -> a.copy(order = base + i) }
+        copy(actions = actions + indexed)
+    }
+
+    /**
+     * Updates the SHOW_MENU action's title/options and synchronises the MENU_CASE
+     * markers that follow it (by position). Extra options append empty cases;
+     * removed options drop their case marker and any body actions up to the next case.
+     */
+    fun syncMenuBlock(showMenuId: String, newTitle: String, newOptions: List<String>) = edit {
+        val sorted = actions.sortedBy { it.order }.toMutableList()
+        val showMenuIdx = sorted.indexOfFirst { it.id == showMenuId }
+        if (showMenuIdx == -1) return@edit this
+
+        // Find matching END_MENU
+        var depth = 0
+        var endMenuIdx = -1
+        for (k in showMenuIdx until sorted.size) {
+            when (sorted[k].type) {
+                ActionType.SHOW_MENU -> depth++
+                ActionType.END_MENU -> { depth--; if (depth == 0) { endMenuIdx = k; break } }
+                else -> {}
+            }
+        }
+        if (endMenuIdx == -1) return@edit this
+
+        // Collect direct MENU_CASE indices (depth=1)
+        val caseStartIndices = mutableListOf<Int>()
+        depth = 0
+        for (k in showMenuIdx until endMenuIdx + 1) {
+            when (sorted[k].type) {
+                ActionType.SHOW_MENU -> depth++
+                ActionType.END_MENU -> depth--
+                ActionType.MENU_CASE -> if (depth == 1) caseStartIndices.add(k)
+                else -> {}
+            }
+        }
+
+        // Derive body ranges for each existing case
+        val caseBodyRanges = caseStartIndices.mapIndexed { i, startIdx ->
+            val bodyStart = startIdx + 1
+            val bodyEnd = if (i + 1 < caseStartIndices.size) caseStartIndices[i + 1] else endMenuIdx
+            bodyStart until bodyEnd
+        }
+
+        val optionsJson = kotlinx.serialization.json.Json.encodeToString(newOptions)
+        val updatedShowMenu = sorted[showMenuIdx].copy(
+            config = mapOf("title" to newTitle, "options" to optionsJson),
+        )
+
+        // Build new block: for each new option reuse existing case (preserving body), add empty if new
+        val newBlock = mutableListOf<Action>()
+        newOptions.forEachIndexed { i, opt ->
+            val caseId = if (i < caseStartIndices.size) sorted[caseStartIndices[i]].id
+                         else java.util.UUID.randomUUID().toString()
+            newBlock += Action(caseId, ActionType.MENU_CASE, mapOf("option" to opt), 0, true)
+            if (i < caseBodyRanges.size) {
+                newBlock += sorted.subList(caseBodyRanges[i].first, caseBodyRanges[i].last)
+            }
+        }
+
+        val before = sorted.subList(0, showMenuIdx)
+        val endMenu = sorted[endMenuIdx]
+        val after = if (endMenuIdx + 1 < sorted.size) sorted.subList(endMenuIdx + 1, sorted.size) else emptyList()
+
+        val all = (before + updatedShowMenu + newBlock + endMenu + after)
+            .mapIndexed { i, a -> a.copy(order = i) }
+        copy(actions = all)
+    }
+
     fun updateAction(action: Action) = edit {
         copy(actions = actions.map { if (it.id == action.id) action else it })
     }
@@ -100,6 +175,9 @@ class FlowDetailViewModel @Inject constructor(
     private val _isRunning = MutableStateFlow(false)
     val isRunning: StateFlow<Boolean> = _isRunning.asStateFlow()
 
+    private val _currentActionId = MutableStateFlow<String?>(null)
+    val currentActionId: StateFlow<String?> = _currentActionId.asStateFlow()
+
     private var runJob: kotlinx.coroutines.Job? = null
 
     fun runNow() {
@@ -108,9 +186,13 @@ class FlowDetailViewModel @Inject constructor(
             _isRunning.value = true
             yield()
             try {
-                flowEngine.runNow(flowId)
+                flowEngine.runNow(flowId) { actionId ->
+                    _currentActionId.value = actionId
+                    delay(300)
+                }
             } finally {
                 _isRunning.value = false
+                _currentActionId.value = null
                 runJob = null
             }
         }

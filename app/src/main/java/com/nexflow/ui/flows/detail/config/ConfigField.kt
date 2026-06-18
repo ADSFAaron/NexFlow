@@ -100,6 +100,15 @@ sealed class ConfigField {
         val isWarning: Boolean = false,
     ) : ConfigField()
 
+    /**
+     * Dynamic list of text options for the SHOW_MENU action.
+     * Stored as a JSON array string: ["Option A","Option B"].
+     */
+    data class MenuOptionList(
+        override val key: String,
+        override val label: String,
+    ) : ConfigField()
+
     /** Boolean toggle (Switch); stores "true" or "false". */
     data class Toggle(
         override val key: String,

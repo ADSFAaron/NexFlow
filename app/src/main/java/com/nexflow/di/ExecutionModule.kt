@@ -26,6 +26,7 @@ import com.nexflow.executor.DelayActionExecutor
 import com.nexflow.executor.DndActionExecutor
 import com.nexflow.executor.HttpActionExecutor
 import com.nexflow.executor.MediaActionExecutor
+import com.nexflow.executor.MenuActionExecutor
 import com.nexflow.executor.NotificationActionExecutor
 import com.nexflow.executor.OpenAppActionExecutor
 import com.nexflow.executor.OpenUrlActionExecutor
@@ -172,6 +173,9 @@ abstract class ExecutionModule {
 
     @Binds @IntoSet
     abstract fun bindShare(impl: ShareActionExecutor): ActionExecutor
+
+    @Binds @IntoSet
+    abstract fun bindMenu(impl: MenuActionExecutor): ActionExecutor
 
     companion object {
         @Provides

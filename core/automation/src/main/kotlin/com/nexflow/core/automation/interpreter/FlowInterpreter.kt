@@ -32,10 +32,13 @@ import kotlinx.coroutines.CancellationException
 class FlowInterpreter(
     private val executors: Map<com.nexflow.core.automation.model.ActionType, ActionExecutor>,
 ) {
-    suspend fun execute(flow: Flow): InterpreterResult {
+    suspend fun execute(
+        flow: Flow,
+        onActionStart: (suspend (actionId: String) -> Unit)? = null,
+    ): InterpreterResult {
         val variables = buildVariableMap(flow.variables)
         val actions = flow.actions.sortedBy { it.order }
-        return executeBlock(actions, variables, startIndex = 0, endIndex = actions.size)
+        return executeBlock(actions, variables, startIndex = 0, endIndex = actions.size, onActionStart)
     }
 
     private suspend fun executeBlock(
@@ -43,11 +46,13 @@ class FlowInterpreter(
         variables: MutableMap<String, String>,
         startIndex: Int,
         endIndex: Int,
+        onActionStart: (suspend (actionId: String) -> Unit)? = null,
     ): InterpreterResult {
         var i = startIndex
         while (i < endIndex) {
             val action = actions[i]
             if (!action.enabled) { i++; continue }
+            onActionStart?.invoke(action.id)
 
             when (action.type) {
                 ActionType.IF_BLOCK -> {
@@ -58,10 +63,10 @@ class FlowInterpreter(
 
                     if (conditionMet) {
                         val blockEnd = if (elseIndex != -1) elseIndex else endIfIndex
-                        val result = executeBlock(actions, variables, i + 1, blockEnd)
+                        val result = executeBlock(actions, variables, i + 1, blockEnd, onActionStart)
                         if (result is InterpreterResult.Failure) return result
                     } else if (elseIndex != -1) {
-                        val result = executeBlock(actions, variables, elseIndex + 1, endIfIndex)
+                        val result = executeBlock(actions, variables, elseIndex + 1, endIfIndex, onActionStart)
                         if (result is InterpreterResult.Failure) return result
                     }
                     i = endIfIndex + 1
@@ -71,7 +76,7 @@ class FlowInterpreter(
                     val count = action.config["count"]?.toIntOrNull() ?: 1
                     val endRepeatIndex = findMatchingEndRepeat(actions, i)
                     repeat(count) {
-                        val result = executeBlock(actions, variables, i + 1, endRepeatIndex)
+                        val result = executeBlock(actions, variables, i + 1, endRepeatIndex, onActionStart)
                         if (result is InterpreterResult.Failure) return result
                     }
                     i = endRepeatIndex + 1
@@ -86,7 +91,33 @@ class FlowInterpreter(
                     i++
                 }
 
-                ActionType.ELSE_BLOCK, ActionType.END_IF, ActionType.END_REPEAT -> i++
+                ActionType.SHOW_MENU -> {
+                    val interpolatedAction = interpolateAction(action, variables)
+                    val executor = executors[ActionType.SHOW_MENU]
+                        ?: return InterpreterResult.Failure("No executor for SHOW_MENU")
+                    val result = try {
+                        executor.execute(interpolatedAction, variables)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        ActionResult.Failure("SHOW_MENU threw: ${e.message}", e)
+                    }
+                    if (result is ActionResult.Failure) {
+                        return InterpreterResult.Failure(result.message, result.cause)
+                    }
+                    val choice = variables["__menu_choice__"] ?: ""
+                    val endMenuIndex = findMatchingEndMenu(actions, i)
+                    val caseIndex = findMenuCase(actions, i, endMenuIndex, choice)
+                    if (caseIndex != -1) {
+                        val nextBoundary = findNextMenuCaseOrEnd(actions, caseIndex + 1, endMenuIndex)
+                        val blockResult = executeBlock(actions, variables, caseIndex + 1, nextBoundary, onActionStart)
+                        if (blockResult is InterpreterResult.Failure) return blockResult
+                    }
+                    i = endMenuIndex + 1
+                }
+
+                ActionType.ELSE_BLOCK, ActionType.END_IF, ActionType.END_REPEAT,
+                ActionType.MENU_CASE, ActionType.END_MENU -> i++
 
                 else -> {
                     val interpolatedAction = interpolateAction(action, variables)
@@ -201,6 +232,44 @@ class FlowInterpreter(
             }
         }
         return actions.size - 1
+    }
+
+    private fun findMatchingEndMenu(actions: List<Action>, menuIndex: Int): Int {
+        var depth = 0
+        for (i in menuIndex until actions.size) {
+            when (actions[i].type) {
+                ActionType.SHOW_MENU -> depth++
+                ActionType.END_MENU -> { depth--; if (depth == 0) return i }
+                else -> {}
+            }
+        }
+        return actions.size - 1
+    }
+
+    private fun findMenuCase(actions: List<Action>, menuIndex: Int, endMenuIndex: Int, choice: String): Int {
+        var depth = 0
+        for (i in menuIndex until endMenuIndex) {
+            when (actions[i].type) {
+                ActionType.SHOW_MENU -> depth++
+                ActionType.END_MENU -> depth--
+                ActionType.MENU_CASE -> if (depth == 1 && actions[i].config["option"] == choice) return i
+                else -> {}
+            }
+        }
+        return -1
+    }
+
+    private fun findNextMenuCaseOrEnd(actions: List<Action>, startIndex: Int, endMenuIndex: Int): Int {
+        var depth = 0
+        for (i in startIndex until endMenuIndex) {
+            when (actions[i].type) {
+                ActionType.SHOW_MENU -> depth++
+                ActionType.END_MENU -> depth--
+                ActionType.MENU_CASE -> if (depth == 0) return i
+                else -> {}
+            }
+        }
+        return endMenuIndex
     }
 
     private fun buildVariableMap(variables: List<Variable>): MutableMap<String, String> =

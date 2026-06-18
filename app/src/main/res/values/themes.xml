@@ -5,4 +5,13 @@
         <!-- Android 12+ 的系統 splash 背景會 fallback 到 windowBackground（單色） -->
         <item name="android:windowBackground">@color/splash_background</item>
     </style>
+
+    <!-- Transparent host for MenuPickerActivity: only the bottom sheet is visible -->
+    <style name="Theme.NexFlow.Transparent" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
 </resources>
