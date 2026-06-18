@@ -28,6 +28,7 @@ import android.os.Process
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -38,6 +39,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -75,7 +77,10 @@ import com.nexflow.ui.flowimport.ImportViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(importVm: ImportViewModel = hiltViewModel()) {
+fun SettingsScreen(
+    onAboutClick: () -> Unit = {},
+    importVm: ImportViewModel = hiltViewModel(),
+) {
     val context = LocalContext.current
     var autoStart by remember { mutableStateOf(AutoStartPrefs.get(context)) }
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
@@ -386,14 +391,12 @@ fun SettingsScreen(importVm: ImportViewModel = hiltViewModel()) {
             item { SectionHeader("About") }
             item {
                 ListItem(
-                    headlineContent = { Text("NexFlow") },
-                    supportingContent = { Text("Version 1.0.0 · Open-source Android automation") },
-                )
-            }
-            item {
-                ListItem(
-                    headlineContent = { Text("Licence") },
-                    supportingContent = { Text("Apache License 2.0") },
+                    headlineContent = { Text("About NexFlow") },
+                    supportingContent = { Text("版本、開發者、授權條款") },
+                    leadingContent = {
+                        Icon(Icons.Outlined.Info, contentDescription = null)
+                    },
+                    modifier = Modifier.clickable { onAboutClick() },
                 )
             }
         }

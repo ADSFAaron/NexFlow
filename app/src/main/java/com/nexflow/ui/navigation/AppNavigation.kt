@@ -45,6 +45,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import com.nexflow.ui.about.AboutScreen
 import com.nexflow.ui.flows.FlowsScreen
 import com.nexflow.ui.flows.detail.FlowDetailScreen
 import com.nexflow.ui.logs.LogsScreen
@@ -75,26 +76,40 @@ fun NexFlowNavHost(navController: NavHostController, modifier: Modifier = Modifi
         startDestination = Screen.Flows.route,
         modifier = modifier,
         enterTransition = {
+            val fromIdx = bottomNavScreens.indexOfFirst { it.route == initialState.destination.route }
+            val toIdx = bottomNavScreens.indexOfFirst { it.route == targetState.destination.route }
+            val isLeftward = fromIdx >= 0 && toIdx >= 0 && toIdx < fromIdx
             slideInHorizontally(
-                initialOffsetX = { it / 4 },
+                initialOffsetX = { if (isLeftward) -it / 4 else it / 4 },
                 animationSpec = spring(stiffness = Spring.StiffnessMedium, dampingRatio = Spring.DampingRatioNoBouncy),
             ) + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMedium))
         },
         exitTransition = {
+            val fromIdx = bottomNavScreens.indexOfFirst { it.route == initialState.destination.route }
+            val toIdx = bottomNavScreens.indexOfFirst { it.route == targetState.destination.route }
+            val isLeftward = fromIdx >= 0 && toIdx >= 0 && toIdx < fromIdx
             slideOutHorizontally(
-                targetOffsetX = { -it / 4 },
+                targetOffsetX = { if (isLeftward) it / 4 else -it / 4 },
                 animationSpec = spring(stiffness = Spring.StiffnessMedium, dampingRatio = Spring.DampingRatioNoBouncy),
             ) + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMedium))
         },
         popEnterTransition = {
+            val fromIdx = bottomNavScreens.indexOfFirst { it.route == initialState.destination.route }
+            val toIdx = bottomNavScreens.indexOfFirst { it.route == targetState.destination.route }
+            val isBottomNav = fromIdx >= 0 && toIdx >= 0
+            val isLeftward = isBottomNav && toIdx < fromIdx
             slideInHorizontally(
-                initialOffsetX = { -it / 4 },
+                initialOffsetX = { if (isBottomNav && !isLeftward) it / 4 else -it / 4 },
                 animationSpec = spring(stiffness = Spring.StiffnessMedium, dampingRatio = Spring.DampingRatioNoBouncy),
             ) + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMedium))
         },
         popExitTransition = {
+            val fromIdx = bottomNavScreens.indexOfFirst { it.route == initialState.destination.route }
+            val toIdx = bottomNavScreens.indexOfFirst { it.route == targetState.destination.route }
+            val isBottomNav = fromIdx >= 0 && toIdx >= 0
+            val isLeftward = isBottomNav && toIdx < fromIdx
             slideOutHorizontally(
-                targetOffsetX = { it / 4 },
+                targetOffsetX = { if (isBottomNav && !isLeftward) -it / 4 else it / 4 },
                 animationSpec = spring(stiffness = Spring.StiffnessMedium, dampingRatio = Spring.DampingRatioNoBouncy),
             ) + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMedium))
         },
@@ -112,9 +127,14 @@ fun NexFlowNavHost(navController: NavHostController, modifier: Modifier = Modifi
             )
         }
         composable(Screen.Logs.route) { LogsScreen() }
-        composable(Screen.Settings.route) { SettingsScreen() }
+        composable(Screen.Settings.route) {
+            SettingsScreen(onAboutClick = { navController.navigate("about") })
+        }
         composable("flows/{flowId}") {
             FlowDetailScreen(onBack = { navController.popBackStack() })
+        }
+        composable("about") {
+            AboutScreen(onBack = { navController.popBackStack() })
         }
     }
 }
