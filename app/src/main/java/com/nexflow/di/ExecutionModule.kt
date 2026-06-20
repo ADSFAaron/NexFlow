@@ -20,7 +20,6 @@ import com.nexflow.core.automation.trigger.TriggerHandler
 import com.nexflow.executor.AirplaneModeActionExecutor
 import com.nexflow.executor.BluetoothActionExecutor
 import com.nexflow.executor.BrightnessActionExecutor
-import com.nexflow.executor.CallPhoneActionExecutor
 import com.nexflow.executor.ClipboardActionExecutor
 import com.nexflow.executor.DelayActionExecutor
 import com.nexflow.executor.DndActionExecutor
@@ -31,7 +30,6 @@ import com.nexflow.executor.NotificationActionExecutor
 import com.nexflow.executor.OpenAppActionExecutor
 import com.nexflow.executor.OpenUrlActionExecutor
 import com.nexflow.executor.ScreenshotActionExecutor
-import com.nexflow.executor.SendSmsActionExecutor
 import com.nexflow.executor.ShareActionExecutor
 import com.nexflow.executor.ToastActionExecutor
 import com.nexflow.executor.TtsActionExecutor
@@ -44,12 +42,10 @@ import com.nexflow.trigger.BluetoothTriggerHandler
 import com.nexflow.trigger.BootTriggerHandler
 import com.nexflow.trigger.GeofenceTriggerHandler
 import com.nexflow.trigger.HeadsetTriggerHandler
-import com.nexflow.trigger.IncomingCallTriggerHandler
 import com.nexflow.trigger.ManualTriggerHandler
 import com.nexflow.trigger.NfcTagTriggerHandler
 import com.nexflow.trigger.NotificationTriggerHandler
 import com.nexflow.trigger.ScreenTriggerHandler
-import com.nexflow.trigger.SmsReceivedTriggerHandler
 import com.nexflow.trigger.TimeTriggerHandler
 import com.nexflow.trigger.WifiTriggerHandler
 import dagger.Binds
@@ -60,6 +56,7 @@ import dagger.hilt.components.SingletonComponent
 import dagger.multibindings.IntoSet
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.kotlinx.json.json
 import javax.inject.Singleton
@@ -94,11 +91,7 @@ abstract class ExecutionModule {
     @Binds @IntoSet
     abstract fun bindAppLaunchTrigger(impl: AppLaunchTriggerHandler): TriggerHandler
 
-    @Binds @IntoSet
-    abstract fun bindIncomingCallTrigger(impl: IncomingCallTriggerHandler): TriggerHandler
-
-    @Binds @IntoSet
-    abstract fun bindSmsReceivedTrigger(impl: SmsReceivedTriggerHandler): TriggerHandler
+    // IncomingCall + SmsReceived trigger bindings live in the `github` flavor (TelephonyModule).
 
     @Binds @IntoSet
     abstract fun bindNotificationTrigger(impl: NotificationTriggerHandler): TriggerHandler
@@ -162,11 +155,7 @@ abstract class ExecutionModule {
     @Binds @IntoSet
     abstract fun bindScreenshot(impl: ScreenshotActionExecutor): ActionExecutor
 
-    @Binds @IntoSet
-    abstract fun bindSendSms(impl: SendSmsActionExecutor): ActionExecutor
-
-    @Binds @IntoSet
-    abstract fun bindCallPhone(impl: CallPhoneActionExecutor): ActionExecutor
+    // SendSms + CallPhone action bindings live in the `github` flavor (TelephonyModule).
 
     @Binds @IntoSet
     abstract fun bindWriteFile(impl: WriteFileActionExecutor): ActionExecutor
@@ -182,6 +171,13 @@ abstract class ExecutionModule {
         @Singleton
         fun provideHttpClient(): HttpClient = HttpClient(Android) {
             install(ContentNegotiation) { json() }
+            // Without timeouts a hung request blocks the executor coroutine (and the
+            // foreground service) indefinitely. Bound every HTTP action.
+            install(HttpTimeout) {
+                connectTimeoutMillis = 15_000
+                requestTimeoutMillis = 30_000
+                socketTimeoutMillis = 30_000
+            }
         }
     }
 }

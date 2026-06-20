@@ -40,6 +40,12 @@ class WriteFileActionExecutor @Inject constructor(
             ?: return ActionResult.Failure("Write file: no path configured")
         val content = action.config["content"] ?: ""
 
+        // Security: reject path-traversal segments. Combined with flow import, an unsanitised
+        // path could otherwise escape its intended directory and overwrite app-private files.
+        if (path.split('/').any { it == ".." }) {
+            return ActionResult.Failure("Write file: path must not contain '..'")
+        }
+
         return withContext(Dispatchers.IO) {
             runCatching {
                 if (path.startsWith("/storage/emulated/0/") || path.startsWith("/sdcard/")) {

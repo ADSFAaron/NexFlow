@@ -8,9 +8,10 @@
     <!-- Notifications (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <!-- Foreground service -->
+    <!-- Foreground service. specialUse (not dataSync): NexFlow runs a persistent automation
+         engine; dataSync has a 6h/day cap on Android 15 that would silently kill automation. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <!-- Boot trigger -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -48,15 +49,10 @@
     <!-- Background location required for geofence on Android 10+ -->
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
-    <!-- SMS trigger + action -->
-    <uses-permission android:name="android.permission.RECEIVE_SMS" />
-    <uses-permission android:name="android.permission.SEND_SMS" />
-
-    <!-- Incoming call trigger -->
-    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
-
-    <!-- Call phone action -->
-    <uses-permission android:name="android.permission.CALL_PHONE" />
+    <!-- SMS (RECEIVE/SEND), READ_PHONE_STATE and CALL_PHONE are declared only in the
+         `github` flavor (src/github/AndroidManifest.xml). The Play Store flavor ships
+         without them because Google Play restricts SMS/Call permissions to default
+         handler apps. -->
 
     <!-- Query all installed apps for AppPicker + APP_LAUNCH trigger -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
@@ -112,7 +108,11 @@
         <service
             android:name=".service.FlowExecutionService"
             android:exported="false"
-            android:foregroundServiceType="dataSync" />
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="task_automation" />
+        </service>
 
         <!-- Auto-start after device boot -->
         <receiver
@@ -186,24 +186,8 @@
                 android:resource="@xml/nexflow_accessibility_config" />
         </service>
 
-        <!-- SMS trigger receiver — exempt from background start restrictions -->
-        <receiver
-            android:name=".receiver.SmsReceiver"
-            android:exported="false"
-            android:permission="android.permission.BROADCAST_SMS">
-            <intent-filter android:priority="999">
-                <action android:name="android.provider.Telephony.SMS_RECEIVED" />
-            </intent-filter>
-        </receiver>
-
-        <!-- Incoming call trigger receiver -->
-        <receiver
-            android:name=".receiver.PhoneStateReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.intent.action.PHONE_STATE" />
-            </intent-filter>
-        </receiver>
+        <!-- SmsReceiver and PhoneStateReceiver are declared only in the `github` flavor
+             (src/github/AndroidManifest.xml). -->
 
         <!-- Geofence transition receiver (woken by Google Play Services) -->
         <receiver

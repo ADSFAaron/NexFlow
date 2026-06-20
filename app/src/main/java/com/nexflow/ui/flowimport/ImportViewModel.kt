@@ -120,7 +120,10 @@ private fun FlowJson.toDomain(): AutomationFlow {
         icon = icon,
         iconColor = iconColor,
         tags = tags,
-        enabled = enabled,
+        // Security: never trust the `enabled` flag from an imported file. An attacker could
+        // craft a flow that is enabled-on-import and auto-runs SMS/HTTP/file actions the moment
+        // the JSON is opened. Imported flows are always disabled until the user enables them.
+        enabled = false,
         createdAt = createdAt.toEpochMs(),
         updatedAt = now,
         triggers = triggers.map { tj ->

@@ -154,6 +154,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.nexflow.core.automation.model.Action
+import com.nexflow.FlavorFeatures
 import com.nexflow.core.automation.model.ActionType
 import com.nexflow.core.automation.model.Trigger
 import com.nexflow.core.automation.model.TriggerLogic
@@ -476,6 +477,7 @@ fun FlowDetailScreen(
         SearchPickerSheet(
             entries = remember(alreadyHasManual) {
                 TriggerType.entries
+                    .filter { it !in FlavorFeatures.hiddenTriggerTypes }
                     .filter { !(it == TriggerType.MANUAL && alreadyHasManual) }
                     .map {
                         val ti = it.info
@@ -499,10 +501,12 @@ fun FlowDetailScreen(
     if (showActionPicker) {
         SearchPickerSheet(
             entries = remember {
-                ActionType.entries.map {
-                    val ai = it.info
-                    PickerEntry(it, ai.label, ai.icon, ai.description, it.category.label, it.category.ordinal)
-                }
+                ActionType.entries
+                    .filter { it !in FlavorFeatures.hiddenActionTypes }
+                    .map {
+                        val ai = it.info
+                        PickerEntry(it, ai.label, ai.icon, ai.description, it.category.label, it.category.ordinal)
+                    }
             },
             searchPlaceholder = "Search actions",
             onSelect = { type ->

@@ -1,6 +1,44 @@
+<div align="center">
+
+<img src="appicon.png" width="120" alt="NexFlow logo" />
+
 # NexFlow
 
-開源的 Android 自動化 App（類似 MacroDroid / Tasker）：用「觸發條件（WHEN）→ 動作（THEN）」組合出自動化流程（Flow），支援變數、條件分支與迴圈，並可匯入 MacroDroid 的 `.mdr` 檔。
+**把手機變聰明的開源自動化 App** — 用「**當…（WHEN）→ 就…（THEN）**」組合出屬於你的自動化流程。
+類似 MacroDroid / Tasker，但完全開源、介面以 Material 3 重新打造。
+
+[![Platform](https://img.shields.io/badge/Platform-Android-3DDC84?logo=android&logoColor=white)](https://www.android.com)
+![minSdk](https://img.shields.io/badge/minSdk-30%20(Android%2011)-blue)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.2-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org)
+[![Compose](https://img.shields.io/badge/Jetpack%20Compose-Material%203-4285F4?logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
+[![License](https://img.shields.io/badge/License-Apache%202.0-D22128)](#授權)
+
+</div>
+
+---
+
+## 📸 畫面預覽
+
+| 我的流程 | 流程編輯（WHEN → THEN） | 動作選擇 |
+|:---:|:---:|:---:|
+| <img src="docs/screenshots/home.png" width="230" alt="我的流程畫面" /> | <img src="docs/screenshots/builder.png" width="230" alt="流程編輯畫面" /> | <img src="docs/screenshots/picker.png" width="230" alt="動作選擇畫面" /> |
+| 一覽所有流程，一鍵開關／執行 | 組合觸發條件與動作 | 14 種觸發 × 25 種動作，分類搜尋 |
+
+| 執行記錄 | 權限引導 |
+|:---:|:---:|
+| <img src="docs/screenshots/logs.png" width="230" alt="執行記錄畫面" /> | <img src="docs/screenshots/settings.png" width="230" alt="設定與權限畫面" /> |
+| 每次執行的成功／失敗與清楚的錯誤原因 | 各功能所需權限逐項引導開啟 |
+
+## ✨ 它能做什麼？
+
+- 🔋 **電量低於 20% 就自動開省電模式、關藍牙**
+- 🏠 **回到家連上 Wi-Fi 就把音量調回、開勿擾**
+- 🌙 **晚上 11 點自動截圖記帳通知、傳到你的伺服器**
+- 📷 **NFC 標籤一刷就開特定 App + 朗讀今日行程**
+
+只要想得到「**什麼情況下 → 做什麼事**」，幾乎都能組出來，還支援**變數、條件分支（If/Else）、迴圈（Repeat）**，以及匯入 MacroDroid 的 `.mdr` 檔。
+
+---
 
 ## 功能總覽
 
@@ -23,7 +61,9 @@
 | 通訊 | 撥打電話、傳送簡訊 |
 | 網路與資料 | HTTP 請求、開啟網址、剪貼簿、寫入檔案、分享 |
 | App | 開啟 App |
-| 流程控制 | 延遲、If／Else／End If、Repeat／End Repeat、設定變數 |
+| 流程控制 | 延遲、If／Else／End If、Repeat／End Repeat、設定變數、Show Menu |
+
+> 💡 **通訊類（簡訊／撥號）僅在 `github` 版提供**。Google Play 版（`play` flavor）依平台政策移除這些功能與權限，見[建置](#建置)。
 
 ### 變數與條件式
 
@@ -36,6 +76,9 @@
 - 自有格式：`.flow`（JSON），規格見 [docs/FLOW_SCHEMA.md](docs/FLOW_SCHEMA.md)
 - MacroDroid 相容：可解析並轉換 `.mdr` 匯出檔（`core/macrodroid-compat`）
 - 支援檔案選擇器匯入、系統分享（Share）匯入、Flow 詳細頁直接匯出分享
+- 🔒 匯入的流程一律以**停用**狀態加入，外部分享的檔案會先跳確認框，避免惡意檔案自動執行
+
+---
 
 ## 技術棧
 
@@ -63,14 +106,27 @@ core/macrodroid-compat/     # 純 Kotlin JVM：MacroDroid .mdr 解析與轉換
 - **Trigger 系統**：`TriggerHandler` 介面 + Hilt multibinding（`@Binds @IntoSet`，註冊於 `app/.../di/ExecutionModule.kt`）。Android 元件（AccessibilityService、NotificationListener、BroadcastReceiver…）透過 singleton EventSource（`MutableSharedFlow`）橋接到 handler
 - **Action 系統**：`ActionExecutor` 介面 + 同樣的 multibinding。控制流程動作（IF/REPEAT/SET_VARIABLE）由 `FlowInterpreter` 直接處理，不需要 executor
 - **執行引擎**：`FlowEngine` 觀察啟用中的 Flow，把每個 (flow, trigger) 配對成事件串流，觸發時交給 `FlowInterpreter` 執行並寫入執行記錄
-- **新增型別時**：在 `TriggerType`/`ActionType` 加 enum → 實作 handler/executor → `ExecutionModule` 加綁定 → `TriggerConfig`/`ActionConfig` 加 UI 欄位定義。少做任何一步都會被自動化測試抓到（見下方）
+- **新增型別時**：在 `TriggerType`/`ActionType` 加 enum → 實作 handler/executor → `ExecutionModule` 加綁定 → `TriggerConfig`/`ActionConfig` 加 UI 欄位定義。少做任何一步都會被自動化測試抓到（見[測試](#測試)）
 
 ## 建置
 
 ```bash
 git clone <repo>
 cd StudioProject
-./gradlew :app:assembleDebug      # 產出 app/build/outputs/apk/debug/
+```
+
+專案有兩個 **product flavor**：
+
+| Flavor | 用途 | 簡訊／撥號 |
+|--------|------|:---:|
+| `github` | sideload / GitHub Release，功能完整 | ✅ |
+| `play` | 上架 Google Play（依政策移除簡訊／撥號權限與程式碼） | ❌ |
+
+```bash
+./gradlew :app:assembleGithubDebug    # 完整版 debug APK
+./gradlew :app:assemblePlayDebug      # Play 版 debug APK
+./gradlew :app:bundleGithubRelease    # 完整版 release AAB
+./gradlew :app:bundlePlayRelease      # Play 版 release AAB（上架用）
 ```
 
 需求：JDK 17+（Gradle toolchain 會自動處理 module 的 JVM 11 目標）、Android SDK Platform 37。
@@ -80,9 +136,11 @@ cd StudioProject
 ### JVM 單元測試（不需裝置）
 
 ```bash
-./gradlew :core:automation:test        # FlowInterpreter：條件式、IF/ELSE、REPEAT、變數
-./gradlew :app:testDebugUnitTest       # 設定 UI 的全型別覆蓋與 interpreter key 契約
+./gradlew :core:automation:test            # FlowInterpreter：條件式、IF/ELSE、REPEAT、變數
+./gradlew :app:testGithubDebugUnitTest     # 設定 UI 的全型別覆蓋與 interpreter key 契約
 ```
+
+> 因為有 flavor，單元測試任務需帶 flavor 名：`testGithubDebugUnitTest` 或 `testPlayDebugUnitTest`。
 
 涵蓋內容：
 
@@ -99,16 +157,16 @@ adb shell settings put global transition_animation_scale 0
 adb shell settings put global animator_duration_scale 0
 ```
 
-執行：
+執行（同樣需帶 flavor）：
 
 ```bash
-./gradlew :app:connectedDebugAndroidTest
+./gradlew :app:connectedGithubDebugAndroidTest
 ```
 
 涵蓋內容：
 
-- `ExecutionBindingsTest` — 從真實 Hilt graph 驗證每個 TriggerType 都有 TriggerHandler、每個可執行 ActionType 都有 ActionExecutor 且無重複綁定（抓「忘了在 ExecutionModule 註冊」這類只會在執行期爆炸的錯）
-- `ConfigDialogRenderTest` — 在裝置上實際 render 全部 39 種 trigger/action 的設定對話框，驗證每個欄位元件都有顯示，並測試輸入值能正確存進 config
+- `ExecutionBindingsTest` — 從真實 Hilt graph 驗證每個 TriggerType 都有 TriggerHandler、每個可執行 ActionType 都有 ActionExecutor 且無重複綁定（flavor 隱藏的型別會自動排除），抓「忘了在 ExecutionModule 註冊」這類只會在執行期爆炸的錯
+- `ConfigDialogRenderTest` — 在裝置上實際 render 全部 trigger/action 的設定對話框，驗證每個欄位元件都有顯示，並測試輸入值能正確存進 config
 
 instrumented 測試使用 `com.nexflow.HiltTestRunner`（HiltTestApplication）；新增 Hilt 相關測試標上 `@HiltAndroidTest` 即可。
 

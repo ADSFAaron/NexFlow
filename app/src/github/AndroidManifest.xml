@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  github-flavor-only additions. These SMS / phone-call permissions and receivers are
+  intentionally absent from the Play Store flavor: Google Play restricts SMS/Call
+  permissions to apps registered as the default SMS/Phone handler, which an automation
+  app is not. Merged on top of src/main/AndroidManifest.xml for the `github` flavor.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- SMS trigger + action -->
+    <uses-permission android:name="android.permission.RECEIVE_SMS" />
+    <uses-permission android:name="android.permission.SEND_SMS" />
+
+    <!-- Incoming call trigger -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+
+    <!-- Call phone action -->
+    <uses-permission android:name="android.permission.CALL_PHONE" />
+
+    <application>
+
+        <!-- SMS trigger receiver — exempt from background start restrictions -->
+        <receiver
+            android:name=".receiver.SmsReceiver"
+            android:exported="false"
+            android:permission="android.permission.BROADCAST_SMS">
+            <intent-filter android:priority="999">
+                <action android:name="android.provider.Telephony.SMS_RECEIVED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Incoming call trigger receiver -->
+        <receiver
+            android:name=".receiver.PhoneStateReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.PHONE_STATE" />
+            </intent-filter>
+        </receiver>
+
+    </application>
+
+</manifest>

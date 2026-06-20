@@ -150,11 +150,38 @@ fun FlowsScreen(
         importVm.importAuto(content)
     }
 
+    // Content arriving from an external app (shared JSON / opened .flow file) must NOT be
+    // imported silently — a malicious file could otherwise install a flow without the user's
+    // knowledge. Hold it and require explicit confirmation. (Imported flows are also always
+    // created disabled; see ImportViewModel.)
+    var pendingExternalImport by remember { mutableStateOf<String?>(null) }
     val pendingImport by ImportEventSource.pendingContent.collectAsState()
     LaunchedEffect(pendingImport) {
         val content = pendingImport ?: return@LaunchedEffect
-        importVm.importAuto(content)
+        pendingExternalImport = content
         ImportEventSource.clear()
+    }
+
+    pendingExternalImport?.let { content ->
+        AlertDialog(
+            onDismissRequest = { pendingExternalImport = null },
+            title = { Text("Import flow?") },
+            text = {
+                Text(
+                    "Another app sent a flow to NexFlow. Only import flows from sources you " +
+                        "trust. The imported flow will be added disabled — review it before enabling.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    importVm.importAuto(content)
+                    pendingExternalImport = null
+                }) { Text("Import") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingExternalImport = null }) { Text("Cancel") }
+            },
+        )
     }
 
     LaunchedEffect(vm) {

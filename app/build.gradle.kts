@@ -21,6 +21,19 @@ android {
         testInstrumentationRunner = "com.nexflow.HiltTestRunner"
     }
 
+    flavorDimensions += "distribution"
+    productFlavors {
+        // Full build for GitHub Releases / sideload — keeps SMS & phone-call features.
+        create("github") {
+            dimension = "distribution"
+        }
+        // Google Play build — SMS/Call permissions and code are excluded (Play restricts
+        // SMS/Call permissions to default handler apps). See src/github vs src/play.
+        create("play") {
+            dimension = "distribution"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true

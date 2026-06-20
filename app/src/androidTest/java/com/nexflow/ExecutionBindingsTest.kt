@@ -50,6 +50,8 @@ class ExecutionBindingsTest {
     private val interpreterHandled = setOf(
         ActionType.IF_BLOCK, ActionType.ELSE_BLOCK, ActionType.END_IF,
         ActionType.REPEAT_BLOCK, ActionType.END_REPEAT, ActionType.SET_VARIABLE,
+        // SHOW_MENU has an executor; MENU_CASE/END_MENU are control-flow markers (FlowInterpreter).
+        ActionType.MENU_CASE, ActionType.END_MENU,
     )
 
     @Before
@@ -64,7 +66,9 @@ class ExecutionBindingsTest {
             "Duplicate trigger handlers for: ${supported.groupBy { it }.filterValues { it.size > 1 }.keys}",
             supported.size, supported.toSet().size,
         )
-        val missing = TriggerType.entries.filter { it !in supported.toSet() }
+        val missing = TriggerType.entries
+            .filter { it !in FlavorFeatures.hiddenTriggerTypes } // SMS/Call absent in play flavor
+            .filter { it !in supported.toSet() }
         assertTrue("Trigger types without a handler: $missing", missing.isEmpty())
     }
 
@@ -77,6 +81,7 @@ class ExecutionBindingsTest {
         )
         val missing = ActionType.entries
             .filter { it !in interpreterHandled }
+            .filter { it !in FlavorFeatures.hiddenActionTypes } // SMS/Call absent in play flavor
             .filter { it !in supported.toSet() }
         assertTrue("Action types without an executor: $missing", missing.isEmpty())
     }

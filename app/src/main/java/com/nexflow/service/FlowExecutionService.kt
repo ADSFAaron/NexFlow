@@ -124,7 +124,15 @@ class FlowExecutionService : Service() {
         val running: StateFlow<Boolean> = _running.asStateFlow()
 
         fun start(context: Context) {
-            context.startForegroundService(Intent(context, FlowExecutionService::class.java))
+            // On Android 12+ a foreground service cannot always be started from the background
+            // (e.g. from a BOOT_COMPLETED receiver). When that happens the system throws
+            // ForegroundServiceStartNotAllowedException; swallow it so we never crash. The
+            // service will start instead the next time the user opens the app.
+            try {
+                context.startForegroundService(Intent(context, FlowExecutionService::class.java))
+            } catch (e: Exception) {
+                android.util.Log.w("FlowExecutionService", "Could not start foreground service from background", e)
+            }
         }
 
         fun stop(context: Context) {
