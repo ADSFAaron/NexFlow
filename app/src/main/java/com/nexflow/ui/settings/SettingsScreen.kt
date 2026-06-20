@@ -37,8 +37,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Autorenew
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Warning
@@ -48,7 +51,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -63,6 +68,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import com.nexflow.prefs.LogRetentionOption
+import com.nexflow.prefs.LogRetentionPrefs
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -83,6 +90,8 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     var autoStart by remember { mutableStateOf(AutoStartPrefs.get(context)) }
+    var logRetention by remember { mutableStateOf(LogRetentionPrefs.get(context)) }
+    var showLogRetentionDialog by remember { mutableStateOf(false) }
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     val notifGranted = remember {
@@ -129,6 +138,23 @@ fun SettingsScreen(
         )?.contains(context.packageName) ?: false
     }
 
+    val notifListenerGranted = remember {
+        mutableStateOf(
+            Settings.Secure.getString(
+                context.contentResolver,
+                "enabled_notification_listeners",
+            )?.contains(context.packageName) ?: false,
+        )
+    }
+    val notifListenerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) {
+        notifListenerGranted.value = Settings.Secure.getString(
+            context.contentResolver,
+            "enabled_notification_listeners",
+        )?.contains(context.packageName) ?: false
+    }
+
     val hasWriteSecure = remember {
         context.checkPermission(
             "android.permission.WRITE_SECURE_SETTINGS",
@@ -147,6 +173,51 @@ fun SettingsScreen(
         val content = context.contentResolver.openInputStream(uri)
             ?.bufferedReader()?.use { it.readText() } ?: return@rememberLauncherForActivityResult
         importVm.importAuto(content)
+    }
+
+    if (showLogRetentionDialog) {
+        ModalBottomSheet(
+            onDismissRequest = { showLogRetentionDialog = false },
+        ) {
+            Text(
+                text = "Log retention",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 8.dp),
+            )
+            Text(
+                text = "每週自動清理一次",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 16.dp),
+            )
+            LogRetentionOption.entries.forEach { option ->
+                ListItem(
+                    headlineContent = { Text(option.displayName) },
+                    supportingContent = {
+                        Text(
+                            text = option.detail,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                    leadingContent = {
+                        RadioButton(
+                            selected = logRetention == option,
+                            onClick = {
+                                logRetention = option
+                                LogRetentionPrefs.set(context, option)
+                                showLogRetentionDialog = false
+                            },
+                        )
+                    },
+                    modifier = Modifier.clickable {
+                        logRetention = option
+                        LogRetentionPrefs.set(context, option)
+                        showLogRetentionDialog = false
+                    },
+                )
+            }
+            Spacer(Modifier.height(16.dp))
+        }
     }
 
     Scaffold(
@@ -189,11 +260,42 @@ fun SettingsScreen(
 
             item {
                 ListItem(
+                    headlineContent = { Text("Notification access") },
+                    supportingContent = {
+                        Text(
+                            if (notifListenerGranted.value) "Granted — notification trigger active"
+                            else "Required for Notification received trigger",
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            if (notifListenerGranted.value) Icons.Outlined.CheckCircle else Icons.Outlined.Warning,
+                            contentDescription = null,
+                            tint = if (notifListenerGranted.value) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.error,
+                        )
+                    },
+                    trailingContent = {
+                        if (!notifListenerGranted.value) {
+                            OutlinedButton(
+                                onClick = {
+                                    notifListenerLauncher.launch(
+                                        Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"),
+                                    )
+                                },
+                            ) { Text("Enable") }
+                        }
+                    },
+                )
+            }
+
+            item {
+                ListItem(
                     headlineContent = { Text("Accessibility Service") },
                     supportingContent = {
                         Text(
-                            if (accessibilityGranted.value) "Granted — screenshot action available"
-                            else "Required for Screenshot actions",
+                            if (accessibilityGranted.value) "Granted — app launch trigger & screenshot active"
+                            else "Required for App Launch trigger & Screenshot actions",
                         )
                     },
                     leadingContent = {
@@ -350,6 +452,9 @@ fun SettingsScreen(
                 ListItem(
                     headlineContent = { Text("Import flow") },
                     supportingContent = { Text("Pick a NexFlow JSON or MacroDroid .mdr file") },
+                    leadingContent = {
+                        Icon(Icons.Outlined.FileDownload, contentDescription = null)
+                    },
                     trailingContent = {
                         OutlinedButton(onClick = { filePicker.launch(arrayOf("*/*")) }) {
                             Text("Import")
@@ -366,6 +471,9 @@ fun SettingsScreen(
                 ListItem(
                     headlineContent = { Text("Auto-start on boot") },
                     supportingContent = { Text("Resume enabled flows when device starts") },
+                    leadingContent = {
+                        Icon(Icons.Outlined.Autorenew, contentDescription = null)
+                    },
                     trailingContent = {
                         Switch(
                             checked = autoStart,
@@ -381,7 +489,11 @@ fun SettingsScreen(
             item {
                 ListItem(
                     headlineContent = { Text("Log retention") },
-                    supportingContent = { Text("Keep the last 200 execution logs · pruned weekly") },
+                    supportingContent = { Text("${logRetention.displayName} — ${logRetention.detail}") },
+                    leadingContent = {
+                        Icon(Icons.Outlined.History, contentDescription = null)
+                    },
+                    modifier = Modifier.clickable { showLogRetentionDialog = true },
                 )
             }
 

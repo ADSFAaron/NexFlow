@@ -23,6 +23,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.nexflow.core.automation.repository.FlowRepository
+import com.nexflow.prefs.LogRetentionPrefs
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import java.util.concurrent.TimeUnit
@@ -35,8 +36,9 @@ class LogPrunerWorker @AssistedInject constructor(
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        val thirtyDaysAgo = System.currentTimeMillis() - 30L * 24 * 60 * 60 * 1_000
-        repository.deleteOldLogs(keepCount = 200, olderThanMs = thirtyDaysAgo)
+        val option = LogRetentionPrefs.get(applicationContext)
+        val cutoff = System.currentTimeMillis() - option.days.toLong() * 24 * 60 * 60 * 1_000
+        repository.deleteOldLogs(keepCount = option.maxCount, olderThanMs = cutoff)
         return Result.success()
     }
 

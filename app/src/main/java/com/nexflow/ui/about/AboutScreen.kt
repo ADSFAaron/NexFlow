@@ -33,7 +33,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Code
-import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ElevatedCard
@@ -181,10 +180,10 @@ fun AboutScreen(onBack: () -> Unit) {
                                 color = MaterialTheme.colorScheme.primaryContainer,
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        Icons.Outlined.Person,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    Text(
+                                        text = "A",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                                     )
                                 }
                             }
