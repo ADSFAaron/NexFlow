@@ -103,7 +103,7 @@ class NexFlowWidget : GlanceAppWidget() {
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            text = "尚無執行記錄",
+                            text = context.getString(R.string.widget_no_runs),
                             style = TextStyle(color = GlanceTheme.colors.onBackground, fontSize = 12.sp),
                         )
                     }

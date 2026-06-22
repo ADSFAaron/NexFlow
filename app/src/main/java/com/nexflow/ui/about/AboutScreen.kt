@@ -56,8 +56,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
+import com.nexflow.R
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -89,10 +91,10 @@ fun AboutScreen(onBack: () -> Unit) {
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeTopAppBar(
-                title = { Text("關於") },
+                title = { Text(stringResource(R.string.about_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
                 scrollBehavior = scrollBehavior,
@@ -163,7 +165,7 @@ fun AboutScreen(onBack: () -> Unit) {
             }
 
             // Developer section
-            item { AboutSectionHeader("開發者") }
+            item { AboutSectionHeader(stringResource(R.string.about_developer)) }
             item {
                 ElevatedCard(
                     modifier = Modifier
@@ -172,7 +174,7 @@ fun AboutScreen(onBack: () -> Unit) {
                 ) {
                     ListItem(
                         headlineContent = { Text("ADSFAaron") },
-                        supportingContent = { Text("開發") },
+                        supportingContent = { Text(stringResource(R.string.about_dev_role)) },
                         leadingContent = {
                             Surface(
                                 modifier = Modifier.size(40.dp),
@@ -193,7 +195,7 @@ fun AboutScreen(onBack: () -> Unit) {
             }
 
             // Legal section
-            item { AboutSectionHeader("Legal") }
+            item { AboutSectionHeader(stringResource(R.string.about_legal)) }
             item {
                 ElevatedCard(
                     modifier = Modifier
@@ -202,7 +204,7 @@ fun AboutScreen(onBack: () -> Unit) {
                         .padding(bottom = 16.dp),
                 ) {
                     ListItem(
-                        headlineContent = { Text("服務條款") },
+                        headlineContent = { Text(stringResource(R.string.about_terms)) },
                         trailingContent = {
                             Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = null)
                         },
@@ -217,7 +219,7 @@ fun AboutScreen(onBack: () -> Unit) {
                     )
                     HorizontalDivider()
                     ListItem(
-                        headlineContent = { Text("隱私權政策") },
+                        headlineContent = { Text(stringResource(R.string.about_privacy)) },
                         trailingContent = {
                             Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = null)
                         },

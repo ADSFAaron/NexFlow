@@ -1,0 +1,423 @@
+<resources>
+    <string name="accessibility_service_description">NexFlow 會在流程動作要求時使用無障礙服務擷取螢幕截圖，不會監聽任何無障礙事件。</string>
+
+    <!-- Widgets -->
+    <string name="widget_overview_description">顯示近期流程以便快速啟動</string>
+    <string name="widget_single_description">單一流程快速啟動捷徑</string>
+    <string name="widget_wide_description">寬版單一流程快速啟動捷徑</string>
+    <string name="widget_not_configured">點此選擇流程</string>
+    <string name="widget_configure_title">選擇流程</string>
+    <string name="widget_no_flows">尚無流程 — 請先在 App 內建立</string>
+    <string name="widget_no_runs">尚無執行記錄</string>
+
+    <!-- Foreground service / tile -->
+    <string name="service_notification_text">自動化執行中</string>
+    <string name="action_stop">停止</string>
+    <string name="tile_run_flow">執行 %1$s</string>
+
+    <!-- Bottom navigation -->
+    <string name="nav_flows">流程</string>
+    <string name="nav_logs">日誌</string>
+    <string name="nav_settings">設定</string>
+
+    <!-- Common -->
+    <string name="action_ok">確定</string>
+    <string name="action_cancel">取消</string>
+    <string name="action_back">返回</string>
+    <string name="action_grant">授予</string>
+    <string name="action_enable">啟用</string>
+    <string name="action_save">儲存</string>
+    <string name="action_edit">編輯</string>
+    <string name="action_delete">刪除</string>
+    <string name="field_name">名稱</string>
+    <string name="field_description_optional">說明（選填）</string>
+
+    <!-- Days of week (short) -->
+    <string name="day_mon">週一</string>
+    <string name="day_tue">週二</string>
+    <string name="day_wed">週三</string>
+    <string name="day_thu">週四</string>
+    <string name="day_fri">週五</string>
+    <string name="day_sat">週六</string>
+    <string name="day_sun">週日</string>
+
+    <!-- Flow detail -->
+    <string name="fd_change_icon">變更圖示</string>
+    <string name="fd_edit_flow">編輯流程</string>
+    <string name="fd_flow_started">流程已啟動</string>
+    <string name="fd_flow_stopped">流程已停止</string>
+    <string name="fd_export_flow">匯出流程</string>
+    <string name="fd_export">匯出</string>
+    <string name="fd_section_when">觸發</string>
+    <string name="fd_section_then">動作</string>
+    <string name="fd_section_variables">變數</string>
+    <string name="fd_no_triggers">尚無觸發器，請在下方新增。</string>
+    <string name="fd_no_actions">尚無動作，請在下方新增。</string>
+    <string name="fd_no_variables">尚無變數。定義預設值後可在任何欄位以 {{name}} 使用。</string>
+    <string name="fd_empty_value">（空白）</string>
+    <string name="fd_add_trigger">新增觸發器</string>
+    <string name="fd_add_action">新增動作</string>
+    <string name="fd_add_variable">新增變數</string>
+    <string name="fd_search_triggers">搜尋觸發器</string>
+    <string name="fd_search_actions">搜尋動作</string>
+    <string name="fd_run_flow">執行流程</string>
+    <string name="fd_stop_flow">停止流程</string>
+    <string name="fd_enable_flow">啟用流程</string>
+    <string name="fd_disable_flow">停用流程</string>
+    <string name="fd_enabled">已啟用</string>
+    <string name="fd_disabled">已停用</string>
+    <string name="fd_logic_any">任一</string>
+    <string name="fd_logic_all">全部</string>
+    <string name="fd_reorder">重新排序</string>
+    <string name="fd_clear_search">清除搜尋</string>
+    <string name="fd_nothing_matches">找不到符合「%1$s」的項目</string>
+    <string name="fd_no_config_needed">此類型不需要設定。</string>
+    <string name="fd_switch_to_dial">切換為撥盤</string>
+    <string name="fd_switch_to_keyboard">切換為鍵盤</string>
+    <string name="fd_ssid_blank_hint">留空表示任何網路</string>
+    <string name="fd_use_current_ssid">使用目前：%1$s</string>
+    <string name="fd_tag_blank_hint">留空表示任何標籤</string>
+    <string name="fd_nfc_unavailable">此裝置不支援 NFC</string>
+    <string name="fd_nfc_disabled">NFC 已停用 — 請在裝置設定中開啟</string>
+    <string name="fd_nfc_hold">請將裝置靠近 NFC 標籤…</string>
+    <string name="fd_scan_nfc">掃描 NFC 標籤</string>
+    <string name="fd_rescan_tag">重新掃描標籤</string>
+    <string name="fd_location_denied">位置權限遭拒</string>
+    <string name="fd_location_unavailable">無法取得位置 — 請確認已開啟 GPS 或網路定位</string>
+    <string name="fd_choose_app">選擇應用程式…</string>
+    <string name="fd_remove_option">移除選項</string>
+    <string name="fd_add_option">新增選項</string>
+    <string name="fd_option_n">選項 %1$d</string>
+    <string name="fd_show_menu">顯示選單</string>
+    <string name="fd_prompt_title">提示／標題</string>
+    <string name="fd_menu_title_placeholder">選擇付款方式</string>
+    <string name="fd_menu_options">選單選項</string>
+    <string name="fd_new_variable">新增變數</string>
+    <string name="fd_edit_variable">編輯變數</string>
+    <string name="fd_var_name_taken">已存在相同名稱的變數</string>
+    <string name="fd_var_name_hint">在觸發器與動作欄位中以 {{%1$s}} 使用</string>
+    <string name="fd_default_value">預設值</string>
+    <string name="fd_edit_flow_title">編輯流程</string>
+    <string name="fd_icon">圖示</string>
+    <string name="fd_tap_to_customize">點按以自訂</string>
+
+    <!-- Language picker -->
+    <string name="settings_language">語言</string>
+    <string name="language_system_default">系統預設</string>
+
+    <!-- Settings -->
+    <string name="settings_title">設定</string>
+    <string name="settings_section_general">一般</string>
+    <string name="settings_section_permissions">權限</string>
+    <string name="settings_section_import_export">匯入／匯出</string>
+    <string name="settings_section_automation">自動化</string>
+    <string name="settings_section_about">關於</string>
+    <string name="action_import">匯入</string>
+    <string name="settings_granted">已授予</string>
+    <string name="settings_notifications">通知</string>
+    <string name="settings_notifications_required">通知動作所需</string>
+    <string name="settings_notif_access">通知存取權</string>
+    <string name="settings_notif_access_granted">已授予 — 通知觸發器已啟用</string>
+    <string name="settings_notif_access_required">「收到通知」觸發器所需</string>
+    <string name="settings_accessibility">無障礙服務</string>
+    <string name="settings_accessibility_granted">已授予 — 應用程式啟動觸發器與截圖已啟用</string>
+    <string name="settings_accessibility_required">「應用程式啟動」觸發器與截圖動作所需</string>
+    <string name="settings_write_settings">修改系統設定</string>
+    <string name="settings_write_settings_required">亮度動作所需</string>
+    <string name="settings_dnd">勿擾存取權</string>
+    <string name="settings_dnd_required">勿擾切換動作所需</string>
+    <string name="settings_adb">Wi-Fi 與飛航模式（ADB）</string>
+    <string name="settings_adb_granted">已授予 WRITE_SECURE_SETTINGS — 可靜默切換</string>
+    <string name="settings_adb_required">透過 ADB 執行一次以啟用靜默切換 Wi-Fi／飛航模式：</string>
+    <string name="settings_command_copied">指令已複製到剪貼簿</string>
+    <string name="settings_copy_command">複製指令</string>
+    <string name="settings_import_flow">匯入流程</string>
+    <string name="settings_import_flow_desc">選擇 NexFlow JSON 或 MacroDroid .mdr 檔案</string>
+    <string name="settings_autostart">開機自動啟動</string>
+    <string name="settings_autostart_desc">裝置啟動時恢復已啟用的流程</string>
+    <string name="settings_log_retention">日誌保留</string>
+    <string name="settings_log_retention_desc">每週自動清理一次</string>
+    <string name="settings_about_nexflow">關於 NexFlow</string>
+    <string name="settings_about_desc">版本、開發者、授權條款</string>
+
+    <!-- Flows list -->
+    <string name="flows_title">我的流程</string>
+    <string name="flows_new_flow">新增流程</string>
+    <string name="action_create">建立</string>
+    <string name="action_run">執行</string>
+    <string name="action_later">稍後</string>
+    <string name="flows_close_menu">關閉選單</string>
+    <string name="flows_open_actions">開啟動作</string>
+    <string name="flows_running">執行中：%1$s</string>
+    <string name="flows_import_flow_q">要匯入流程嗎？</string>
+    <string name="flows_import_external_warning">其他應用程式傳送了流程給 NexFlow。請只匯入您信任來源的流程。匯入的流程會以停用狀態加入 — 啟用前請先檢視。</string>
+    <string name="flows_import_failed">匯入失敗</string>
+    <string name="flows_import_complete">匯入完成</string>
+    <string name="flows_bullet">• %1$s</string>
+    <string name="flows_and_more">…還有 %1$d 個</string>
+    <string name="flows_permissions_needed">需要權限</string>
+    <string name="flows_permissions_body">「%1$s」使用了需要尚未授予權限的觸發器或動作：</string>
+    <string name="flows_open_settings">開啟設定</string>
+    <string name="flows_start_service">啟動自動化服務</string>
+    <string name="flows_stop_service">停止自動化服務</string>
+    <string name="flows_service_started">已啟動</string>
+    <string name="flows_service_stopped">已關閉</string>
+    <string name="flows_empty_title">尚無流程</string>
+    <string name="flows_empty_subtitle">點按 + 建立您的第一個自動化</string>
+    <string name="flows_flow_activated">流程已觸發</string>
+    <string name="flows_flow_started">流程已啟動</string>
+
+    <!-- About -->
+    <string name="about_title">關於</string>
+    <string name="about_developer">開發者</string>
+    <string name="about_dev_role">開發</string>
+    <string name="about_legal">法律條款</string>
+    <string name="about_terms">服務條款</string>
+    <string name="about_privacy">隱私權政策</string>
+
+    <!-- Common dialogs -->
+    <string name="icon_selected_color">已選色彩</string>
+    <string name="app_picker_search">搜尋應用程式…</string>
+
+    <!-- Log retention options -->
+    <string name="log_retention_light">輕量</string>
+    <string name="log_retention_standard">標準</string>
+    <string name="log_retention_full">完整</string>
+    <string name="log_retention_extended">延長</string>
+    <string name="log_retention_detail">%1$d 天 · %2$d 筆</string>
+
+    <!-- Logs -->
+    <string name="logs_title">執行日誌</string>
+    <string name="logs_clear_q">清除所有日誌？</string>
+    <string name="logs_clear_body">這會移除所有執行記錄，且無法復原。</string>
+    <string name="action_clear">清除</string>
+    <string name="logs_clear_all">清除所有日誌</string>
+    <string name="logs_empty_title">尚無日誌</string>
+    <string name="logs_empty_subtitle">流程執行記錄會顯示在這裡</string>
+
+    <!-- ===================== Trigger / Action catalog ===================== -->
+    <string name="cat_control_flow">控制流程</string>
+    <string name="cat_connectivity">連線</string>
+    <string name="cat_device">裝置</string>
+    <string name="cat_communication">通訊</string>
+    <string name="cat_alerts">提醒</string>
+    <string name="cat_web">網路</string>
+    <string name="cat_apps_media">應用程式與媒體</string>
+    <string name="cat_files_data">檔案與資料</string>
+    <string name="cat_manual">手動</string>
+    <string name="cat_time">時間</string>
+    <string name="cat_device_state">裝置狀態</string>
+    <string name="cat_apps">應用程式</string>
+    <string name="cat_location">位置</string>
+
+    <string name="act_toast_label">快顯訊息</string>
+    <string name="act_toast_desc">顯示簡短的螢幕訊息</string>
+    <string name="act_notification_label">通知</string>
+    <string name="act_notification_desc">發送系統通知</string>
+    <string name="act_delay_label">延遲</string>
+    <string name="act_delay_desc">在下一個動作前等待</string>
+    <string name="act_wifi_label">Wi-Fi</string>
+    <string name="act_wifi_desc">開啟或關閉 Wi-Fi</string>
+    <string name="act_bluetooth_label">藍牙</string>
+    <string name="act_bluetooth_desc">開啟或關閉藍牙</string>
+    <string name="act_dnd_label">勿擾</string>
+    <string name="act_dnd_desc">切換勿擾模式</string>
+    <string name="act_volume_label">音量</string>
+    <string name="act_volume_desc">調整音量</string>
+    <string name="act_open_app_label">開啟應用程式</string>
+    <string name="act_open_app_desc">啟動一個應用程式</string>
+    <string name="act_open_url_label">開啟網址</string>
+    <string name="act_open_url_desc">在瀏覽器開啟連結</string>
+    <string name="act_tts_label">文字轉語音</string>
+    <string name="act_tts_desc">朗讀文字</string>
+    <string name="act_clipboard_label">複製到剪貼簿</string>
+    <string name="act_clipboard_desc">將文字複製到剪貼簿</string>
+    <string name="act_http_label">HTTP 請求</string>
+    <string name="act_http_desc">發送 HTTP 請求</string>
+    <string name="act_brightness_label">亮度</string>
+    <string name="act_brightness_desc">設定螢幕亮度</string>
+    <string name="act_airplane_label">飛航模式</string>
+    <string name="act_airplane_desc">切換飛航模式</string>
+    <string name="act_media_label">媒體</string>
+    <string name="act_media_desc">控制媒體播放</string>
+    <string name="act_send_sms_label">傳送簡訊</string>
+    <string name="act_send_sms_desc">傳送文字訊息</string>
+    <string name="act_call_label">撥打電話</string>
+    <string name="act_call_desc">撥打電話</string>
+    <string name="act_set_variable_label">設定變數</string>
+    <string name="act_set_variable_desc">將值指派給流程變數</string>
+    <string name="act_write_file_label">寫入檔案</string>
+    <string name="act_write_file_desc">將文字寫入檔案</string>
+    <string name="act_share_label">分享</string>
+    <string name="act_share_desc">透過其他應用程式分享文字</string>
+    <string name="act_screenshot_label">螢幕截圖</string>
+    <string name="act_screenshot_desc">擷取螢幕截圖</string>
+    <string name="act_if_label">如果</string>
+    <string name="act_if_desc">只有在條件成立時才執行後續動作</string>
+    <string name="act_else_label">否則</string>
+    <string name="act_else_desc">否則區塊</string>
+    <string name="act_end_if_label">結束如果</string>
+    <string name="act_end_if_desc">如果區塊的結尾</string>
+    <string name="act_repeat_label">重複</string>
+    <string name="act_repeat_desc">重複區塊</string>
+    <string name="act_end_repeat_label">結束重複</string>
+    <string name="act_end_repeat_desc">重複區塊的結尾</string>
+    <string name="act_show_menu_label">顯示選單</string>
+    <string name="act_show_menu_desc">請使用者選擇一個選項，然後執行對應的分支</string>
+    <string name="act_menu_case_label">選單分支</string>
+    <string name="act_menu_case_desc">使用者選擇此選項時執行的分支</string>
+    <string name="act_end_menu_label">結束選單</string>
+    <string name="act_end_menu_desc">顯示選單區塊的結尾</string>
+
+    <string name="trg_manual_label">手動</string>
+    <string name="trg_manual_desc">點按播放按鈕來執行</string>
+    <string name="trg_time_label">時間</string>
+    <string name="trg_time_desc">在一天中的特定時間</string>
+    <string name="trg_battery_label">電池</string>
+    <string name="trg_battery_desc">當電池電量變化時</string>
+    <string name="trg_bluetooth_label">藍牙</string>
+    <string name="trg_bluetooth_desc">當藍牙裝置連線時</string>
+    <string name="trg_wifi_label">Wi-Fi</string>
+    <string name="trg_wifi_desc">當 Wi-Fi 網路變化時</string>
+    <string name="trg_screen_label">螢幕</string>
+    <string name="trg_screen_desc">當螢幕開啟或關閉時</string>
+    <string name="trg_app_launch_label">應用程式啟動</string>
+    <string name="trg_app_launch_desc">當應用程式被開啟時</string>
+    <string name="trg_incoming_call_label">來電</string>
+    <string name="trg_incoming_call_desc">當手機接到來電時</string>
+    <string name="trg_sms_label">收到簡訊</string>
+    <string name="trg_sms_desc">當收到簡訊時</string>
+    <string name="trg_notification_label">通知</string>
+    <string name="trg_notification_desc">當收到通知時</string>
+    <string name="trg_boot_label">裝置開機</string>
+    <string name="trg_boot_desc">當裝置啟動時</string>
+    <string name="trg_headset_label">耳機</string>
+    <string name="trg_headset_desc">當耳機插入或拔出時</string>
+    <string name="trg_nfc_label">NFC 標籤</string>
+    <string name="trg_nfc_desc">當掃描到 NFC 標籤時</string>
+    <string name="trg_geofence_label">地理圍欄</string>
+    <string name="trg_geofence_desc">當進入或離開某區域時</string>
+
+    <string name="cfg_message">訊息</string>
+    <string name="cfg_title">標題</string>
+    <string name="cfg_action">動作</string>
+    <string name="cfg_event">事件</string>
+    <string name="cfg_app">應用程式</string>
+    <string name="cfg_url">網址</string>
+    <string name="cfg_method">方法</string>
+    <string name="cfg_body_optional">內文（選填）</string>
+    <string name="cfg_value">值</string>
+    <string name="cfg_variable_name">變數名稱</string>
+    <string name="cfg_content">內容</string>
+    <string name="cfg_condition">條件</string>
+    <string name="cfg_repeat_count">重複次數</string>
+    <string name="cfg_option_label">選項標籤</string>
+    <string name="cfg_delay_duration">延遲時間</string>
+    <string name="cfg_volume_level">音量大小</string>
+    <string name="cfg_stream">音訊串流</string>
+    <string name="cfg_text_to_speak">要朗讀的文字</string>
+    <string name="cfg_text_to_copy">要複製的文字</string>
+    <string name="cfg_text_to_share">要分享的文字</string>
+    <string name="cfg_file_path">檔案路徑</string>
+    <string name="cfg_phone_number">電話號碼</string>
+    <string name="cfg_brightness_level">亮度等級</string>
+    <string name="cfg_extra_dim">極暗</string>
+    <string name="cfg_extra_dim_desc">將螢幕設為最低背光強度</string>
+    <string name="cfg_use_current_location">使用目前位置</string>
+    <string name="cfg_time">時間</string>
+    <string name="cfg_repeat">重複</string>
+    <string name="cfg_custom_days">自訂日期</string>
+    <string name="cfg_battery_level">電池電量</string>
+    <string name="cfg_trigger_when">觸發條件</string>
+    <string name="cfg_charging_state">充電狀態</string>
+    <string name="cfg_device_name_optional">裝置名稱（選填）</string>
+    <string name="cfg_network_name_optional">網路名稱（選填）</string>
+    <string name="cfg_contact_optional">聯絡人（選填）</string>
+    <string name="cfg_sender_optional">寄件者（選填）</string>
+    <string name="cfg_notif_app_optional">應用程式（選填——留空表示任何）</string>
+    <string name="cfg_tag_id_optional">標籤 ID（選填）</string>
+    <string name="cfg_latitude">緯度</string>
+    <string name="cfg_longitude">經度</string>
+    <string name="cfg_radius">半徑</string>
+
+    <string name="cfg_hint_any_device">留空表示任何裝置</string>
+    <string name="cfg_hint_any_caller">留空表示任何來電者</string>
+    <string name="cfg_hint_any_sender">留空表示任何寄件者</string>
+
+    <string name="cfg_info_language_label">語言</string>
+    <string name="cfg_info_language_body">使用裝置預設的 TTS 引擎語言。若要變更，請至「設定 → 無障礙 → 文字轉語音輸出」。</string>
+    <string name="cfg_info_permission_label">權限</string>
+    <string name="cfg_info_permission_body">需要「修改系統設定」權限——請在設定分頁的權限區段授予。</string>
+    <string name="cfg_info_requirement_label">需求</string>
+    <string name="cfg_info_screenshot_body">螢幕截圖需要啟用 NexFlow 無障礙服務。請至「設定 → 無障礙 → 已安裝的應用程式 → NexFlow」並開啟。需要 Android 12 以上。</string>
+    <string name="cfg_info_condition_label">條件</string>
+    <string name="cfg_info_condition_body">範例：{{battery}} &lt; 20 · {{status}} == ok · true。支援 ==、!=、&lt;、&gt;、&lt;=、&gt;=——數字會以數值比較。請以「結束如果」動作關閉此區塊。</string>
+
+    <string name="opt_on">開</string>
+    <string name="opt_off">關</string>
+    <string name="opt_toggle">切換</string>
+    <string name="opt_connected">已連線</string>
+    <string name="opt_disconnected">已斷線</string>
+    <string name="opt_ringtone">鈴聲</string>
+    <string name="opt_media">媒體</string>
+    <string name="opt_alarm">鬧鐘</string>
+    <string name="opt_notification">通知</string>
+    <string name="opt_play">播放</string>
+    <string name="opt_pause">暫停</string>
+    <string name="opt_play_pause">播放/暫停</string>
+    <string name="opt_every_day">每天</string>
+    <string name="opt_weekdays">僅平日</string>
+    <string name="opt_weekends">僅週末</string>
+    <string name="opt_custom_days">自訂日期…</string>
+    <string name="opt_once">一次</string>
+    <string name="opt_falls_below">低於</string>
+    <string name="opt_rises_above">高於</string>
+    <string name="opt_any">任何</string>
+    <string name="opt_charging">充電中</string>
+    <string name="opt_not_charging">未充電</string>
+    <string name="opt_screen_on">螢幕開啟</string>
+    <string name="opt_screen_off">螢幕關閉</string>
+    <string name="opt_screen_unlocked">螢幕解鎖</string>
+    <string name="opt_entering_area">進入區域</string>
+    <string name="opt_leaving_area">離開區域</string>
+
+    <string name="sum_no_message">無訊息</string>
+    <string name="sum_notification">通知</string>
+    <string name="sum_toggle">切換</string>
+    <string name="sum_not_set">未設定</string>
+    <string name="sum_no_url">無網址</string>
+    <string name="sum_no_text">無文字</string>
+    <string name="sum_extra_dim">極暗</string>
+    <string name="sum_no_number">無號碼</string>
+    <string name="sum_no_path">無路徑</string>
+    <string name="sum_take_screenshot">擷取螢幕截圖</string>
+    <string name="sum_otherwise">否則</string>
+    <string name="sum_closes_if">結束如果</string>
+    <string name="sum_closes_repeat">結束重複</string>
+    <string name="sum_choose_option">選擇一個選項</string>
+    <string name="sum_option">選項</string>
+    <string name="sum_closes_menu">結束選單</string>
+    <string name="sum_no_condition">無條件</string>
+    <string name="sum_tap_to_run">點按執行</string>
+    <string name="sum_any_device">任何裝置</string>
+    <string name="sum_any_network">任何網路</string>
+    <string name="sum_any_caller">任何來電者</string>
+    <string name="sum_any_sender">任何寄件者</string>
+    <string name="sum_any_app">任何應用程式</string>
+    <string name="sum_on_boot">開機時</string>
+    <string name="sum_any_tag">任何標籤</string>
+    <string name="sum_no_days">無日期</string>
+    <string name="sum_level">等級：%1$s%2$s</string>
+    <string name="sum_stream_level">%1$s：%2$s</string>
+    <string name="sum_battery">%1$s%% %2$s</string>
+    <string name="sum_battery_below">以下</string>
+    <string name="sum_battery_above">以上</string>
+    <string name="sum_device_event">%1$s %2$s</string>
+
+    <plurals name="flows_imported_count">
+        <item quantity="other">已匯入 %1$d 個流程。</item>
+    </plurals>
+    <plurals name="flows_warning_count">
+        <item quantity="other">%1$d 個警告：</item>
+    </plurals>
+</resources>

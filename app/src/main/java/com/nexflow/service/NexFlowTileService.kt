@@ -40,7 +40,7 @@ class NexFlowTileService : TileService() {
         qsTile?.apply {
             state = if (flowName != null) Tile.STATE_INACTIVE else Tile.STATE_UNAVAILABLE
             label = flowName?.take(20) ?: "NexFlow"
-            contentDescription = if (flowName != null) "執行 $flowName" else "點此設定流程"
+            contentDescription = if (flowName != null) getString(R.string.tile_run_flow, flowName) else getString(R.string.widget_not_configured)
             icon = Icon.createWithResource(this@NexFlowTileService, R.drawable.ic_notification)
             updateTile()
         }

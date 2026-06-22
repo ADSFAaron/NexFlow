@@ -1,0 +1,423 @@
+<resources>
+    <string name="accessibility_service_description">NexFlow は、フローのアクションが要求したときにユーザー補助サービスを使ってスクリーンショットを撮影します。ユーザー補助イベントの監視は行いません。</string>
+
+    <!-- Widgets -->
+    <string name="widget_overview_description">最近のフローを表示してすばやく起動</string>
+    <string name="widget_single_description">単一フローのクイック起動ショートカット</string>
+    <string name="widget_wide_description">ワイド版・単一フローのクイック起動ショートカット</string>
+    <string name="widget_not_configured">タップしてフローを選択</string>
+    <string name="widget_configure_title">フローを選択</string>
+    <string name="widget_no_flows">フローがありません — まずアプリ内で作成してください</string>
+    <string name="widget_no_runs">実行履歴がありません</string>
+
+    <!-- Foreground service / tile -->
+    <string name="service_notification_text">自動化を実行中</string>
+    <string name="action_stop">停止</string>
+    <string name="tile_run_flow">%1$s を実行</string>
+
+    <!-- Bottom navigation -->
+    <string name="nav_flows">フロー</string>
+    <string name="nav_logs">ログ</string>
+    <string name="nav_settings">設定</string>
+
+    <!-- Common -->
+    <string name="action_ok">OK</string>
+    <string name="action_cancel">キャンセル</string>
+    <string name="action_back">戻る</string>
+    <string name="action_grant">許可</string>
+    <string name="action_enable">有効にする</string>
+    <string name="action_save">保存</string>
+    <string name="action_edit">編集</string>
+    <string name="action_delete">削除</string>
+    <string name="field_name">名前</string>
+    <string name="field_description_optional">説明（任意）</string>
+
+    <!-- Days of week (short) -->
+    <string name="day_mon">月</string>
+    <string name="day_tue">火</string>
+    <string name="day_wed">水</string>
+    <string name="day_thu">木</string>
+    <string name="day_fri">金</string>
+    <string name="day_sat">土</string>
+    <string name="day_sun">日</string>
+
+    <!-- Flow detail -->
+    <string name="fd_change_icon">アイコンを変更</string>
+    <string name="fd_edit_flow">フローを編集</string>
+    <string name="fd_flow_started">フローを開始しました</string>
+    <string name="fd_flow_stopped">フローを停止しました</string>
+    <string name="fd_export_flow">フローをエクスポート</string>
+    <string name="fd_export">エクスポート</string>
+    <string name="fd_section_when">トリガー</string>
+    <string name="fd_section_then">アクション</string>
+    <string name="fd_section_variables">変数</string>
+    <string name="fd_no_triggers">トリガーがありません。下から追加してください。</string>
+    <string name="fd_no_actions">アクションがありません。下から追加してください。</string>
+    <string name="fd_no_variables">変数がありません。既定値を定義すると、どの項目でも {{name}} として使えます。</string>
+    <string name="fd_empty_value">（空）</string>
+    <string name="fd_add_trigger">トリガーを追加</string>
+    <string name="fd_add_action">アクションを追加</string>
+    <string name="fd_add_variable">変数を追加</string>
+    <string name="fd_search_triggers">トリガーを検索</string>
+    <string name="fd_search_actions">アクションを検索</string>
+    <string name="fd_run_flow">フローを実行</string>
+    <string name="fd_stop_flow">フローを停止</string>
+    <string name="fd_enable_flow">フローを有効化</string>
+    <string name="fd_disable_flow">フローを無効化</string>
+    <string name="fd_enabled">有効</string>
+    <string name="fd_disabled">無効</string>
+    <string name="fd_logic_any">いずれか</string>
+    <string name="fd_logic_all">すべて</string>
+    <string name="fd_reorder">並べ替え</string>
+    <string name="fd_clear_search">検索をクリア</string>
+    <string name="fd_nothing_matches">「%1$s」に一致する項目はありません</string>
+    <string name="fd_no_config_needed">このタイプに設定は不要です。</string>
+    <string name="fd_switch_to_dial">ダイヤルに切り替え</string>
+    <string name="fd_switch_to_keyboard">キーボードに切り替え</string>
+    <string name="fd_ssid_blank_hint">空欄ですべてのネットワーク</string>
+    <string name="fd_use_current_ssid">現在の値を使用：%1$s</string>
+    <string name="fd_tag_blank_hint">空欄ですべてのタグ</string>
+    <string name="fd_nfc_unavailable">このデバイスは NFC に対応していません</string>
+    <string name="fd_nfc_disabled">NFC が無効です — デバイスの設定で有効にしてください</string>
+    <string name="fd_nfc_hold">デバイスを NFC タグに近づけてください…</string>
+    <string name="fd_scan_nfc">NFC タグをスキャン</string>
+    <string name="fd_rescan_tag">タグを再スキャン</string>
+    <string name="fd_location_denied">位置情報の権限が拒否されました</string>
+    <string name="fd_location_unavailable">位置情報を取得できません — GPS またはネットワーク位置情報をオンにしてください</string>
+    <string name="fd_choose_app">アプリを選択…</string>
+    <string name="fd_remove_option">選択肢を削除</string>
+    <string name="fd_add_option">選択肢を追加</string>
+    <string name="fd_option_n">選択肢 %1$d</string>
+    <string name="fd_show_menu">メニューを表示</string>
+    <string name="fd_prompt_title">プロンプト／タイトル</string>
+    <string name="fd_menu_title_placeholder">支払い方法を選択</string>
+    <string name="fd_menu_options">メニューの選択肢</string>
+    <string name="fd_new_variable">新しい変数</string>
+    <string name="fd_edit_variable">変数を編集</string>
+    <string name="fd_var_name_taken">同じ名前の変数が既に存在します</string>
+    <string name="fd_var_name_hint">トリガーやアクションの項目で {{%1$s}} として使用</string>
+    <string name="fd_default_value">既定値</string>
+    <string name="fd_edit_flow_title">フローを編集</string>
+    <string name="fd_icon">アイコン</string>
+    <string name="fd_tap_to_customize">タップしてカスタマイズ</string>
+
+    <!-- Language picker -->
+    <string name="settings_language">言語</string>
+    <string name="language_system_default">システムの既定</string>
+
+    <!-- Settings -->
+    <string name="settings_title">設定</string>
+    <string name="settings_section_general">一般</string>
+    <string name="settings_section_permissions">権限</string>
+    <string name="settings_section_import_export">インポート／エクスポート</string>
+    <string name="settings_section_automation">自動化</string>
+    <string name="settings_section_about">情報</string>
+    <string name="action_import">インポート</string>
+    <string name="settings_granted">許可済み</string>
+    <string name="settings_notifications">通知</string>
+    <string name="settings_notifications_required">通知アクションに必要</string>
+    <string name="settings_notif_access">通知へのアクセス</string>
+    <string name="settings_notif_access_granted">許可済み — 通知トリガーが有効</string>
+    <string name="settings_notif_access_required">「通知を受信」トリガーに必要</string>
+    <string name="settings_accessibility">ユーザー補助サービス</string>
+    <string name="settings_accessibility_granted">許可済み — アプリ起動トリガーとスクリーンショットが有効</string>
+    <string name="settings_accessibility_required">「アプリ起動」トリガーとスクリーンショットアクションに必要</string>
+    <string name="settings_write_settings">システム設定の変更</string>
+    <string name="settings_write_settings_required">明るさアクションに必要</string>
+    <string name="settings_dnd">サイレントモードへのアクセス</string>
+    <string name="settings_dnd_required">サイレントモード切り替えアクションに必要</string>
+    <string name="settings_adb">Wi-Fi・機内モード（ADB）</string>
+    <string name="settings_adb_granted">WRITE_SECURE_SETTINGS 許可済み — サイレント切り替えが有効</string>
+    <string name="settings_adb_required">ADB で一度実行すると Wi-Fi／機内モードをサイレントに切り替えられます：</string>
+    <string name="settings_command_copied">コマンドをクリップボードにコピーしました</string>
+    <string name="settings_copy_command">コマンドをコピー</string>
+    <string name="settings_import_flow">フローをインポート</string>
+    <string name="settings_import_flow_desc">NexFlow JSON または MacroDroid .mdr ファイルを選択</string>
+    <string name="settings_autostart">起動時に自動開始</string>
+    <string name="settings_autostart_desc">デバイス起動時に有効なフローを再開</string>
+    <string name="settings_log_retention">ログの保持</string>
+    <string name="settings_log_retention_desc">週に一度自動的に整理します</string>
+    <string name="settings_about_nexflow">NexFlow について</string>
+    <string name="settings_about_desc">バージョン、開発者、ライセンス</string>
+
+    <!-- Flows list -->
+    <string name="flows_title">マイフロー</string>
+    <string name="flows_new_flow">新しいフロー</string>
+    <string name="action_create">作成</string>
+    <string name="action_run">実行</string>
+    <string name="action_later">後で</string>
+    <string name="flows_close_menu">メニューを閉じる</string>
+    <string name="flows_open_actions">アクションを開く</string>
+    <string name="flows_running">実行中：%1$s</string>
+    <string name="flows_import_flow_q">フローをインポートしますか？</string>
+    <string name="flows_import_external_warning">別のアプリが NexFlow にフローを送信しました。信頼できる提供元のフローのみインポートしてください。インポートされたフローは無効な状態で追加されます — 有効にする前に確認してください。</string>
+    <string name="flows_import_failed">インポートに失敗しました</string>
+    <string name="flows_import_complete">インポート完了</string>
+    <string name="flows_bullet">• %1$s</string>
+    <string name="flows_and_more">…他 %1$d 件</string>
+    <string name="flows_permissions_needed">権限が必要です</string>
+    <string name="flows_permissions_body">「%1$s」には、まだ許可されていない権限が必要なトリガーまたはアクションが含まれています：</string>
+    <string name="flows_open_settings">設定を開く</string>
+    <string name="flows_start_service">自動化サービスを開始</string>
+    <string name="flows_stop_service">自動化サービスを停止</string>
+    <string name="flows_service_started">開始しました</string>
+    <string name="flows_service_stopped">停止しました</string>
+    <string name="flows_empty_title">フローがありません</string>
+    <string name="flows_empty_subtitle">+ をタップして最初の自動化を作成</string>
+    <string name="flows_flow_activated">フローを実行しました</string>
+    <string name="flows_flow_started">フローを開始しました</string>
+
+    <!-- About -->
+    <string name="about_title">情報</string>
+    <string name="about_developer">開発者</string>
+    <string name="about_dev_role">開発</string>
+    <string name="about_legal">法的情報</string>
+    <string name="about_terms">利用規約</string>
+    <string name="about_privacy">プライバシーポリシー</string>
+
+    <!-- Common dialogs -->
+    <string name="icon_selected_color">選択中の色</string>
+    <string name="app_picker_search">アプリを検索…</string>
+
+    <!-- Log retention options -->
+    <string name="log_retention_light">軽量</string>
+    <string name="log_retention_standard">標準</string>
+    <string name="log_retention_full">フル</string>
+    <string name="log_retention_extended">拡張</string>
+    <string name="log_retention_detail">%1$d 日 · %2$d 件</string>
+
+    <!-- Logs -->
+    <string name="logs_title">実行ログ</string>
+    <string name="logs_clear_q">すべてのログを消去しますか？</string>
+    <string name="logs_clear_body">すべての実行履歴が削除されます。元に戻せません。</string>
+    <string name="action_clear">消去</string>
+    <string name="logs_clear_all">すべてのログを消去</string>
+    <string name="logs_empty_title">ログがありません</string>
+    <string name="logs_empty_subtitle">フローの実行履歴がここに表示されます</string>
+
+    <!-- ===================== Trigger / Action catalog ===================== -->
+    <string name="cat_control_flow">制御フロー</string>
+    <string name="cat_connectivity">接続</string>
+    <string name="cat_device">デバイス</string>
+    <string name="cat_communication">通信</string>
+    <string name="cat_alerts">アラート</string>
+    <string name="cat_web">ウェブ</string>
+    <string name="cat_apps_media">アプリとメディア</string>
+    <string name="cat_files_data">ファイルとデータ</string>
+    <string name="cat_manual">手動</string>
+    <string name="cat_time">時刻</string>
+    <string name="cat_device_state">デバイスの状態</string>
+    <string name="cat_apps">アプリ</string>
+    <string name="cat_location">位置</string>
+
+    <string name="act_toast_label">トースト</string>
+    <string name="act_toast_desc">短い画面メッセージを表示</string>
+    <string name="act_notification_label">通知</string>
+    <string name="act_notification_desc">システム通知を表示</string>
+    <string name="act_delay_label">遅延</string>
+    <string name="act_delay_desc">次のアクションの前に待機</string>
+    <string name="act_wifi_label">Wi-Fi</string>
+    <string name="act_wifi_desc">Wi-Fi をオン/オフ</string>
+    <string name="act_bluetooth_label">Bluetooth</string>
+    <string name="act_bluetooth_desc">Bluetooth をオン/オフ</string>
+    <string name="act_dnd_label">サイレント</string>
+    <string name="act_dnd_desc">サイレントモードを切り替え</string>
+    <string name="act_volume_label">音量</string>
+    <string name="act_volume_desc">音量を調整</string>
+    <string name="act_open_app_label">アプリを開く</string>
+    <string name="act_open_app_desc">アプリを起動</string>
+    <string name="act_open_url_label">URL を開く</string>
+    <string name="act_open_url_desc">ブラウザでリンクを開く</string>
+    <string name="act_tts_label">テキスト読み上げ</string>
+    <string name="act_tts_desc">テキストを音声で読み上げ</string>
+    <string name="act_clipboard_label">クリップボードにコピー</string>
+    <string name="act_clipboard_desc">テキストをクリップボードにコピー</string>
+    <string name="act_http_label">HTTP リクエスト</string>
+    <string name="act_http_desc">HTTP リクエストを送信</string>
+    <string name="act_brightness_label">明るさ</string>
+    <string name="act_brightness_desc">画面の明るさを設定</string>
+    <string name="act_airplane_label">機内モード</string>
+    <string name="act_airplane_desc">機内モードを切り替え</string>
+    <string name="act_media_label">メディア</string>
+    <string name="act_media_desc">メディア再生を制御</string>
+    <string name="act_send_sms_label">SMS を送信</string>
+    <string name="act_send_sms_desc">テキストメッセージを送信</string>
+    <string name="act_call_label">電話をかける</string>
+    <string name="act_call_desc">電話をかける</string>
+    <string name="act_set_variable_label">変数を設定</string>
+    <string name="act_set_variable_desc">フロー変数に値を割り当て</string>
+    <string name="act_write_file_label">ファイルに書き込み</string>
+    <string name="act_write_file_desc">テキストをファイルに書き込み</string>
+    <string name="act_share_label">共有</string>
+    <string name="act_share_desc">他のアプリでテキストを共有</string>
+    <string name="act_screenshot_label">スクリーンショット</string>
+    <string name="act_screenshot_desc">スクリーンショットを撮影</string>
+    <string name="act_if_label">もし</string>
+    <string name="act_if_desc">条件が成立したときのみ後続のアクションを実行</string>
+    <string name="act_else_label">それ以外</string>
+    <string name="act_else_desc">それ以外のブロック</string>
+    <string name="act_end_if_label">もし終了</string>
+    <string name="act_end_if_desc">もしブロックの終わり</string>
+    <string name="act_repeat_label">繰り返し</string>
+    <string name="act_repeat_desc">繰り返しブロック</string>
+    <string name="act_end_repeat_label">繰り返し終了</string>
+    <string name="act_end_repeat_desc">繰り返しブロックの終わり</string>
+    <string name="act_show_menu_label">メニューを表示</string>
+    <string name="act_show_menu_desc">ユーザーに選択肢を選ばせ、対応する分岐を実行</string>
+    <string name="act_menu_case_label">メニュー分岐</string>
+    <string name="act_menu_case_desc">ユーザーがこの選択肢を選んだときに実行される分岐</string>
+    <string name="act_end_menu_label">メニュー終了</string>
+    <string name="act_end_menu_desc">メニュー表示ブロックの終わり</string>
+
+    <string name="trg_manual_label">手動</string>
+    <string name="trg_manual_desc">再生ボタンをタップして実行</string>
+    <string name="trg_time_label">時刻</string>
+    <string name="trg_time_desc">1日の特定の時刻に</string>
+    <string name="trg_battery_label">バッテリー</string>
+    <string name="trg_battery_desc">バッテリー残量が変化したとき</string>
+    <string name="trg_bluetooth_label">Bluetooth</string>
+    <string name="trg_bluetooth_desc">Bluetooth デバイスが接続したとき</string>
+    <string name="trg_wifi_label">Wi-Fi</string>
+    <string name="trg_wifi_desc">Wi-Fi ネットワークが変化したとき</string>
+    <string name="trg_screen_label">画面</string>
+    <string name="trg_screen_desc">画面がオンまたはオフになったとき</string>
+    <string name="trg_app_launch_label">アプリ起動</string>
+    <string name="trg_app_launch_desc">アプリが開かれたとき</string>
+    <string name="trg_incoming_call_label">着信</string>
+    <string name="trg_incoming_call_desc">電話に着信があったとき</string>
+    <string name="trg_sms_label">SMS 受信</string>
+    <string name="trg_sms_desc">SMS が届いたとき</string>
+    <string name="trg_notification_label">通知</string>
+    <string name="trg_notification_desc">通知が届いたとき</string>
+    <string name="trg_boot_label">デバイス起動</string>
+    <string name="trg_boot_desc">デバイスが起動したとき</string>
+    <string name="trg_headset_label">ヘッドセット</string>
+    <string name="trg_headset_desc">ヘッドセットが接続または切断されたとき</string>
+    <string name="trg_nfc_label">NFC タグ</string>
+    <string name="trg_nfc_desc">NFC タグがスキャンされたとき</string>
+    <string name="trg_geofence_label">ジオフェンス</string>
+    <string name="trg_geofence_desc">エリアに出入りしたとき</string>
+
+    <string name="cfg_message">メッセージ</string>
+    <string name="cfg_title">タイトル</string>
+    <string name="cfg_action">動作</string>
+    <string name="cfg_event">イベント</string>
+    <string name="cfg_app">アプリ</string>
+    <string name="cfg_url">URL</string>
+    <string name="cfg_method">メソッド</string>
+    <string name="cfg_body_optional">本文（任意）</string>
+    <string name="cfg_value">値</string>
+    <string name="cfg_variable_name">変数名</string>
+    <string name="cfg_content">内容</string>
+    <string name="cfg_condition">条件</string>
+    <string name="cfg_repeat_count">繰り返し回数</string>
+    <string name="cfg_option_label">選択肢ラベル</string>
+    <string name="cfg_delay_duration">遅延時間</string>
+    <string name="cfg_volume_level">音量レベル</string>
+    <string name="cfg_stream">音声ストリーム</string>
+    <string name="cfg_text_to_speak">読み上げるテキスト</string>
+    <string name="cfg_text_to_copy">コピーするテキスト</string>
+    <string name="cfg_text_to_share">共有するテキスト</string>
+    <string name="cfg_file_path">ファイルパス</string>
+    <string name="cfg_phone_number">電話番号</string>
+    <string name="cfg_brightness_level">明るさレベル</string>
+    <string name="cfg_extra_dim">さらに暗く</string>
+    <string name="cfg_extra_dim_desc">画面を最小のバックライト輝度に設定</string>
+    <string name="cfg_use_current_location">現在地を使用</string>
+    <string name="cfg_time">時刻</string>
+    <string name="cfg_repeat">繰り返し</string>
+    <string name="cfg_custom_days">カスタム曜日</string>
+    <string name="cfg_battery_level">バッテリー残量</string>
+    <string name="cfg_trigger_when">トリガー条件</string>
+    <string name="cfg_charging_state">充電状態</string>
+    <string name="cfg_device_name_optional">デバイス名（任意）</string>
+    <string name="cfg_network_name_optional">ネットワーク名（任意）</string>
+    <string name="cfg_contact_optional">連絡先（任意）</string>
+    <string name="cfg_sender_optional">送信者（任意）</string>
+    <string name="cfg_notif_app_optional">アプリ（任意——空欄ですべて）</string>
+    <string name="cfg_tag_id_optional">タグ ID（任意）</string>
+    <string name="cfg_latitude">緯度</string>
+    <string name="cfg_longitude">経度</string>
+    <string name="cfg_radius">半径</string>
+
+    <string name="cfg_hint_any_device">空欄ですべてのデバイス</string>
+    <string name="cfg_hint_any_caller">空欄ですべての発信者</string>
+    <string name="cfg_hint_any_sender">空欄ですべての送信者</string>
+
+    <string name="cfg_info_language_label">言語</string>
+    <string name="cfg_info_language_body">デバイスの既定の TTS エンジン言語を使用します。変更するには「設定 → ユーザー補助 → テキスト読み上げの出力」へ移動してください。</string>
+    <string name="cfg_info_permission_label">権限</string>
+    <string name="cfg_info_permission_body">「システム設定の変更」権限が必要です——設定タブの権限セクションで許可してください。</string>
+    <string name="cfg_info_requirement_label">要件</string>
+    <string name="cfg_info_screenshot_body">スクリーンショットには NexFlow ユーザー補助サービスの有効化が必要です。「設定 → ユーザー補助 → インストール済みアプリ → NexFlow」でオンにしてください。Android 12 以上が必要です。</string>
+    <string name="cfg_info_condition_label">条件</string>
+    <string name="cfg_info_condition_body">例：{{battery}} &lt; 20 · {{status}} == ok · true。==、!=、&lt;、&gt;、&lt;=、&gt;= をサポート——数値は数値として比較されます。「もし終了」アクションでブロックを閉じてください。</string>
+
+    <string name="opt_on">オン</string>
+    <string name="opt_off">オフ</string>
+    <string name="opt_toggle">切り替え</string>
+    <string name="opt_connected">接続</string>
+    <string name="opt_disconnected">切断</string>
+    <string name="opt_ringtone">着信音</string>
+    <string name="opt_media">メディア</string>
+    <string name="opt_alarm">アラーム</string>
+    <string name="opt_notification">通知</string>
+    <string name="opt_play">再生</string>
+    <string name="opt_pause">一時停止</string>
+    <string name="opt_play_pause">再生/一時停止</string>
+    <string name="opt_every_day">毎日</string>
+    <string name="opt_weekdays">平日のみ</string>
+    <string name="opt_weekends">週末のみ</string>
+    <string name="opt_custom_days">カスタム曜日…</string>
+    <string name="opt_once">1回</string>
+    <string name="opt_falls_below">下回る</string>
+    <string name="opt_rises_above">上回る</string>
+    <string name="opt_any">すべて</string>
+    <string name="opt_charging">充電中</string>
+    <string name="opt_not_charging">充電していない</string>
+    <string name="opt_screen_on">画面オン</string>
+    <string name="opt_screen_off">画面オフ</string>
+    <string name="opt_screen_unlocked">画面ロック解除</string>
+    <string name="opt_entering_area">エリアに入る</string>
+    <string name="opt_leaving_area">エリアから出る</string>
+
+    <string name="sum_no_message">メッセージなし</string>
+    <string name="sum_notification">通知</string>
+    <string name="sum_toggle">切り替え</string>
+    <string name="sum_not_set">未設定</string>
+    <string name="sum_no_url">URL なし</string>
+    <string name="sum_no_text">テキストなし</string>
+    <string name="sum_extra_dim">さらに暗く</string>
+    <string name="sum_no_number">番号なし</string>
+    <string name="sum_no_path">パスなし</string>
+    <string name="sum_take_screenshot">スクリーンショットを撮影</string>
+    <string name="sum_otherwise">それ以外</string>
+    <string name="sum_closes_if">もしを閉じる</string>
+    <string name="sum_closes_repeat">繰り返しを閉じる</string>
+    <string name="sum_choose_option">選択肢を選ぶ</string>
+    <string name="sum_option">選択肢</string>
+    <string name="sum_closes_menu">メニューを閉じる</string>
+    <string name="sum_no_condition">条件なし</string>
+    <string name="sum_tap_to_run">タップで実行</string>
+    <string name="sum_any_device">すべてのデバイス</string>
+    <string name="sum_any_network">すべてのネットワーク</string>
+    <string name="sum_any_caller">すべての発信者</string>
+    <string name="sum_any_sender">すべての送信者</string>
+    <string name="sum_any_app">すべてのアプリ</string>
+    <string name="sum_on_boot">起動時</string>
+    <string name="sum_any_tag">すべてのタグ</string>
+    <string name="sum_no_days">曜日なし</string>
+    <string name="sum_level">レベル：%1$s%2$s</string>
+    <string name="sum_stream_level">%1$s：%2$s</string>
+    <string name="sum_battery">%1$s%% %2$s</string>
+    <string name="sum_battery_below">未満</string>
+    <string name="sum_battery_above">超過</string>
+    <string name="sum_device_event">%1$s %2$s</string>
+
+    <plurals name="flows_imported_count">
+        <item quantity="other">%1$d 件のフローをインポートしました。</item>
+    </plurals>
+    <plurals name="flows_warning_count">
+        <item quantity="other">%1$d 件の警告：</item>
+    </plurals>
+</resources>

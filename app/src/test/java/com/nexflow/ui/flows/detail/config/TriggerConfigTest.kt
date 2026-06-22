@@ -15,7 +15,10 @@
  */
 package com.nexflow.ui.flows.detail.config
 
+import android.content.Context
 import com.nexflow.core.automation.model.TriggerType
+import io.mockk.every
+import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.DynamicTest
@@ -28,11 +31,18 @@ import org.junit.jupiter.api.TestFactory
  */
 class TriggerConfigTest {
 
+    // Catalog strings now come from resources; a mocked Context returns a
+    // non-blank placeholder so structural assertions still hold without Robolectric.
+    private val context = mockk<Context> {
+        every { getString(any()) } returns "x"
+        every { getString(any(), *anyVararg()) } returns "x"
+    }
+
     @TestFactory
     fun `every trigger type has valid picker metadata`(): List<DynamicTest> =
         TriggerType.entries.map { type ->
             DynamicTest.dynamicTest(type.name) {
-                val info = type.info
+                val info = type.info(context)
                 assertTrue(info.label.isNotBlank(), "$type label must not be blank")
                 assertTrue(info.description.isNotBlank(), "$type description must not be blank")
 
@@ -54,13 +64,13 @@ class TriggerConfigTest {
             DynamicTest.dynamicTest(type.name) {
                 // Unconfigured triggers must still render a placeholder summary
                 assertTrue(
-                    type.configSummary(emptyMap()).isNotBlank(),
+                    type.configSummary(context, emptyMap()).isNotBlank(),
                     "$type summary for empty config must not be blank",
                 )
                 // A fully filled config must produce a non-blank summary too
-                val filled = sampleConfig(type.info.fields)
+                val filled = sampleConfig(type.info(context).fields)
                 assertTrue(
-                    type.configSummary(filled).isNotBlank(),
+                    type.configSummary(context, filled).isNotBlank(),
                     "$type summary for filled config must not be blank",
                 )
             }
@@ -68,7 +78,7 @@ class TriggerConfigTest {
 
     @Test
     fun `time trigger fields match TimeTriggerHandler contract`() {
-        val keys = TriggerType.TIME.info.fields.map { it.key }
+        val keys = TriggerType.TIME.info(context).fields.map { it.key }
         // TimeTriggerHandler reads "time", "repeat" and (for CUSTOM) "days"
         assertTrue("time" in keys)
         assertTrue("repeat" in keys)
@@ -77,7 +87,7 @@ class TriggerConfigTest {
 
     @Test
     fun `geofence trigger exposes coordinates radius and event`() {
-        val keys = TriggerType.GEOFENCE.info.fields.flatMap {
+        val keys = TriggerType.GEOFENCE.info(context).fields.flatMap {
             if (it is ConfigField.CurrentLocationButton) listOf(it.latKey, it.lngKey) else listOf(it.key)
         }
         listOf("lat", "lng", "radius_m", "event").forEach { expected ->

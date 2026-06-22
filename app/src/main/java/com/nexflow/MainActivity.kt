@@ -19,8 +19,8 @@ import android.content.Intent
 import android.nfc.NfcAdapter
 import android.nfc.Tag
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.enableEdgeToEdge
 import com.nexflow.event.ImportEventSource
 import com.nexflow.event.NfcEventSource
@@ -36,7 +36,7 @@ import com.nexflow.ui.theme.NexFlowTheme
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
 
     private var nfcAdapter: NfcAdapter? = null
 

@@ -56,7 +56,7 @@ class NexFlowWideWidget : GlanceAppWidget() {
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = "點此設定流程",
+                        text = context.getString(R.string.widget_not_configured),
                         style = TextStyle(
                             color = GlanceTheme.colors.secondary,
                             fontSize = 12.sp,

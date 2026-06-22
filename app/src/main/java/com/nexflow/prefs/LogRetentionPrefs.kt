@@ -16,17 +16,18 @@
 package com.nexflow.prefs
 
 import android.content.Context
+import androidx.annotation.StringRes
+import com.nexflow.R
 
 enum class LogRetentionOption(
-    val displayName: String,
-    val detail: String,
+    @param:StringRes val displayNameRes: Int,
     val days: Int,
     val maxCount: Int,
 ) {
-    LIGHT("輕量", "7 天 · 100 筆", 7, 100),
-    STANDARD("標準", "30 天 · 200 筆", 30, 200),
-    FULL("完整", "90 天 · 500 筆", 90, 500),
-    EXTENDED("延長", "90 天 · 1,000 筆", 90, 1000),
+    LIGHT(R.string.log_retention_light, 7, 100),
+    STANDARD(R.string.log_retention_standard, 30, 200),
+    FULL(R.string.log_retention_full, 90, 500),
+    EXTENDED(R.string.log_retention_extended, 90, 1000),
 }
 
 object LogRetentionPrefs {

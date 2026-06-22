@@ -12,7 +12,7 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.nexflow"
+        applicationId = "com.adsf.nexflow"
         minSdk = 30
         targetSdk = 37
         versionCode = 1
@@ -68,6 +68,9 @@ dependencies {
 
     // AndroidX Core
     implementation(libs.androidx.core.ktx)
+    // AppCompat — provides AppCompatDelegate.setApplicationLocales for in-app
+    // language switching with backport to API 30–32 (per-app language prefs).
+    implementation(libs.androidx.appcompat)
 
     // Lifecycle
     implementation(libs.androidx.lifecycle.runtime.ktx)

@@ -39,6 +39,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
+import androidx.annotation.StringRes
+import com.nexflow.R
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -53,13 +56,13 @@ import com.nexflow.ui.settings.SettingsScreen
 
 sealed class Screen(
     val route: String,
-    val label: String,
+    @param:StringRes val labelRes: Int,
     val selectedIcon: ImageVector,
     val unselectedIcon: ImageVector,
 ) {
-    data object Flows : Screen("flows", "Flows", Icons.Filled.Bolt, Icons.Outlined.Bolt)
-    data object Logs : Screen("logs", "Logs", Icons.Filled.History, Icons.Outlined.History)
-    data object Settings : Screen("settings", "Settings", Icons.Filled.Settings, Icons.Outlined.Settings)
+    data object Flows : Screen("flows", R.string.nav_flows, Icons.Filled.Bolt, Icons.Outlined.Bolt)
+    data object Logs : Screen("logs", R.string.nav_logs, Icons.Filled.History, Icons.Outlined.History)
+    data object Settings : Screen("settings", R.string.nav_settings, Icons.Filled.Settings, Icons.Outlined.Settings)
 }
 
 val bottomNavScreens = listOf(Screen.Flows, Screen.Logs, Screen.Settings)
@@ -165,6 +168,7 @@ fun NexFlowBottomBar(navController: NavController) {
         NavigationBar {
             bottomNavScreens.forEach { screen ->
                 val selected = currentRoute == screen.route
+                val label = stringResource(screen.labelRes)
                 NavigationBarItem(
                     selected = selected,
                     onClick = {
@@ -177,10 +181,10 @@ fun NexFlowBottomBar(navController: NavController) {
                     icon = {
                         Icon(
                             imageVector = if (selected) screen.selectedIcon else screen.unselectedIcon,
-                            contentDescription = screen.label,
+                            contentDescription = label,
                         )
                     },
-                    label = { Text(screen.label) },
+                    label = { Text(label) },
                 )
             }
         }

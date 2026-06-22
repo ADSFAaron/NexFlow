@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Declares the locales NexFlow ships translations for. Surfaces NexFlow in the
+     system per-app language picker (Android 13+) and feeds AppCompat's in-app
+     language switcher (API 30–32 backport). -->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en" />
+    <locale android:name="zh-TW" />
+    <locale android:name="zh-CN" />
+    <locale android:name="ja" />
+</locale-config>

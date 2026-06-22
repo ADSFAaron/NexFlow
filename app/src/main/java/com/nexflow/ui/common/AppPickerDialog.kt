@@ -50,8 +50,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.nexflow.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -113,7 +115,7 @@ fun AppPickerDialog(
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
-            placeholder = { Text("Search apps…") },
+            placeholder = { Text(stringResource(R.string.app_picker_search)) },
             leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
             singleLine = true,
             modifier = Modifier

@@ -59,8 +59,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.nexflow.R
 import com.nexflow.core.automation.model.ExecutionStatus
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -76,16 +78,16 @@ fun LogsScreen(vm: LogsViewModel = hiltViewModel()) {
     if (showClearDialog) {
         AlertDialog(
             onDismissRequest = { showClearDialog = false },
-            title = { Text("Clear all logs?") },
-            text = { Text("This removes all execution history. It cannot be undone.") },
+            title = { Text(stringResource(R.string.logs_clear_q)) },
+            text = { Text(stringResource(R.string.logs_clear_body)) },
             confirmButton = {
                 TextButton(onClick = {
                     vm.clearAll()
                     showClearDialog = false
-                }) { Text("Clear") }
+                }) { Text(stringResource(R.string.action_clear)) }
             },
             dismissButton = {
-                TextButton(onClick = { showClearDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showClearDialog = false }) { Text(stringResource(R.string.action_cancel)) }
             },
         )
     }
@@ -94,12 +96,12 @@ fun LogsScreen(vm: LogsViewModel = hiltViewModel()) {
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeTopAppBar(
-                title = { Text("Execution Logs") },
+                title = { Text(stringResource(R.string.logs_title)) },
                 scrollBehavior = scrollBehavior,
                 actions = {
                     if (entries.isNotEmpty()) {
                         IconButton(onClick = { showClearDialog = true }) {
-                            Icon(Icons.Outlined.DeleteSweep, contentDescription = "Clear all logs")
+                            Icon(Icons.Outlined.DeleteSweep, contentDescription = stringResource(R.string.logs_clear_all))
                         }
                     }
                 },
@@ -145,10 +147,10 @@ private fun EmptyLogsContent(modifier: Modifier = Modifier) {
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
                 )
                 Spacer(Modifier.height(16.dp))
-                Text("No logs yet", style = MaterialTheme.typography.titleLarge)
+                Text(stringResource(R.string.logs_empty_title), style = MaterialTheme.typography.titleLarge)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Flow executions will appear here",
+                    stringResource(R.string.logs_empty_subtitle),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

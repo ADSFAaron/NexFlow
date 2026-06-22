@@ -92,10 +92,14 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.nexflow.R
 import com.nexflow.core.automation.model.Flow
 import com.nexflow.event.ImportEventSource
 import com.nexflow.ui.common.FlowIcons
@@ -165,21 +169,18 @@ fun FlowsScreen(
     pendingExternalImport?.let { content ->
         AlertDialog(
             onDismissRequest = { pendingExternalImport = null },
-            title = { Text("Import flow?") },
+            title = { Text(stringResource(R.string.flows_import_flow_q)) },
             text = {
-                Text(
-                    "Another app sent a flow to NexFlow. Only import flows from sources you " +
-                        "trust. The imported flow will be added disabled — review it before enabling.",
-                )
+                Text(stringResource(R.string.flows_import_external_warning))
             },
             confirmButton = {
                 TextButton(onClick = {
                     importVm.importAuto(content)
                     pendingExternalImport = null
-                }) { Text("Import") }
+                }) { Text(stringResource(R.string.action_import)) }
             },
             dismissButton = {
-                TextButton(onClick = { pendingExternalImport = null }) { Text("Cancel") }
+                TextButton(onClick = { pendingExternalImport = null }) { Text(stringResource(R.string.action_cancel)) }
             },
         )
     }
@@ -202,7 +203,7 @@ fun FlowsScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             LargeTopAppBar(
-                title = { Text("My Flows") },
+                title = { Text(stringResource(R.string.flows_title)) },
                 scrollBehavior = scrollBehavior,
                 actions = {
                     ServiceCapsule(
@@ -229,7 +230,7 @@ fun FlowsScreen(
                     ) {
                         Icon(
                             Icons.Default.Add,
-                            contentDescription = if (fabMenuExpanded) "Close menu" else "Open actions",
+                            contentDescription = if (fabMenuExpanded) stringResource(R.string.flows_close_menu) else stringResource(R.string.flows_open_actions),
                             modifier = Modifier
                                 .size(ToggleFloatingActionButtonDefaults.iconSizeLarge()(checkedProgress))
                                 .rotate(checkedProgress * 45f),
@@ -242,7 +243,7 @@ fun FlowsScreen(
                         fabMenuExpanded = false
                         filePicker.launch(arrayOf("*/*"))
                     },
-                    text = { Text("Import flow") },
+                    text = { Text(stringResource(R.string.settings_import_flow)) },
                     icon = { Icon(Icons.Outlined.FileOpen, contentDescription = null) },
                 )
                 FloatingActionButtonMenuItem(
@@ -250,7 +251,7 @@ fun FlowsScreen(
                         fabMenuExpanded = false
                         showCreateDialog = true
                     },
-                    text = { Text("New Flow") },
+                    text = { Text(stringResource(R.string.flows_new_flow)) },
                     icon = { Icon(Icons.Default.Add, contentDescription = null) },
                 )
             }
@@ -276,7 +277,7 @@ fun FlowsScreen(
                                     if (now - lastRunMs > 500L) {
                                         lastRunMs = now
                                         vm.runFlow(flow.id)
-                                        scope.launch { snackbarHostState.showSnackbar("Running: ${flow.name}") }
+                                        scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.flows_running, flow.name)) }
                                     }
                                     false
                                 }
@@ -298,7 +299,7 @@ fun FlowsScreen(
                             when (dismissState.dismissDirection) {
                                 SwipeToDismissBoxValue.StartToEnd -> Icon(
                                     Icons.Filled.PlayArrow,
-                                    contentDescription = "Run",
+                                    contentDescription = stringResource(R.string.action_run),
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .clip(MaterialTheme.shapes.medium)
@@ -309,7 +310,7 @@ fun FlowsScreen(
                                 )
                                 SwipeToDismissBoxValue.EndToStart -> Icon(
                                     Icons.Outlined.Delete,
-                                    contentDescription = "Delete",
+                                    contentDescription = stringResource(R.string.action_delete),
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .clip(MaterialTheme.shapes.medium)
@@ -339,42 +340,42 @@ fun FlowsScreen(
         AlertDialog(
             onDismissRequest = importVm::clearResult,
             title = {
-                Text(if (result.error != null) "Import failed" else "Import complete")
+                Text(if (result.error != null) stringResource(R.string.flows_import_failed) else stringResource(R.string.flows_import_complete))
             },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     if (result.error != null) {
                         Text(result.error)
                     } else {
-                        Text("Imported ${result.imported} flow${if (result.imported != 1) "s" else ""}.")
+                        Text(pluralStringResource(R.plurals.flows_imported_count, result.imported, result.imported))
                         if (result.warnings.isNotEmpty()) {
                             Spacer(Modifier.height(8.dp))
                             Text(
-                                "${result.warnings.size} warning${if (result.warnings.size != 1) "s" else ""}:",
+                                pluralStringResource(R.plurals.flows_warning_count, result.warnings.size, result.warnings.size),
                                 style = MaterialTheme.typography.labelMedium,
                             )
-                            result.warnings.take(5).forEach { Text("• $it", style = MaterialTheme.typography.bodySmall) }
+                            result.warnings.take(5).forEach { Text(stringResource(R.string.flows_bullet, it), style = MaterialTheme.typography.bodySmall) }
                             if (result.warnings.size > 5) {
-                                Text("… and ${result.warnings.size - 5} more", style = MaterialTheme.typography.bodySmall)
+                                Text(stringResource(R.string.flows_and_more, result.warnings.size - 5), style = MaterialTheme.typography.bodySmall)
                             }
                         }
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = importVm::clearResult) { Text("OK") } },
+            confirmButton = { TextButton(onClick = importVm::clearResult) { Text(stringResource(R.string.action_ok)) } },
         )
     }
 
     permissionReminder?.let { reminder ->
         AlertDialog(
             onDismissRequest = { permissionReminder = null },
-            title = { Text("Permissions needed") },
+            title = { Text(stringResource(R.string.flows_permissions_needed)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("\"${reminder.flowName}\" uses triggers or actions that need permissions you haven't granted yet:")
+                    Text(stringResource(R.string.flows_permissions_body, reminder.flowName))
                     Spacer(Modifier.height(4.dp))
                     reminder.missing.forEach {
-                        Text("• ${it.label}", style = MaterialTheme.typography.bodyMedium)
+                        Text(stringResource(R.string.flows_bullet, it.label), style = MaterialTheme.typography.bodyMedium)
                     }
                 }
             },
@@ -383,18 +384,18 @@ fun FlowsScreen(
                 if (runtime.isNotEmpty()) {
                     TextButton(
                         onClick = { permissionLauncher.launch(runtime.toTypedArray()) },
-                    ) { Text("Grant") }
+                    ) { Text(stringResource(R.string.action_grant)) }
                 } else {
                     TextButton(
                         onClick = {
                             permissionReminder = null
                             onOpenSettings()
                         },
-                    ) { Text("Open Settings") }
+                    ) { Text(stringResource(R.string.flows_open_settings)) }
                 }
             },
             dismissButton = {
-                TextButton(onClick = { permissionReminder = null }) { Text("Later") }
+                TextButton(onClick = { permissionReminder = null }) { Text(stringResource(R.string.action_later)) }
             },
         )
     }
@@ -446,13 +447,13 @@ private fun ServiceCapsule(
         ) {
             Icon(
                 imageVector = if (running) Icons.Filled.Bolt else Icons.Outlined.Bolt,
-                contentDescription = if (running) "Stop automation service" else "Start automation service",
+                contentDescription = if (running) stringResource(R.string.flows_stop_service) else stringResource(R.string.flows_start_service),
                 modifier = Modifier.size(20.dp),
             )
             if (notification != null) {
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    text = if (notification) "已啟動" else "已關閉",
+                    text = if (notification) stringResource(R.string.flows_service_started) else stringResource(R.string.flows_service_stopped),
                     style = MaterialTheme.typography.labelMedium,
                 )
             }
@@ -483,10 +484,10 @@ private fun EmptyFlowsContent(modifier: Modifier = Modifier) {
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
                 )
                 Spacer(Modifier.height(16.dp))
-                Text("No flows yet", style = MaterialTheme.typography.titleLarge)
+                Text(stringResource(R.string.flows_empty_title), style = MaterialTheme.typography.titleLarge)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Tap + to create your first automation",
+                    stringResource(R.string.flows_empty_subtitle),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -624,12 +625,12 @@ private fun RunCapsule(
         ) {
             Icon(
                 imageVector = if (activated) Icons.Filled.Bolt else Icons.Filled.PlayArrow,
-                contentDescription = if (activated) "Flow activated" else "Run flow",
+                contentDescription = if (activated) stringResource(R.string.flows_flow_activated) else stringResource(R.string.fd_run_flow),
                 modifier = Modifier.size(16.dp),
             )
             if (activated) {
                 Spacer(Modifier.width(6.dp))
-                Text("Flow 已啟動", style = MaterialTheme.typography.labelMedium)
+                Text(stringResource(R.string.flows_flow_started), style = MaterialTheme.typography.labelMedium)
             }
         }
     }
@@ -640,17 +641,22 @@ private fun CreateFlowDialog(onDismiss: () -> Unit, onCreate: (String, String) -
     var name by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     val nameFocusRequester = remember { FocusRequester() }
-    LaunchedEffect(Unit) { nameFocusRequester.requestFocus() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    LaunchedEffect(Unit) {
+        delay(100)
+        nameFocusRequester.requestFocus()
+        keyboardController?.show()
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("New Flow") },
+        title = { Text(stringResource(R.string.flows_new_flow)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Name") },
+                    label = { Text(stringResource(R.string.field_name)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     modifier = Modifier.fillMaxWidth().focusRequester(nameFocusRequester),
@@ -658,7 +664,7 @@ private fun CreateFlowDialog(onDismiss: () -> Unit, onCreate: (String, String) -
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
-                    label = { Text("Description (optional)") },
+                    label = { Text(stringResource(R.string.field_description_optional)) },
                     maxLines = 3,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -668,10 +674,10 @@ private fun CreateFlowDialog(onDismiss: () -> Unit, onCreate: (String, String) -
             TextButton(
                 onClick = { onCreate(name.trim(), description.trim()) },
                 enabled = name.isNotBlank(),
-            ) { Text("Create") }
+            ) { Text(stringResource(R.string.action_create)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
         },
     )
 }

@@ -45,6 +45,9 @@ class ConfigDialogRenderTest {
     @get:Rule
     val rule = createComposeRule()
 
+    private val context = androidx.test.platform.app.InstrumentationRegistry
+        .getInstrumentation().targetContext
+
     private data class DialogSpec(val name: String, val title: String, val fields: List<ConfigField>)
 
     private fun runRenderPass(specs: List<DialogSpec>) {
@@ -78,7 +81,7 @@ class ConfigDialogRenderTest {
         when (field) {
             // Hidden until its showWhen condition is met — not expected with empty config
             is ConfigField.DayPicker -> if (field.showWhenKey != null) return else assertDisplayed(owner, field.label)
-            is ConfigField.AppPicker -> assertDisplayed(owner, "Choose app…")
+            is ConfigField.AppPicker -> assertDisplayed(owner, context.getString(com.nexflow.R.string.fd_choose_app))
             is ConfigField.InfoText -> assertDisplayed(owner, field.body)
             else -> assertDisplayed(owner, field.label)
         }
@@ -92,14 +95,14 @@ class ConfigDialogRenderTest {
     @Test
     fun everyTriggerTypeConfigDialogRenders() {
         runRenderPass(
-            TriggerType.entries.map { DialogSpec(it.name, it.info.label, it.info.fields) },
+            TriggerType.entries.map { val i = it.info(context); DialogSpec(it.name, i.label, i.fields) },
         )
     }
 
     @Test
     fun everyActionTypeConfigDialogRenders() {
         runRenderPass(
-            ActionType.entries.map { DialogSpec(it.name, it.info.label, it.info.fields) },
+            ActionType.entries.map { val i = it.info(context); DialogSpec(it.name, i.label, i.fields) },
         )
     }
 
@@ -108,8 +111,8 @@ class ConfigDialogRenderTest {
         var saved: Map<String, String>? = null
         rule.setContent {
             ConfigDialog(
-                title = "If",
-                fields = ActionType.IF_BLOCK.info.fields,
+                title = context.getString(com.nexflow.R.string.act_if_label),
+                fields = ActionType.IF_BLOCK.info(context).fields,
                 initialValues = emptyMap(),
                 availableVariables = emptyList(),
                 onConfirm = { saved = it },
@@ -117,8 +120,9 @@ class ConfigDialogRenderTest {
             )
         }
 
-        rule.onAllNodesWithText("Condition")[0].performTextInput("{{battery}} < 20")
-        rule.onNodeWithText("Save").performClick()
+        rule.onAllNodesWithText(context.getString(com.nexflow.R.string.cfg_condition))[0]
+            .performTextInput("{{battery}} < 20")
+        rule.onNodeWithText(context.getString(com.nexflow.R.string.action_save)).performClick()
         rule.waitForIdle()
 
         assertEquals("{{battery}} < 20", saved?.get("expression"))

@@ -15,7 +15,10 @@
  */
 package com.nexflow.ui.flows.detail.config
 
+import android.content.Context
 import com.nexflow.core.automation.model.ActionType
+import io.mockk.every
+import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.DynamicTest
@@ -29,11 +32,18 @@ import org.junit.jupiter.api.TestFactory
  */
 class ActionConfigTest {
 
+    // Catalog strings now come from resources; a mocked Context returns a
+    // non-blank placeholder so structural assertions still hold without Robolectric.
+    private val context = mockk<Context> {
+        every { getString(any()) } returns "x"
+        every { getString(any(), *anyVararg()) } returns "x"
+    }
+
     @TestFactory
     fun `every action type has valid picker metadata`(): List<DynamicTest> =
         ActionType.entries.map { type ->
             DynamicTest.dynamicTest(type.name) {
-                val info = type.info
+                val info = type.info(context)
                 assertTrue(info.label.isNotBlank(), "$type label must not be blank")
                 assertTrue(info.description.isNotBlank(), "$type description must not be blank")
 
@@ -54,12 +64,12 @@ class ActionConfigTest {
         ActionType.entries.map { type ->
             DynamicTest.dynamicTest(type.name) {
                 assertTrue(
-                    type.configSummary(emptyMap()).isNotBlank(),
+                    type.configSummary(context, emptyMap()).isNotBlank(),
                     "$type summary for empty config must not be blank",
                 )
-                val filled = sampleConfig(type.info.fields)
+                val filled = sampleConfig(type.info(context).fields)
                 assertTrue(
-                    type.configSummary(filled).isNotBlank(),
+                    type.configSummary(context, filled).isNotBlank(),
                     "$type summary for filled config must not be blank",
                 )
             }
@@ -69,19 +79,19 @@ class ActionConfigTest {
 
     @Test
     fun `if block exposes the expression key read by the interpreter`() {
-        val keys = ActionType.IF_BLOCK.info.fields.map { it.key }
+        val keys = ActionType.IF_BLOCK.info(context).fields.map { it.key }
         assertTrue("expression" in keys, "IF_BLOCK must expose an 'expression' field")
     }
 
     @Test
     fun `repeat block exposes the count key read by the interpreter`() {
-        val keys = ActionType.REPEAT_BLOCK.info.fields.map { it.key }
+        val keys = ActionType.REPEAT_BLOCK.info(context).fields.map { it.key }
         assertTrue("count" in keys, "REPEAT_BLOCK must expose a 'count' field")
     }
 
     @Test
     fun `set variable exposes the keys read by the interpreter`() {
-        val keys = ActionType.SET_VARIABLE.info.fields.map { it.key }
+        val keys = ActionType.SET_VARIABLE.info(context).fields.map { it.key }
         assertTrue("variable_name" in keys, "SET_VARIABLE must expose 'variable_name'")
         assertTrue("value" in keys, "SET_VARIABLE must expose 'value'")
     }
@@ -90,7 +100,7 @@ class ActionConfigTest {
     fun `block markers need no configuration`() {
         listOf(ActionType.ELSE_BLOCK, ActionType.END_IF, ActionType.END_REPEAT).forEach { type ->
             assertTrue(
-                type.info.fields.isEmpty(),
+                type.info(context).fields.isEmpty(),
                 "$type is a block marker and must not require configuration",
             )
         }

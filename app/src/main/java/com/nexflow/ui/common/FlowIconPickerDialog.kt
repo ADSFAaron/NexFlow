@@ -46,7 +46,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.nexflow.R
 
 /** Lets the user pick a flow icon and background color from the built-in catalog. */
 @OptIn(ExperimentalLayoutApi::class)
@@ -66,7 +68,7 @@ fun FlowIconPickerDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Icon") },
+        title = { Text(stringResource(R.string.fd_icon)) },
         text = {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 // Live preview of the chosen combination
@@ -107,7 +109,7 @@ fun FlowIconPickerDialog(
                             if (selected) {
                                 Icon(
                                     Icons.Default.Check,
-                                    contentDescription = "Selected color",
+                                    contentDescription = stringResource(R.string.icon_selected_color),
                                     tint = Color.White,
                                     modifier = Modifier.size(20.dp),
                                 )
@@ -163,10 +165,10 @@ fun FlowIconPickerDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(selectedIcon, selectedColor) }) { Text("OK") }
+            TextButton(onClick = { onConfirm(selectedIcon, selectedColor) }) { Text(stringResource(R.string.action_ok)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
         },
     )
 }

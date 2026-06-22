@@ -4,6 +4,7 @@ kotlin = "2.2.10"
 # KSP version must match Kotlin major.minor.patch. Check https://github.com/google/ksp/releases
 ksp = "2.3.9"
 coreKtx = "1.16.0"
+appcompat = "1.7.0"
 lifecycle = "2.9.0"
 activityCompose = "1.10.1"
 composeBom = "2026.02.01"
@@ -32,6 +33,7 @@ kotlinxCoroutines = "1.8.0"
 [libraries]
 # AndroidX Core
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 
 # Lifecycle
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }

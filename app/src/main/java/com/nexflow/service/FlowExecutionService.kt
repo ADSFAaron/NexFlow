@@ -105,11 +105,11 @@ class FlowExecutionService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_SERVICE)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("NexFlow")
-            .setContentText("Automation is active")
+            .setContentText(getString(R.string.service_notification_text))
             .setContentIntent(openIntent)
             .setOngoing(true)
             .setSilent(true)
-            .addAction(R.drawable.ic_notification, "Stop", stopIntent)
+            .addAction(R.drawable.ic_notification, getString(R.string.action_stop), stopIntent)
             .build()
     }
 

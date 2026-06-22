@@ -145,6 +145,10 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.stringResource
+import com.nexflow.R
+import kotlinx.coroutines.delay
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import androidx.compose.ui.text.input.ImeAction
@@ -247,7 +251,7 @@ fun FlowDetailScreen(
             putExtra(Intent.EXTRA_SUBJECT, "$safeName.flow")
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        context.startActivity(Intent.createChooser(intent, "Export flow"))
+        context.startActivity(Intent.createChooser(intent, context.getString(R.string.fd_export_flow)))
     }
 
     Scaffold(
@@ -268,7 +272,7 @@ fun FlowDetailScreen(
                         ) {
                             Icon(
                                 FlowIcons.vector(f.icon),
-                                contentDescription = "Change icon",
+                                contentDescription = stringResource(R.string.fd_change_icon),
                                 tint = Color.White,
                                 modifier = Modifier.size(20.dp),
                             )
@@ -278,12 +282,12 @@ fun FlowDetailScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
                 actions = {
                     IconButton(onClick = { showRenameDialog = true }) {
-                        Icon(Icons.Outlined.Edit, contentDescription = "Edit flow")
+                        Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.fd_edit_flow))
                     }
                 },
             )
@@ -297,11 +301,11 @@ fun FlowDetailScreen(
                 onShare = onShare,
                 onRun = {
                     vm.runNow()
-                    scope.launch { snackbarHostState.showSnackbar("Flow started") }
+                    scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.fd_flow_started)) }
                 },
                 onStop = {
                     vm.cancelRun()
-                    scope.launch { snackbarHostState.showSnackbar("Flow stopped") }
+                    scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.fd_flow_stopped)) }
                 },
             )
         },
@@ -327,7 +331,7 @@ fun FlowDetailScreen(
             // ---- TRIGGERS ----
             item {
                 SectionHeader(
-                    title = "WHEN",
+                    title = stringResource(R.string.fd_section_when),
                     trailing = if (f.triggers.size > 1) {
                         {
                             TriggerLogicToggle(
@@ -342,7 +346,7 @@ fun FlowDetailScreen(
             if (f.triggers.isEmpty()) {
                 item {
                     Text(
-                        "No triggers yet. Add one below.",
+                        stringResource(R.string.fd_no_triggers),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
@@ -351,12 +355,12 @@ fun FlowDetailScreen(
             }
 
             itemsIndexed(f.triggers, key = { _, t -> t.id }) { index, trigger ->
-                val ti = trigger.type.info
+                val ti = trigger.type.info(context)
                 GroupedItem(index = index, count = f.triggers.size + 1) {
                     TriggerOrActionRow(
                         icon = { Icon(ti.icon, contentDescription = null, modifier = Modifier.size(24.dp)) },
                         headline = ti.label,
-                        supporting = trigger.type.configSummary(trigger.config),
+                        supporting = trigger.type.configSummary(context, trigger.config),
                         onEdit = { pendingConfig = PendingConfig.EditTrigger(trigger) },
                         onDelete = { vm.removeTrigger(trigger.id) },
                     )
@@ -369,19 +373,19 @@ fun FlowDetailScreen(
                     count = f.triggers.size + 1,
                     onClick = { showTriggerPicker = true },
                 ) {
-                    AddRowContent("Add Trigger")
+                    AddRowContent(stringResource(R.string.fd_add_trigger))
                 }
             }
 
             item { Spacer(Modifier.height(20.dp)) }
 
             // ---- ACTIONS ----
-            item { SectionHeader("THEN") }
+            item { SectionHeader(stringResource(R.string.fd_section_then)) }
 
             if (f.actions.isEmpty()) {
                 item {
                     Text(
-                        "No actions yet. Add one below.",
+                        stringResource(R.string.fd_no_actions),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
@@ -392,7 +396,7 @@ fun FlowDetailScreen(
             itemsIndexed(sortedActions, key = { _, a -> a.id }) { index, action ->
                 val haptic = LocalHapticFeedback.current
                 ReorderableItem(reorderState, key = action.id) { _ ->
-                    val ai = action.type.info
+                    val ai = action.type.info(context)
                     val isExecuting = currentActionId == action.id
                     GroupedItem(
                         index = index,
@@ -406,7 +410,7 @@ fun FlowDetailScreen(
                                 }
                             },
                             headline = ai.label,
-                            supporting = action.type.configSummary(action.config),
+                            supporting = action.type.configSummary(context, action.config),
                             isExecuting = isExecuting,
                             onEdit = { pendingConfig = PendingConfig.EditAction(action) },
                             onDelete = { vm.removeAction(action.id) },
@@ -425,19 +429,19 @@ fun FlowDetailScreen(
                     count = sortedActions.size + 1,
                     onClick = { showActionPicker = true },
                 ) {
-                    AddRowContent("Add Action")
+                    AddRowContent(stringResource(R.string.fd_add_action))
                 }
             }
 
             item { Spacer(Modifier.height(20.dp)) }
 
             // ---- VARIABLES ----
-            item { SectionHeader("VARIABLES") }
+            item { SectionHeader(stringResource(R.string.fd_section_variables)) }
 
             if (f.variables.isEmpty()) {
                 item {
                     Text(
-                        "No variables. Define defaults usable as {{name}} in any field.",
+                        stringResource(R.string.fd_no_variables),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
@@ -450,7 +454,7 @@ fun FlowDetailScreen(
                     TriggerOrActionRow(
                         icon = { Icon(Icons.Outlined.Code, contentDescription = null, modifier = Modifier.size(24.dp)) },
                         headline = variable.name,
-                        supporting = variable.defaultValue.ifBlank { "(empty)" },
+                        supporting = variable.defaultValue.ifBlank { stringResource(R.string.fd_empty_value) },
                         onEdit = { editingVariable = variable },
                         onDelete = { vm.removeVariable(variable.name) },
                     )
@@ -463,7 +467,7 @@ fun FlowDetailScreen(
                     count = f.variables.size + 1,
                     onClick = { editingVariable = Variable("", VariableType.STRING, "") },
                 ) {
-                    AddRowContent("Add Variable")
+                    AddRowContent(stringResource(R.string.fd_add_variable))
                 }
             }
 
@@ -480,14 +484,14 @@ fun FlowDetailScreen(
                     .filter { it !in FlavorFeatures.hiddenTriggerTypes }
                     .filter { !(it == TriggerType.MANUAL && alreadyHasManual) }
                     .map {
-                        val ti = it.info
-                        PickerEntry(it, ti.label, ti.icon, ti.description, it.category.label, it.category.ordinal)
+                        val ti = it.info(context)
+                        PickerEntry(it, ti.label, ti.icon, ti.description, context.getString(it.category.labelRes), it.category.ordinal)
                     }
             },
-            searchPlaceholder = "Search triggers",
+            searchPlaceholder = stringResource(R.string.fd_search_triggers),
             onSelect = { type ->
                 showTriggerPicker = false
-                val ti = type.info
+                val ti = type.info(context)
                 if (ti.fields.isEmpty()) {
                     vm.addTrigger(Trigger(UUID.randomUUID().toString(), type, emptyMap()))
                 } else {
@@ -504,14 +508,14 @@ fun FlowDetailScreen(
                 ActionType.entries
                     .filter { it !in FlavorFeatures.hiddenActionTypes }
                     .map {
-                        val ai = it.info
-                        PickerEntry(it, ai.label, ai.icon, ai.description, it.category.label, it.category.ordinal)
+                        val ai = it.info(context)
+                        PickerEntry(it, ai.label, ai.icon, ai.description, context.getString(it.category.labelRes), it.category.ordinal)
                     }
             },
-            searchPlaceholder = "Search actions",
+            searchPlaceholder = stringResource(R.string.fd_search_actions),
             onSelect = { type ->
                 showActionPicker = false
-                val ai = type.info
+                val ai = type.info(context)
                 if (ai.fields.isEmpty()) {
                     vm.addAction(Action(UUID.randomUUID().toString(), type, emptyMap(), f.actions.size, true))
                 } else {
@@ -525,8 +529,8 @@ fun FlowDetailScreen(
     pendingConfig?.let { cfg ->
         when (cfg) {
             is PendingConfig.NewTrigger -> ConfigDialog(
-                title = cfg.type.info.label,
-                fields = cfg.type.info.fields,
+                title = cfg.type.info(context).label,
+                fields = cfg.type.info(context).fields,
                 initialValues = emptyMap(),
                 availableVariables = flowVariables,
                 onConfirm = { values ->
@@ -536,8 +540,8 @@ fun FlowDetailScreen(
                 onDismiss = { pendingConfig = null },
             )
             is PendingConfig.EditTrigger -> ConfigDialog(
-                title = cfg.trigger.type.info.label,
-                fields = cfg.trigger.type.info.fields,
+                title = cfg.trigger.type.info(context).label,
+                fields = cfg.trigger.type.info(context).fields,
                 initialValues = cfg.trigger.config,
                 availableVariables = flowVariables,
                 onConfirm = { values ->
@@ -566,8 +570,8 @@ fun FlowDetailScreen(
                 )
             } else {
                 ConfigDialog(
-                    title = cfg.type.info.label,
-                    fields = cfg.type.info.fields,
+                    title = cfg.type.info(context).label,
+                    fields = cfg.type.info(context).fields,
                     initialValues = emptyMap(),
                     availableVariables = flowVariables,
                     onConfirm = { values ->
@@ -592,8 +596,8 @@ fun FlowDetailScreen(
                 )
             } else {
                 ConfigDialog(
-                    title = cfg.action.type.info.label,
-                    fields = cfg.action.type.info.fields,
+                    title = cfg.action.type.info(context).label,
+                    fields = cfg.action.type.info(context).fields,
                     initialValues = cfg.action.config,
                     availableVariables = flowVariables,
                     onConfirm = { values ->
@@ -680,7 +684,7 @@ private fun FlowControlsBar(
                 )
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = onShare) {
-                    Icon(Icons.Outlined.Share, contentDescription = "Export")
+                    Icon(Icons.Outlined.Share, contentDescription = stringResource(R.string.fd_export))
                 }
                 Spacer(Modifier.width(4.dp))
                 FilledIconButton(
@@ -699,7 +703,7 @@ private fun FlowControlsBar(
                     ) { running ->
                         Icon(
                             imageVector = if (running) Icons.Filled.Stop else Icons.Filled.PlayArrow,
-                            contentDescription = if (running) "Stop flow" else "Run flow",
+                            contentDescription = if (running) stringResource(R.string.fd_stop_flow) else stringResource(R.string.fd_run_flow),
                         )
                     }
                 }
@@ -741,12 +745,12 @@ private fun FlowEnabledCapsule(
         ) {
             Icon(
                 imageVector = if (enabled) Icons.Filled.Bolt else Icons.Outlined.Bolt,
-                contentDescription = if (enabled) "Disable flow" else "Enable flow",
+                contentDescription = if (enabled) stringResource(R.string.fd_disable_flow) else stringResource(R.string.fd_enable_flow),
                 modifier = Modifier.size(20.dp),
             )
             Spacer(Modifier.width(6.dp))
             Text(
-                text = if (enabled) "Enabled" else "Disabled",
+                text = if (enabled) stringResource(R.string.fd_enabled) else stringResource(R.string.fd_disabled),
                 style = MaterialTheme.typography.labelMedium,
             )
         }
@@ -763,16 +767,19 @@ private fun TriggerLogicToggle(
     logic: TriggerLogic,
     onSelect: (TriggerLogic) -> Unit,
 ) {
+    // stringResource must be resolved here: ButtonGroup's content scope is not @Composable.
+    val anyLabel = stringResource(R.string.fd_logic_any)
+    val allLabel = stringResource(R.string.fd_logic_all)
     ButtonGroup(overflowIndicator = {}) {
         toggleableItem(
             checked = logic == TriggerLogic.ANY,
             onCheckedChange = { onSelect(TriggerLogic.ANY) },
-            label = "ANY",
+            label = anyLabel,
         )
         toggleableItem(
             checked = logic == TriggerLogic.ALL,
             onCheckedChange = { onSelect(TriggerLogic.ALL) },
-            label = "ALL",
+            label = allLabel,
         )
     }
 }
@@ -914,18 +921,18 @@ private fun TriggerOrActionRow(
                 if (showDragHandle && !isExecuting) {
                     Icon(
                         Icons.Rounded.DragHandle,
-                        contentDescription = "Reorder",
+                        contentDescription = stringResource(R.string.fd_reorder),
                         modifier = dragHandleModifier.size(24.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 IconButton(onClick = onEdit) {
-                    Icon(Icons.Outlined.Edit, contentDescription = "Edit", modifier = Modifier.size(20.dp))
+                    Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.action_edit), modifier = Modifier.size(20.dp))
                 }
                 IconButton(onClick = onDelete) {
                     Icon(
                         Icons.Outlined.Delete,
-                        contentDescription = "Delete",
+                        contentDescription = stringResource(R.string.action_delete),
                         modifier = Modifier.size(20.dp),
                         tint = MaterialTheme.colorScheme.error,
                     )
@@ -999,7 +1006,7 @@ private fun <T : Any> SearchPickerSheet(
                 trailingIcon = {
                     if (query.isNotEmpty()) {
                         IconButton(onClick = { query = "" }) {
-                            Icon(Icons.Default.Close, contentDescription = "Clear search")
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.fd_clear_search))
                         }
                     }
                 },
@@ -1035,7 +1042,7 @@ private fun <T : Any> SearchPickerSheet(
                     if (matches.isEmpty()) {
                         item {
                             Text(
-                                "Nothing matches “$q”",
+                                stringResource(R.string.fd_nothing_matches, q),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(16.dp),
@@ -1103,8 +1110,15 @@ internal fun ConfigDialog(
         fields.filterIsInstance<ConfigField.TextInput>().firstOrNull()?.key
     }
     val firstFieldFocusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
     LaunchedEffect(Unit) {
-        if (firstTextInputKey != null) firstFieldFocusRequester.requestFocus()
+        if (firstTextInputKey != null) {
+            // The dialog window needs a frame to attach before focus + IME take effect;
+            // requestFocus() alone moves the cursor but doesn't reliably open the keyboard.
+            delay(100)
+            firstFieldFocusRequester.requestFocus()
+            keyboardController?.show()
+        }
     }
 
     var appPickerKey by remember { mutableStateOf<String?>(null) }
@@ -1124,7 +1138,7 @@ internal fun ConfigDialog(
         title = { Text(title) },
         text = {
             if (fields.isEmpty()) {
-                Text("No configuration needed for this type.")
+                Text(stringResource(R.string.fd_no_config_needed))
             } else {
                 Column(
                     modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -1240,7 +1254,7 @@ internal fun ConfigDialog(
                                             Icon(
                                                 if (isInputMode) Icons.Outlined.AccessTime
                                                 else Icons.Outlined.Keyboard,
-                                                contentDescription = if (isInputMode) "切換為撥盤" else "切換為鍵盤",
+                                                contentDescription = if (isInputMode) stringResource(R.string.fd_switch_to_dial) else stringResource(R.string.fd_switch_to_keyboard),
                                             )
                                         }
                                     }
@@ -1265,7 +1279,7 @@ internal fun ConfigDialog(
                                     Text(
                                         if (appLabel != null) "$appLabel  ($pkg)"
                                         else if (pkg.isNotBlank()) pkg
-                                        else "Choose app…",
+                                        else stringResource(R.string.fd_choose_app),
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
                                     )
@@ -1278,8 +1292,13 @@ internal fun ConfigDialog(
                                 ) return@forEach
 
                                 val days = listOf(
-                                    "MON" to "Mon", "TUE" to "Tue", "WED" to "Wed",
-                                    "THU" to "Thu", "FRI" to "Fri", "SAT" to "Sat", "SUN" to "Sun",
+                                    "MON" to stringResource(R.string.day_mon),
+                                    "TUE" to stringResource(R.string.day_tue),
+                                    "WED" to stringResource(R.string.day_wed),
+                                    "THU" to stringResource(R.string.day_thu),
+                                    "FRI" to stringResource(R.string.day_fri),
+                                    "SAT" to stringResource(R.string.day_sat),
+                                    "SUN" to stringResource(R.string.day_sun),
                                 )
                                 val selectedDays = remember {
                                     mutableStateOf(
@@ -1332,7 +1351,7 @@ internal fun ConfigDialog(
                                         value = values[field.key] ?: "",
                                         onValueChange = { values[field.key] = it },
                                         label = { Text(field.label) },
-                                        placeholder = { Text("Leave blank for any network") },
+                                        placeholder = { Text(stringResource(R.string.fd_ssid_blank_hint)) },
                                         singleLine = true,
                                         modifier = Modifier.fillMaxWidth(),
                                     )
@@ -1340,7 +1359,7 @@ internal fun ConfigDialog(
                                         Spacer(Modifier.height(4.dp))
                                         AssistChip(
                                             onClick = { values[field.key] = currentSsid },
-                                            label = { Text("Use current: $currentSsid") },
+                                            label = { Text(stringResource(R.string.fd_use_current_ssid, currentSsid)) },
                                             leadingIcon = {
                                                 Icon(Icons.Outlined.Wifi, null, Modifier.size(16.dp))
                                             },
@@ -1387,7 +1406,7 @@ internal fun ConfigDialog(
                                         value = values[field.key] ?: "",
                                         onValueChange = { values[field.key] = it },
                                         label = { Text(field.label) },
-                                        placeholder = { Text("Leave blank for any tag") },
+                                        placeholder = { Text(stringResource(R.string.fd_tag_blank_hint)) },
                                         singleLine = true,
                                         modifier = Modifier.fillMaxWidth(),
                                         readOnly = scanning,
@@ -1395,12 +1414,12 @@ internal fun ConfigDialog(
                                     Spacer(Modifier.height(8.dp))
                                     when {
                                         nfcAdapter == null -> Text(
-                                            "NFC is not available on this device",
+                                            stringResource(R.string.fd_nfc_unavailable),
                                             color = MaterialTheme.colorScheme.error,
                                             style = MaterialTheme.typography.bodySmall,
                                         )
                                         !nfcAdapter.isEnabled -> Text(
-                                            "NFC is disabled — enable it in device settings",
+                                            stringResource(R.string.fd_nfc_disabled),
                                             color = MaterialTheme.colorScheme.error,
                                             style = MaterialTheme.typography.bodySmall,
                                         )
@@ -1411,11 +1430,11 @@ internal fun ConfigDialog(
                                             LoadingIndicator(modifier = Modifier.size(18.dp))
                                             Spacer(Modifier.width(8.dp))
                                             Text(
-                                                "Hold device near NFC tag…",
+                                                stringResource(R.string.fd_nfc_hold),
                                                 modifier = Modifier.weight(1f),
                                                 style = MaterialTheme.typography.bodySmall,
                                             )
-                                            TextButton(onClick = { scanning = false }) { Text("Cancel") }
+                                            TextButton(onClick = { scanning = false }) { Text(stringResource(R.string.action_cancel)) }
                                         }
                                         else -> OutlinedButton(
                                             onClick = { scanning = true },
@@ -1423,7 +1442,7 @@ internal fun ConfigDialog(
                                         ) {
                                             Icon(Icons.Outlined.Nfc, contentDescription = null)
                                             Spacer(Modifier.width(8.dp))
-                                            Text(if ((values[field.key] ?: "").isBlank()) "Scan NFC tag" else "Rescan tag")
+                                            Text(if ((values[field.key] ?: "").isBlank()) stringResource(R.string.fd_scan_nfc) else stringResource(R.string.fd_rescan_tag))
                                         }
                                     }
                                 }
@@ -1439,7 +1458,7 @@ internal fun ConfigDialog(
                                             locationError = it
                                         }
                                     } else {
-                                        locationError = "Location permission denied"
+                                        locationError = context.getString(R.string.fd_location_denied)
                                     }
                                 }
                                 Column {
@@ -1528,7 +1547,7 @@ internal fun ConfigDialog(
                                                     optionList.value = updated
                                                     values[field.key] = Json.encodeToString(updated.toList())
                                                 },
-                                                label = { Text("Option ${idx + 1}") },
+                                                label = { Text(stringResource(R.string.fd_option_n, idx + 1)) },
                                                 singleLine = true,
                                                 modifier = Modifier.weight(1f),
                                             )
@@ -1543,7 +1562,7 @@ internal fun ConfigDialog(
                                             ) {
                                                 Icon(
                                                     Icons.Filled.Delete,
-                                                    contentDescription = "Remove option",
+                                                    contentDescription = stringResource(R.string.fd_remove_option),
                                                     tint = if (optionList.value.size > 2)
                                                         MaterialTheme.colorScheme.error
                                                     else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1563,7 +1582,7 @@ internal fun ConfigDialog(
                                     ) {
                                         Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                                         Spacer(Modifier.width(4.dp))
-                                        Text("Add option")
+                                        Text(stringResource(R.string.fd_add_option))
                                     }
                                 }
                             }
@@ -1661,10 +1680,10 @@ internal fun ConfigDialog(
                     values[key] = "${state.hour.toString().padStart(2, '0')}:${state.minute.toString().padStart(2, '0')}"
                 }
                 onConfirm(values.toMap())
-            }) { Text("Save") }
+            }) { Text(stringResource(R.string.action_save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
         },
     )
 }
@@ -1684,7 +1703,7 @@ private fun fillLocation(
         values[latKey] = "%.6f".format(loc.latitude)
         values[lngKey] = "%.6f".format(loc.longitude)
     } else {
-        onError("Location not available — ensure GPS or network location is on")
+        onError(context.getString(R.string.fd_location_unavailable))
     }
 }
 
@@ -1739,9 +1758,17 @@ private fun ShowMenuConfigDialog(
 
     val isValid = options.value.size >= 2 && options.value.all { it.isNotBlank() }
 
+    val titleFocusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    LaunchedEffect(Unit) {
+        delay(100)
+        titleFocusRequester.requestFocus()
+        keyboardController?.show()
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Show Menu") },
+        title = { Text(stringResource(R.string.fd_show_menu)) },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -1750,13 +1777,13 @@ private fun ShowMenuConfigDialog(
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("Prompt / title") },
-                    placeholder = { Text("Choose a payment method", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    label = { Text(stringResource(R.string.fd_prompt_title)) },
+                    placeholder = { Text(stringResource(R.string.fd_menu_title_placeholder), color = MaterialTheme.colorScheme.onSurfaceVariant) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().focusRequester(titleFocusRequester),
                 )
                 Text(
-                    "Menu options",
+                    stringResource(R.string.fd_menu_options),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -1772,7 +1799,7 @@ private fun ShowMenuConfigDialog(
                                 updated[idx] = newVal
                                 options.value = updated
                             },
-                            label = { Text("Option ${idx + 1}") },
+                            label = { Text(stringResource(R.string.fd_option_n, idx + 1)) },
                             singleLine = true,
                             modifier = Modifier.weight(1f),
                         )
@@ -1786,7 +1813,7 @@ private fun ShowMenuConfigDialog(
                         ) {
                             Icon(
                                 Icons.Filled.Delete,
-                                contentDescription = "Remove option",
+                                contentDescription = stringResource(R.string.fd_remove_option),
                                 tint = if (options.value.size > 2) MaterialTheme.colorScheme.error
                                        else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(20.dp),
@@ -1802,7 +1829,7 @@ private fun ShowMenuConfigDialog(
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text("Add option")
+                    Text(stringResource(R.string.fd_add_option))
                 }
             }
         },
@@ -1810,10 +1837,10 @@ private fun ShowMenuConfigDialog(
             TextButton(
                 onClick = { onConfirm(title.trim(), options.value.map { it.trim() }) },
                 enabled = isValid,
-            ) { Text("Save") }
+            ) { Text(stringResource(R.string.action_save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
         },
     )
 }
@@ -1836,28 +1863,38 @@ private fun VariableDialog(
     val trimmedName = name.trim()
     val nameTaken = isNew && trimmedName in existingNames
 
+    val nameFocusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    LaunchedEffect(Unit) {
+        if (isNew) {
+            delay(100)
+            nameFocusRequester.requestFocus()
+            keyboardController?.show()
+        }
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (isNew) "New Variable" else "Edit Variable") },
+        title = { Text(if (isNew) stringResource(R.string.fd_new_variable) else stringResource(R.string.fd_edit_variable)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Name") },
+                    label = { Text(stringResource(R.string.field_name)) },
                     singleLine = true,
                     isError = nameTaken,
                     supportingText = if (nameTaken) {
-                        { Text("A variable with this name already exists") }
+                        { Text(stringResource(R.string.fd_var_name_taken)) }
                     } else {
-                        { Text("Use as {{$trimmedName}} in trigger and action fields") }
+                        { Text(stringResource(R.string.fd_var_name_hint, trimmedName)) }
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().focusRequester(nameFocusRequester),
                 )
                 OutlinedTextField(
                     value = value,
                     onValueChange = { value = it },
-                    label = { Text("Default value") },
+                    label = { Text(stringResource(R.string.fd_default_value)) },
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -1866,10 +1903,10 @@ private fun VariableDialog(
             TextButton(
                 onClick = { onConfirm(Variable(trimmedName, variable.type, value)) },
                 enabled = trimmedName.isNotBlank() && !nameTaken,
-            ) { Text("Save") }
+            ) { Text(stringResource(R.string.action_save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
         },
     )
 }
@@ -1910,7 +1947,7 @@ private fun EditFlowDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Edit Flow") },
+        title = { Text(stringResource(R.string.fd_edit_flow_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(
@@ -1938,9 +1975,9 @@ private fun EditFlowDialog(
                     }
                     Spacer(Modifier.width(12.dp))
                     Column {
-                        Text("Icon", style = MaterialTheme.typography.bodyLarge)
+                        Text(stringResource(R.string.fd_icon), style = MaterialTheme.typography.bodyLarge)
                         Text(
-                            "Tap to customize",
+                            stringResource(R.string.fd_tap_to_customize),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -1949,14 +1986,14 @@ private fun EditFlowDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Name") },
+                    label = { Text(stringResource(R.string.field_name)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
-                    label = { Text("Description (optional)") },
+                    label = { Text(stringResource(R.string.field_description_optional)) },
                     maxLines = 3,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -1966,10 +2003,10 @@ private fun EditFlowDialog(
             TextButton(
                 onClick = { onConfirm(name.trim(), description.trim(), icon, iconColor) },
                 enabled = name.isNotBlank(),
-            ) { Text("Save") }
+            ) { Text(stringResource(R.string.action_save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
         },
     )
 }

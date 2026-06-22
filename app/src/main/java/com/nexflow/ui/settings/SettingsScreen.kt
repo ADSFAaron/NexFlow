@@ -43,6 +43,7 @@ import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -75,8 +76,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import com.nexflow.R
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.nexflow.prefs.AutoStartPrefs
@@ -92,6 +95,8 @@ fun SettingsScreen(
     var autoStart by remember { mutableStateOf(AutoStartPrefs.get(context)) }
     var logRetention by remember { mutableStateOf(LogRetentionPrefs.get(context)) }
     var showLogRetentionDialog by remember { mutableStateOf(false) }
+    var showLanguageDialog by remember { mutableStateOf(false) }
+    val currentLanguage = remember { AppLanguage.current() }
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     val notifGranted = remember {
@@ -180,22 +185,22 @@ fun SettingsScreen(
             onDismissRequest = { showLogRetentionDialog = false },
         ) {
             Text(
-                text = "Log retention",
+                text = stringResource(R.string.settings_log_retention),
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 8.dp),
             )
             Text(
-                text = "每週自動清理一次",
+                text = stringResource(R.string.settings_log_retention_desc),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 16.dp),
             )
             LogRetentionOption.entries.forEach { option ->
                 ListItem(
-                    headlineContent = { Text(option.displayName) },
+                    headlineContent = { Text(stringResource(option.displayNameRes)) },
                     supportingContent = {
                         Text(
-                            text = option.detail,
+                            text = stringResource(R.string.log_retention_detail, option.days, option.maxCount),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     },
@@ -220,20 +225,74 @@ fun SettingsScreen(
         }
     }
 
+    if (showLanguageDialog) {
+        ModalBottomSheet(onDismissRequest = { showLanguageDialog = false }) {
+            Text(
+                text = stringResource(R.string.settings_language),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 8.dp),
+            )
+            AppLanguage.entries.forEach { language ->
+                val label = if (language == AppLanguage.SYSTEM) {
+                    stringResource(R.string.language_system_default)
+                } else {
+                    language.displayName
+                }
+                ListItem(
+                    headlineContent = { Text(label) },
+                    leadingContent = {
+                        RadioButton(
+                            selected = currentLanguage == language,
+                            onClick = {
+                                showLanguageDialog = false
+                                AppLanguage.apply(language)
+                            },
+                        )
+                    },
+                    modifier = Modifier.clickable {
+                        showLanguageDialog = false
+                        AppLanguage.apply(language)
+                    },
+                )
+            }
+            Spacer(Modifier.height(16.dp))
+        }
+    }
+
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        topBar = { TopAppBar(title = { Text("Settings") }, scrollBehavior = scrollBehavior) },
+        topBar = { TopAppBar(title = { Text(stringResource(R.string.settings_title)) }, scrollBehavior = scrollBehavior) },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         LazyColumn(contentPadding = innerPadding) {
 
+            // ----- General -----
+            item { SectionHeader(stringResource(R.string.settings_section_general)) }
+            item {
+                val languageLabel = if (currentLanguage == AppLanguage.SYSTEM) {
+                    stringResource(R.string.language_system_default)
+                } else {
+                    currentLanguage.displayName
+                }
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.settings_language)) },
+                    supportingContent = { Text(languageLabel) },
+                    leadingContent = {
+                        Icon(Icons.Outlined.Language, contentDescription = null)
+                    },
+                    modifier = Modifier.clickable { showLanguageDialog = true },
+                )
+            }
+
+            item { HorizontalDivider() }
+
             // ----- Permissions -----
-            item { SectionHeader("Permissions") }
+            item { SectionHeader(stringResource(R.string.settings_section_permissions)) }
             item {
                 ListItem(
-                    headlineContent = { Text("Notifications") },
+                    headlineContent = { Text(stringResource(R.string.settings_notifications)) },
                     supportingContent = {
-                        Text(if (notifGranted.value) "Granted" else "Required for Notification actions")
+                        Text(if (notifGranted.value) stringResource(R.string.settings_granted) else stringResource(R.string.settings_notifications_required))
                     },
                     leadingContent = {
                         Icon(
@@ -252,7 +311,7 @@ fun SettingsScreen(
                                 onClick = {
                                     notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                                 },
-                            ) { Text("Grant") }
+                            ) { Text(stringResource(R.string.action_grant)) }
                         }
                     },
                 )
@@ -260,11 +319,11 @@ fun SettingsScreen(
 
             item {
                 ListItem(
-                    headlineContent = { Text("Notification access") },
+                    headlineContent = { Text(stringResource(R.string.settings_notif_access)) },
                     supportingContent = {
                         Text(
-                            if (notifListenerGranted.value) "Granted — notification trigger active"
-                            else "Required for Notification received trigger",
+                            if (notifListenerGranted.value) stringResource(R.string.settings_notif_access_granted)
+                            else stringResource(R.string.settings_notif_access_required),
                         )
                     },
                     leadingContent = {
@@ -283,7 +342,7 @@ fun SettingsScreen(
                                         Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"),
                                     )
                                 },
-                            ) { Text("Enable") }
+                            ) { Text(stringResource(R.string.action_enable)) }
                         }
                     },
                 )
@@ -291,11 +350,11 @@ fun SettingsScreen(
 
             item {
                 ListItem(
-                    headlineContent = { Text("Accessibility Service") },
+                    headlineContent = { Text(stringResource(R.string.settings_accessibility)) },
                     supportingContent = {
                         Text(
-                            if (accessibilityGranted.value) "Granted — app launch trigger & screenshot active"
-                            else "Required for App Launch trigger & Screenshot actions",
+                            if (accessibilityGranted.value) stringResource(R.string.settings_accessibility_granted)
+                            else stringResource(R.string.settings_accessibility_required),
                         )
                     },
                     leadingContent = {
@@ -314,7 +373,7 @@ fun SettingsScreen(
                                         Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS),
                                     )
                                 },
-                            ) { Text("Enable") }
+                            ) { Text(stringResource(R.string.action_enable)) }
                         }
                     },
                 )
@@ -322,11 +381,11 @@ fun SettingsScreen(
 
             item {
                 ListItem(
-                    headlineContent = { Text("Modify system settings") },
+                    headlineContent = { Text(stringResource(R.string.settings_write_settings)) },
                     supportingContent = {
                         Text(
-                            if (writeSettingsGranted.value) "Granted"
-                            else "Required for Brightness actions",
+                            if (writeSettingsGranted.value) stringResource(R.string.settings_granted)
+                            else stringResource(R.string.settings_write_settings_required),
                         )
                     },
                     leadingContent = {
@@ -348,7 +407,7 @@ fun SettingsScreen(
                                         ),
                                     )
                                 },
-                            ) { Text("Grant") }
+                            ) { Text(stringResource(R.string.action_grant)) }
                         }
                     },
                 )
@@ -356,11 +415,11 @@ fun SettingsScreen(
 
             item {
                 ListItem(
-                    headlineContent = { Text("Do Not Disturb access") },
+                    headlineContent = { Text(stringResource(R.string.settings_dnd)) },
                     supportingContent = {
                         Text(
-                            if (dndGranted.value) "Granted"
-                            else "Required for DND toggle actions",
+                            if (dndGranted.value) stringResource(R.string.settings_granted)
+                            else stringResource(R.string.settings_dnd_required),
                         )
                     },
                     leadingContent = {
@@ -379,7 +438,7 @@ fun SettingsScreen(
                                         Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS),
                                     )
                                 },
-                            ) { Text("Grant") }
+                            ) { Text(stringResource(R.string.action_grant)) }
                         }
                     },
                 )
@@ -392,7 +451,7 @@ fun SettingsScreen(
                 val adbCommand =
                     "adb shell pm grant ${context.packageName} android.permission.WRITE_SECURE_SETTINGS"
                 ListItem(
-                    headlineContent = { Text("Wi-Fi & Airplane mode (ADB)") },
+                    headlineContent = { Text(stringResource(R.string.settings_adb)) },
                     leadingContent = {
                         Icon(
                             if (hasWriteSecure) Icons.Outlined.CheckCircle else Icons.Outlined.Lock,
@@ -403,10 +462,10 @@ fun SettingsScreen(
                     },
                     supportingContent = {
                         if (hasWriteSecure) {
-                            Text("WRITE_SECURE_SETTINGS granted — silent toggling active")
+                            Text(stringResource(R.string.settings_adb_granted))
                         } else {
                             Column {
-                                Text("Run once via ADB to enable silent Wi-Fi / Airplane mode toggling:")
+                                Text(stringResource(R.string.settings_adb_required))
                                 Spacer(Modifier.height(6.dp))
                                 Surface(
                                     color = MaterialTheme.colorScheme.surfaceVariant,
@@ -430,11 +489,11 @@ fun SettingsScreen(
                                                     ClipData.newPlainText("ADB command", adbCommand),
                                                 )
                                                 scope.launch {
-                                                    snackbarHostState.showSnackbar("Command copied to clipboard")
+                                                    snackbarHostState.showSnackbar(context.getString(R.string.settings_command_copied))
                                                 }
                                             },
                                         ) {
-                                            Icon(Icons.Outlined.ContentCopy, contentDescription = "Copy command")
+                                            Icon(Icons.Outlined.ContentCopy, contentDescription = stringResource(R.string.settings_copy_command))
                                         }
                                     }
                                 }
@@ -447,17 +506,17 @@ fun SettingsScreen(
             item { HorizontalDivider() }
 
             // ----- Import / Export -----
-            item { SectionHeader("Import / Export") }
+            item { SectionHeader(stringResource(R.string.settings_section_import_export)) }
             item {
                 ListItem(
-                    headlineContent = { Text("Import flow") },
-                    supportingContent = { Text("Pick a NexFlow JSON or MacroDroid .mdr file") },
+                    headlineContent = { Text(stringResource(R.string.settings_import_flow)) },
+                    supportingContent = { Text(stringResource(R.string.settings_import_flow_desc)) },
                     leadingContent = {
                         Icon(Icons.Outlined.FileDownload, contentDescription = null)
                     },
                     trailingContent = {
                         OutlinedButton(onClick = { filePicker.launch(arrayOf("*/*")) }) {
-                            Text("Import")
+                            Text(stringResource(R.string.action_import))
                         }
                     },
                 )
@@ -466,11 +525,11 @@ fun SettingsScreen(
             item { HorizontalDivider() }
 
             // ----- Automation -----
-            item { SectionHeader("Automation") }
+            item { SectionHeader(stringResource(R.string.settings_section_automation)) }
             item {
                 ListItem(
-                    headlineContent = { Text("Auto-start on boot") },
-                    supportingContent = { Text("Resume enabled flows when device starts") },
+                    headlineContent = { Text(stringResource(R.string.settings_autostart)) },
+                    supportingContent = { Text(stringResource(R.string.settings_autostart_desc)) },
                     leadingContent = {
                         Icon(Icons.Outlined.Autorenew, contentDescription = null)
                     },
@@ -488,8 +547,13 @@ fun SettingsScreen(
             item { HorizontalDivider() }
             item {
                 ListItem(
-                    headlineContent = { Text("Log retention") },
-                    supportingContent = { Text("${logRetention.displayName} — ${logRetention.detail}") },
+                    headlineContent = { Text(stringResource(R.string.settings_log_retention)) },
+                    supportingContent = {
+                        Text(
+                            stringResource(logRetention.displayNameRes) + " — " +
+                                stringResource(R.string.log_retention_detail, logRetention.days, logRetention.maxCount),
+                        )
+                    },
                     leadingContent = {
                         Icon(Icons.Outlined.History, contentDescription = null)
                     },
@@ -500,11 +564,11 @@ fun SettingsScreen(
             item { HorizontalDivider() }
 
             // ----- About -----
-            item { SectionHeader("About") }
+            item { SectionHeader(stringResource(R.string.settings_section_about)) }
             item {
                 ListItem(
-                    headlineContent = { Text("About NexFlow") },
-                    supportingContent = { Text("版本、開發者、授權條款") },
+                    headlineContent = { Text(stringResource(R.string.settings_about_nexflow)) },
+                    supportingContent = { Text(stringResource(R.string.settings_about_desc)) },
                     leadingContent = {
                         Icon(Icons.Outlined.Info, contentDescription = null)
                     },

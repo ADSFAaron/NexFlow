@@ -1,10 +1,435 @@
 <resources>
     <string name="app_name">NexFlow</string>
     <string name="accessibility_service_description">NexFlow uses the Accessibility Service to take screenshots when a flow action requests it. No accessibility events are monitored.</string>
-    <string name="widget_overview_description">顯示近期流程並快速啟動</string>
-    <string name="widget_single_description">單一流程快速啟動捷徑</string>
-    <string name="widget_wide_description">寬版單一流程快速啟動捷徑</string>
-    <string name="widget_not_configured">點此設定流程</string>
-    <string name="widget_configure_title">選擇流程</string>
-    <string name="widget_no_flows">尚無流程，請先在 App 內建立流程</string>
+
+    <!-- Widgets -->
+    <string name="widget_overview_description">Show recent flows for quick launch</string>
+    <string name="widget_single_description">Single-flow quick launch shortcut</string>
+    <string name="widget_wide_description">Wide single-flow quick launch shortcut</string>
+    <string name="widget_not_configured">Tap to choose a flow</string>
+    <string name="widget_configure_title">Choose a flow</string>
+    <string name="widget_no_flows">No flows yet — create one in the app first</string>
+    <string name="widget_no_runs">No runs yet</string>
+
+    <!-- Foreground service / tile -->
+    <string name="service_notification_text">Automation is active</string>
+    <string name="action_stop">Stop</string>
+    <string name="tile_run_flow">Run %1$s</string>
+
+    <!-- Bottom navigation -->
+    <string name="nav_flows">Flows</string>
+    <string name="nav_logs">Logs</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Common -->
+    <string name="action_ok">OK</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_back">Back</string>
+    <string name="action_grant">Grant</string>
+    <string name="action_enable">Enable</string>
+    <string name="action_save">Save</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_delete">Delete</string>
+    <string name="field_name">Name</string>
+    <string name="field_description_optional">Description (optional)</string>
+
+    <!-- Days of week (short) -->
+    <string name="day_mon">Mon</string>
+    <string name="day_tue">Tue</string>
+    <string name="day_wed">Wed</string>
+    <string name="day_thu">Thu</string>
+    <string name="day_fri">Fri</string>
+    <string name="day_sat">Sat</string>
+    <string name="day_sun">Sun</string>
+
+    <!-- Flow detail -->
+    <string name="fd_change_icon">Change icon</string>
+    <string name="fd_edit_flow">Edit flow</string>
+    <string name="fd_flow_started">Flow started</string>
+    <string name="fd_flow_stopped">Flow stopped</string>
+    <string name="fd_export_flow">Export flow</string>
+    <string name="fd_export">Export</string>
+    <string name="fd_section_when">WHEN</string>
+    <string name="fd_section_then">THEN</string>
+    <string name="fd_section_variables">VARIABLES</string>
+    <string name="fd_no_triggers">No triggers yet. Add one below.</string>
+    <string name="fd_no_actions">No actions yet. Add one below.</string>
+    <string name="fd_no_variables">No variables. Define defaults usable as {{name}} in any field.</string>
+    <string name="fd_empty_value">(empty)</string>
+    <string name="fd_add_trigger">Add Trigger</string>
+    <string name="fd_add_action">Add Action</string>
+    <string name="fd_add_variable">Add Variable</string>
+    <string name="fd_search_triggers">Search triggers</string>
+    <string name="fd_search_actions">Search actions</string>
+    <string name="fd_run_flow">Run flow</string>
+    <string name="fd_stop_flow">Stop flow</string>
+    <string name="fd_enable_flow">Enable flow</string>
+    <string name="fd_disable_flow">Disable flow</string>
+    <string name="fd_enabled">Enabled</string>
+    <string name="fd_disabled">Disabled</string>
+    <string name="fd_logic_any">ANY</string>
+    <string name="fd_logic_all">ALL</string>
+    <string name="fd_reorder">Reorder</string>
+    <string name="fd_clear_search">Clear search</string>
+    <string name="fd_nothing_matches">Nothing matches “%1$s”</string>
+    <string name="fd_no_config_needed">No configuration needed for this type.</string>
+    <string name="fd_switch_to_dial">Switch to dial</string>
+    <string name="fd_switch_to_keyboard">Switch to keyboard</string>
+    <string name="fd_ssid_blank_hint">Leave blank for any network</string>
+    <string name="fd_use_current_ssid">Use current: %1$s</string>
+    <string name="fd_tag_blank_hint">Leave blank for any tag</string>
+    <string name="fd_nfc_unavailable">NFC is not available on this device</string>
+    <string name="fd_nfc_disabled">NFC is disabled — enable it in device settings</string>
+    <string name="fd_nfc_hold">Hold device near NFC tag…</string>
+    <string name="fd_scan_nfc">Scan NFC tag</string>
+    <string name="fd_rescan_tag">Rescan tag</string>
+    <string name="fd_location_denied">Location permission denied</string>
+    <string name="fd_location_unavailable">Location not available — ensure GPS or network location is on</string>
+    <string name="fd_choose_app">Choose app…</string>
+    <string name="fd_remove_option">Remove option</string>
+    <string name="fd_add_option">Add option</string>
+    <string name="fd_option_n">Option %1$d</string>
+    <string name="fd_show_menu">Show Menu</string>
+    <string name="fd_prompt_title">Prompt / title</string>
+    <string name="fd_menu_title_placeholder">Choose a payment method</string>
+    <string name="fd_menu_options">Menu options</string>
+    <string name="fd_new_variable">New Variable</string>
+    <string name="fd_edit_variable">Edit Variable</string>
+    <string name="fd_var_name_taken">A variable with this name already exists</string>
+    <string name="fd_var_name_hint">Use as {{%1$s}} in trigger and action fields</string>
+    <string name="fd_default_value">Default value</string>
+    <string name="fd_edit_flow_title">Edit Flow</string>
+    <string name="fd_icon">Icon</string>
+    <string name="fd_tap_to_customize">Tap to customize</string>
+
+    <!-- Language picker -->
+    <string name="settings_language">Language</string>
+    <string name="language_system_default">System default</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_section_general">General</string>
+    <string name="settings_section_permissions">Permissions</string>
+    <string name="settings_section_import_export">Import / Export</string>
+    <string name="settings_section_automation">Automation</string>
+    <string name="settings_section_about">About</string>
+    <string name="action_import">Import</string>
+    <string name="settings_granted">Granted</string>
+    <string name="settings_notifications">Notifications</string>
+    <string name="settings_notifications_required">Required for Notification actions</string>
+    <string name="settings_notif_access">Notification access</string>
+    <string name="settings_notif_access_granted">Granted — notification trigger active</string>
+    <string name="settings_notif_access_required">Required for Notification received trigger</string>
+    <string name="settings_accessibility">Accessibility Service</string>
+    <string name="settings_accessibility_granted">Granted — app launch trigger &amp; screenshot active</string>
+    <string name="settings_accessibility_required">Required for App Launch trigger &amp; Screenshot actions</string>
+    <string name="settings_write_settings">Modify system settings</string>
+    <string name="settings_write_settings_required">Required for Brightness actions</string>
+    <string name="settings_dnd">Do Not Disturb access</string>
+    <string name="settings_dnd_required">Required for DND toggle actions</string>
+    <string name="settings_adb">Wi-Fi &amp; Airplane mode (ADB)</string>
+    <string name="settings_adb_granted">WRITE_SECURE_SETTINGS granted — silent toggling active</string>
+    <string name="settings_adb_required">Run once via ADB to enable silent Wi-Fi / Airplane mode toggling:</string>
+    <string name="settings_command_copied">Command copied to clipboard</string>
+    <string name="settings_copy_command">Copy command</string>
+    <string name="settings_import_flow">Import flow</string>
+    <string name="settings_import_flow_desc">Pick a NexFlow JSON or MacroDroid .mdr file</string>
+    <string name="settings_autostart">Auto-start on boot</string>
+    <string name="settings_autostart_desc">Resume enabled flows when device starts</string>
+    <string name="settings_log_retention">Log retention</string>
+    <string name="settings_log_retention_desc">Cleans up automatically once a week</string>
+    <string name="settings_about_nexflow">About NexFlow</string>
+    <string name="settings_about_desc">Version, developer, license</string>
+
+    <!-- Flows list -->
+    <string name="flows_title">My Flows</string>
+    <string name="flows_new_flow">New Flow</string>
+    <string name="action_create">Create</string>
+    <string name="action_run">Run</string>
+    <string name="action_later">Later</string>
+    <string name="flows_close_menu">Close menu</string>
+    <string name="flows_open_actions">Open actions</string>
+    <string name="flows_running">Running: %1$s</string>
+    <string name="flows_import_flow_q">Import flow?</string>
+    <string name="flows_import_external_warning">Another app sent a flow to NexFlow. Only import flows from sources you trust. The imported flow will be added disabled — review it before enabling.</string>
+    <string name="flows_import_failed">Import failed</string>
+    <string name="flows_import_complete">Import complete</string>
+    <string name="flows_bullet">• %1$s</string>
+    <string name="flows_and_more">… and %1$d more</string>
+    <string name="flows_permissions_needed">Permissions needed</string>
+    <string name="flows_permissions_body">“%1$s” uses triggers or actions that need permissions you haven\'t granted yet:</string>
+    <string name="flows_open_settings">Open Settings</string>
+    <string name="flows_start_service">Start automation service</string>
+    <string name="flows_stop_service">Stop automation service</string>
+    <string name="flows_service_started">Started</string>
+    <string name="flows_service_stopped">Stopped</string>
+    <string name="flows_empty_title">No flows yet</string>
+    <string name="flows_empty_subtitle">Tap + to create your first automation</string>
+    <string name="flows_flow_activated">Flow activated</string>
+    <string name="flows_flow_started">Flow started</string>
+
+    <!-- About -->
+    <string name="about_title">About</string>
+    <string name="about_developer">Developer</string>
+    <string name="about_dev_role">Development</string>
+    <string name="about_legal">Legal</string>
+    <string name="about_terms">Terms of Service</string>
+    <string name="about_privacy">Privacy Policy</string>
+
+    <!-- Common dialogs -->
+    <string name="icon_selected_color">Selected color</string>
+    <string name="app_picker_search">Search apps…</string>
+
+    <!-- Log retention options -->
+    <string name="log_retention_light">Light</string>
+    <string name="log_retention_standard">Standard</string>
+    <string name="log_retention_full">Full</string>
+    <string name="log_retention_extended">Extended</string>
+    <string name="log_retention_detail">%1$d days · %2$d entries</string>
+
+    <!-- Logs -->
+    <string name="logs_title">Execution Logs</string>
+    <string name="logs_clear_q">Clear all logs?</string>
+    <string name="logs_clear_body">This removes all execution history. It cannot be undone.</string>
+    <string name="action_clear">Clear</string>
+    <string name="logs_clear_all">Clear all logs</string>
+    <string name="logs_empty_title">No logs yet</string>
+    <string name="logs_empty_subtitle">Flow executions will appear here</string>
+
+    <!-- ===================== Trigger / Action catalog ===================== -->
+
+    <!-- Categories -->
+    <string name="cat_control_flow">Control Flow</string>
+    <string name="cat_connectivity">Connectivity</string>
+    <string name="cat_device">Device</string>
+    <string name="cat_communication">Communication</string>
+    <string name="cat_alerts">Alerts</string>
+    <string name="cat_web">Web</string>
+    <string name="cat_apps_media">Apps &amp; Media</string>
+    <string name="cat_files_data">Files &amp; Data</string>
+    <string name="cat_manual">Manual</string>
+    <string name="cat_time">Time</string>
+    <string name="cat_device_state">Device State</string>
+    <string name="cat_apps">Apps</string>
+    <string name="cat_location">Location</string>
+
+    <!-- Action labels &amp; descriptions -->
+    <string name="act_toast_label">Toast</string>
+    <string name="act_toast_desc">Show a brief on-screen message</string>
+    <string name="act_notification_label">Notification</string>
+    <string name="act_notification_desc">Post a system notification</string>
+    <string name="act_delay_label">Delay</string>
+    <string name="act_delay_desc">Wait before the next action</string>
+    <string name="act_wifi_label">Wi-Fi</string>
+    <string name="act_wifi_desc">Turn Wi-Fi on or off</string>
+    <string name="act_bluetooth_label">Bluetooth</string>
+    <string name="act_bluetooth_desc">Turn Bluetooth on or off</string>
+    <string name="act_dnd_label">Do Not Disturb</string>
+    <string name="act_dnd_desc">Toggle Do Not Disturb mode</string>
+    <string name="act_volume_label">Volume</string>
+    <string name="act_volume_desc">Adjust audio volume</string>
+    <string name="act_open_app_label">Open app</string>
+    <string name="act_open_app_desc">Launch an application</string>
+    <string name="act_open_url_label">Open URL</string>
+    <string name="act_open_url_desc">Open a link in the browser</string>
+    <string name="act_tts_label">Text to speech</string>
+    <string name="act_tts_desc">Speak text aloud</string>
+    <string name="act_clipboard_label">Copy to clipboard</string>
+    <string name="act_clipboard_desc">Copy text to the clipboard</string>
+    <string name="act_http_label">HTTP request</string>
+    <string name="act_http_desc">Send an HTTP request</string>
+    <string name="act_brightness_label">Brightness</string>
+    <string name="act_brightness_desc">Set screen brightness</string>
+    <string name="act_airplane_label">Airplane mode</string>
+    <string name="act_airplane_desc">Toggle airplane mode</string>
+    <string name="act_media_label">Media</string>
+    <string name="act_media_desc">Control media playback</string>
+    <string name="act_send_sms_label">Send SMS</string>
+    <string name="act_send_sms_desc">Send a text message</string>
+    <string name="act_call_label">Call phone</string>
+    <string name="act_call_desc">Make a phone call</string>
+    <string name="act_set_variable_label">Set variable</string>
+    <string name="act_set_variable_desc">Assign a value to a flow variable</string>
+    <string name="act_write_file_label">Write file</string>
+    <string name="act_write_file_desc">Write text to a file</string>
+    <string name="act_share_label">Share</string>
+    <string name="act_share_desc">Share text via other apps</string>
+    <string name="act_screenshot_label">Screenshot</string>
+    <string name="act_screenshot_desc">Take a screenshot</string>
+    <string name="act_if_label">If</string>
+    <string name="act_if_desc">Run following actions only when a condition holds</string>
+    <string name="act_else_label">Else</string>
+    <string name="act_else_desc">Else block</string>
+    <string name="act_end_if_label">End If</string>
+    <string name="act_end_if_desc">End of If block</string>
+    <string name="act_repeat_label">Repeat</string>
+    <string name="act_repeat_desc">Repeat block</string>
+    <string name="act_end_repeat_label">End Repeat</string>
+    <string name="act_end_repeat_desc">End of Repeat block</string>
+    <string name="act_show_menu_label">Show Menu</string>
+    <string name="act_show_menu_desc">Ask the user to pick an option, then run the matching branch</string>
+    <string name="act_menu_case_label">Menu Case</string>
+    <string name="act_menu_case_desc">Branch executed when the user picks this option</string>
+    <string name="act_end_menu_label">End Menu</string>
+    <string name="act_end_menu_desc">End of Show Menu block</string>
+
+    <!-- Trigger labels &amp; descriptions -->
+    <string name="trg_manual_label">Manual</string>
+    <string name="trg_manual_desc">Run by tapping the play button</string>
+    <string name="trg_time_label">Time</string>
+    <string name="trg_time_desc">At a specific time of day</string>
+    <string name="trg_battery_label">Battery</string>
+    <string name="trg_battery_desc">When battery level changes</string>
+    <string name="trg_bluetooth_label">Bluetooth</string>
+    <string name="trg_bluetooth_desc">When a Bluetooth device connects</string>
+    <string name="trg_wifi_label">Wi-Fi</string>
+    <string name="trg_wifi_desc">When Wi-Fi network changes</string>
+    <string name="trg_screen_label">Screen</string>
+    <string name="trg_screen_desc">When screen turns on or off</string>
+    <string name="trg_app_launch_label">App launch</string>
+    <string name="trg_app_launch_desc">When an app is opened</string>
+    <string name="trg_incoming_call_label">Incoming call</string>
+    <string name="trg_incoming_call_desc">When the phone receives a call</string>
+    <string name="trg_sms_label">SMS received</string>
+    <string name="trg_sms_desc">When an SMS message arrives</string>
+    <string name="trg_notification_label">Notification</string>
+    <string name="trg_notification_desc">When a notification arrives</string>
+    <string name="trg_boot_label">Device boot</string>
+    <string name="trg_boot_desc">When the device starts up</string>
+    <string name="trg_headset_label">Headset</string>
+    <string name="trg_headset_desc">When headset is plugged or unplugged</string>
+    <string name="trg_nfc_label">NFC tag</string>
+    <string name="trg_nfc_desc">When an NFC tag is scanned</string>
+    <string name="trg_geofence_label">Geofence</string>
+    <string name="trg_geofence_desc">When entering or leaving an area</string>
+
+    <!-- Config field labels -->
+    <string name="cfg_message">Message</string>
+    <string name="cfg_title">Title</string>
+    <string name="cfg_action">Action</string>
+    <string name="cfg_event">Event</string>
+    <string name="cfg_app">App</string>
+    <string name="cfg_url">URL</string>
+    <string name="cfg_method">Method</string>
+    <string name="cfg_body_optional">Body (optional)</string>
+    <string name="cfg_value">Value</string>
+    <string name="cfg_variable_name">Variable name</string>
+    <string name="cfg_content">Content</string>
+    <string name="cfg_condition">Condition</string>
+    <string name="cfg_repeat_count">Repeat count</string>
+    <string name="cfg_option_label">Option label</string>
+    <string name="cfg_delay_duration">Delay duration</string>
+    <string name="cfg_volume_level">Volume level</string>
+    <string name="cfg_stream">Stream</string>
+    <string name="cfg_text_to_speak">Text to speak</string>
+    <string name="cfg_text_to_copy">Text to copy</string>
+    <string name="cfg_text_to_share">Text to share</string>
+    <string name="cfg_file_path">File path</string>
+    <string name="cfg_phone_number">Phone number</string>
+    <string name="cfg_brightness_level">Brightness level</string>
+    <string name="cfg_extra_dim">Extra dim</string>
+    <string name="cfg_extra_dim_desc">Set screen to minimum backlight intensity</string>
+    <string name="cfg_use_current_location">Use current location</string>
+    <string name="cfg_time">Time</string>
+    <string name="cfg_repeat">Repeat</string>
+    <string name="cfg_custom_days">Custom days</string>
+    <string name="cfg_battery_level">Battery level</string>
+    <string name="cfg_trigger_when">Trigger when</string>
+    <string name="cfg_charging_state">Charging state</string>
+    <string name="cfg_device_name_optional">Device name (optional)</string>
+    <string name="cfg_network_name_optional">Network name (optional)</string>
+    <string name="cfg_contact_optional">Contact (optional)</string>
+    <string name="cfg_sender_optional">Sender (optional)</string>
+    <string name="cfg_notif_app_optional">App (optional — leave empty for any)</string>
+    <string name="cfg_tag_id_optional">Tag ID (optional)</string>
+    <string name="cfg_latitude">Latitude</string>
+    <string name="cfg_longitude">Longitude</string>
+    <string name="cfg_radius">Radius</string>
+
+    <!-- Config field hints (textual) -->
+    <string name="cfg_hint_any_device">Leave blank for any device</string>
+    <string name="cfg_hint_any_caller">Leave blank for any caller</string>
+    <string name="cfg_hint_any_sender">Leave blank for any sender</string>
+
+    <!-- Config InfoText blocks -->
+    <string name="cfg_info_language_label">Language</string>
+    <string name="cfg_info_language_body">Uses the device\'s default TTS engine language. To change it go to Settings → Accessibility → Text-to-speech output.</string>
+    <string name="cfg_info_permission_label">Permission</string>
+    <string name="cfg_info_permission_body">Requires \'Modify system settings\' — grant it in the Permissions section of the Settings tab.</string>
+    <string name="cfg_info_requirement_label">Requirement</string>
+    <string name="cfg_info_screenshot_body">Screenshot requires the NexFlow Accessibility Service to be enabled. Go to Settings → Accessibility → Installed apps → NexFlow and toggle it on. Requires Android 12 or higher.</string>
+    <string name="cfg_info_condition_label">Condition</string>
+    <string name="cfg_info_condition_body">Examples: {{battery}} &lt; 20 · {{status}} == ok · true. Supports ==, !=, &lt;, &gt;, &lt;=, &gt;= — numbers compare numerically. Close the block with an End If action.</string>
+
+    <!-- Dropdown / option labels -->
+    <string name="opt_on">On</string>
+    <string name="opt_off">Off</string>
+    <string name="opt_toggle">Toggle</string>
+    <string name="opt_connected">Connected</string>
+    <string name="opt_disconnected">Disconnected</string>
+    <string name="opt_ringtone">Ringtone</string>
+    <string name="opt_media">Media</string>
+    <string name="opt_alarm">Alarm</string>
+    <string name="opt_notification">Notification</string>
+    <string name="opt_play">Play</string>
+    <string name="opt_pause">Pause</string>
+    <string name="opt_play_pause">Play/Pause</string>
+    <string name="opt_every_day">Every day</string>
+    <string name="opt_weekdays">Weekdays only</string>
+    <string name="opt_weekends">Weekends only</string>
+    <string name="opt_custom_days">Custom days…</string>
+    <string name="opt_once">Once</string>
+    <string name="opt_falls_below">Falls below</string>
+    <string name="opt_rises_above">Rises above</string>
+    <string name="opt_any">Any</string>
+    <string name="opt_charging">Charging</string>
+    <string name="opt_not_charging">Not charging</string>
+    <string name="opt_screen_on">Screen on</string>
+    <string name="opt_screen_off">Screen off</string>
+    <string name="opt_screen_unlocked">Screen unlocked</string>
+    <string name="opt_entering_area">Entering area</string>
+    <string name="opt_leaving_area">Leaving area</string>
+
+    <!-- Config summaries (subtitle under each row) -->
+    <string name="sum_no_message">No message</string>
+    <string name="sum_notification">Notification</string>
+    <string name="sum_toggle">Toggle</string>
+    <string name="sum_not_set">Not set</string>
+    <string name="sum_no_url">No URL</string>
+    <string name="sum_no_text">No text</string>
+    <string name="sum_extra_dim">Extra dim</string>
+    <string name="sum_no_number">No number</string>
+    <string name="sum_no_path">No path</string>
+    <string name="sum_take_screenshot">Take screenshot</string>
+    <string name="sum_otherwise">Otherwise</string>
+    <string name="sum_closes_if">Closes If</string>
+    <string name="sum_closes_repeat">Closes Repeat</string>
+    <string name="sum_choose_option">Choose an option</string>
+    <string name="sum_option">Option</string>
+    <string name="sum_closes_menu">Closes Menu</string>
+    <string name="sum_no_condition">No condition</string>
+    <string name="sum_tap_to_run">Tap to run</string>
+    <string name="sum_any_device">any device</string>
+    <string name="sum_any_network">any network</string>
+    <string name="sum_any_caller">Any caller</string>
+    <string name="sum_any_sender">Any sender</string>
+    <string name="sum_any_app">Any app</string>
+    <string name="sum_on_boot">On boot</string>
+    <string name="sum_any_tag">Any tag</string>
+    <string name="sum_no_days">no days</string>
+    <string name="sum_level">Level: %1$s%2$s</string>
+    <string name="sum_stream_level">%1$s: %2$s</string>
+    <string name="sum_battery">%1$s%% %2$s</string>
+    <string name="sum_battery_below">below</string>
+    <string name="sum_battery_above">above</string>
+    <string name="sum_device_event">%1$s %2$s</string>
+
+    <plurals name="flows_imported_count">
+        <item quantity="one">Imported %1$d flow.</item>
+        <item quantity="other">Imported %1$d flows.</item>
+    </plurals>
+    <plurals name="flows_warning_count">
+        <item quantity="one">%1$d warning:</item>
+        <item quantity="other">%1$d warnings:</item>
+    </plurals>
 </resources>

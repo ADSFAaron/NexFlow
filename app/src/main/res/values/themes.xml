@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.NexFlow" parent="android:Theme.Material.Light.NoActionBar">
+    <!-- AppCompat.DayNight parent is required because MainActivity extends
+         AppCompatActivity (for in-app per-app language switching). Compose still
+         drives the real UI theme via NexFlowTheme; this only styles the window
+         background / splash. -->
+    <style name="Theme.NexFlow" parent="Theme.AppCompat.DayNight.NoActionBar">
         <!-- Android 12+ 的系統 splash 背景會 fallback 到 windowBackground（單色） -->
         <item name="android:windowBackground">@color/splash_background</item>
     </style>
