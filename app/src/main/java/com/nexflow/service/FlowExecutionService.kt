@@ -135,6 +135,26 @@ class FlowExecutionService : Service() {
             }
         }
 
+        /**
+         * Run a single flow by ID via the foreground service. If the service is already
+         * running this just delivers the intent; if it was killed, startForegroundService
+         * restarts it (callers fired from an exact alarm hold the temporary FGS-start
+         * exemption). Swallows ForegroundServiceStartNotAllowedException so a missed start
+         * never crashes — the flow is simply skipped that cycle.
+         */
+        fun runFlow(context: Context, flowId: String) {
+            try {
+                context.startForegroundService(
+                    Intent(context, FlowExecutionService::class.java).apply {
+                        action = ACTION_RUN_FLOW
+                        putExtra(EXTRA_FLOW_ID, flowId)
+                    },
+                )
+            } catch (e: Exception) {
+                android.util.Log.w("FlowExecutionService", "Could not start service to run flow", e)
+            }
+        }
+
         fun stop(context: Context) {
             context.stopService(Intent(context, FlowExecutionService::class.java))
         }

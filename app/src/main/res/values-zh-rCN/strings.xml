@@ -1,5 +1,5 @@
 <resources>
-    <string name="accessibility_service_description">NexFlow 会在流程动作请求时使用无障碍服务截取屏幕截图，不会监听任何无障碍事件。</string>
+    <string name="accessibility_service_description">NexFlow 使用无障碍服务提供两项自动化功能：在流程的截图动作执行时截取屏幕画面，以及检测当前切换到前台的 App，以便触发您的“App 启动”条件。本服务仅读取前台 App 的包名，不会读取屏幕内容、文字或密码。</string>
 
     <!-- Widgets -->
     <string name="widget_overview_description">显示近期流程以便快速启动</string>
@@ -122,6 +122,24 @@
     <string name="settings_accessibility">无障碍服务</string>
     <string name="settings_accessibility_granted">已授予 — 应用启动触发器与截图已启用</string>
     <string name="settings_accessibility_required">“应用启动”触发器与截图动作所需</string>
+    <string name="accessibility_disclosure_title">启用无障碍服务</string>
+    <string name="accessibility_disclosure_continue">前往设置</string>
+
+    <!-- 权限提醒标签 (FlowPermissionChecker) -->
+    <string name="perm_accessibility">无障碍服务</string>
+    <string name="perm_notification_access">通知访问权限</string>
+    <string name="perm_receive_sms">接收短信</string>
+    <string name="perm_phone_state">电话状态</string>
+    <string name="perm_location">定位</string>
+    <string name="perm_background_location">后台定位 — 请设为“始终允许”</string>
+    <string name="perm_location_wifi">定位（Wi-Fi SSID 检测）</string>
+    <string name="perm_bluetooth">附近的设备（蓝牙）</string>
+    <string name="perm_send_sms">发送短信</string>
+    <string name="perm_call_phone">拨打电话</string>
+    <string name="perm_notifications">通知</string>
+    <string name="perm_dnd">勿扰模式访问权限</string>
+    <string name="perm_write_settings">修改系统设置</string>
+    <string name="perm_airplane_adb">飞行模式（ADB）</string>
     <string name="settings_write_settings">修改系统设置</string>
     <string name="settings_write_settings_required">亮度动作所需</string>
     <string name="settings_dnd">勿扰访问权限</string>

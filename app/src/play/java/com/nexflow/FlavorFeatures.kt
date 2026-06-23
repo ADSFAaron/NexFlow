@@ -31,5 +31,7 @@ object FlavorFeatures {
     val hiddenActionTypes: Set<ActionType> = setOf(
         ActionType.SEND_SMS,
         ActionType.CALL_PHONE,
+        // Needs WRITE_SECURE_SETTINGS, which the play flavor does not declare.
+        ActionType.AIRPLANE_TOGGLE,
     )
 }

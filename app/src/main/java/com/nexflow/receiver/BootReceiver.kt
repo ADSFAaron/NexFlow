@@ -18,20 +18,42 @@ package com.nexflow.receiver
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import com.nexflow.core.automation.repository.FlowRepository
 import com.nexflow.prefs.AutoStartPrefs
 import com.nexflow.service.FlowExecutionService
 import com.nexflow.trigger.BootTriggerHandler
+import com.nexflow.trigger.TimeTriggerScheduler
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
 class BootReceiver : BroadcastReceiver() {
 
     @Inject lateinit var bootTriggerHandler: BootTriggerHandler
+    @Inject lateinit var repository: FlowRepository
+    @Inject lateinit var timeTriggerScheduler: TimeTriggerScheduler
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
         bootTriggerHandler.notifyBoot()
+
+        // AlarmManager clears all alarms on reboot, so TIME triggers must be re-registered here
+        // regardless of the auto-start preference (the alarm itself, not a running service, is
+        // what later wakes the app). BOOT_COMPLETED exempts this from background-start limits.
+        val pending = goAsync()
+        CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
+            try {
+                timeTriggerScheduler.sync(repository.observeEnabled().first())
+            } finally {
+                pending.finish()
+            }
+        }
+
         if (AutoStartPrefs.get(context)) {
             FlowExecutionService.start(context)
         }

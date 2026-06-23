@@ -19,59 +19,24 @@ import com.nexflow.core.automation.model.Trigger
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.automation.trigger.TriggerEvent
 import com.nexflow.core.automation.trigger.TriggerHandler
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
-import java.util.Calendar
+import kotlinx.coroutines.flow.emptyFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * TIME triggers are scheduled through [TimeTriggerScheduler]/[AlarmManager][android.app.AlarmManager],
+ * not the in-process [observe] stream. The previous implementation polled with a
+ * `while (true) { delay(...) }` loop, which only ran while the foreground service was alive and
+ * whose `delay` was suspended (not fired) during Doze, silently skipping scheduled flows.
+ *
+ * This handler is kept only so [TriggerType.TIME] stays a registered handler type; FlowEngine
+ * explicitly excludes TIME from the stream it collects, so [observe] is never subscribed.
+ */
 @Singleton
 class TimeTriggerHandler @Inject constructor() : TriggerHandler {
 
     override val supportedType = TriggerType.TIME
 
-    override fun observe(trigger: Trigger): Flow<TriggerEvent> = flow {
-        val targetTime = trigger.config["time"] ?: "08:00"
-        val parts = targetTime.split(":").map { it.toIntOrNull() ?: 0 }
-        val targetHour = parts.getOrElse(0) { 8 }
-        val targetMinute = parts.getOrElse(1) { 0 }
-        val repeat = trigger.config["repeat"] ?: "DAILY"
-
-        var lastFiredDay = -1
-
-        while (true) {
-            val now = Calendar.getInstance()
-            val day = now.get(Calendar.DAY_OF_YEAR)
-            val hour = now.get(Calendar.HOUR_OF_DAY)
-            val minute = now.get(Calendar.MINUTE)
-
-            if (hour == targetHour && minute == targetMinute && day != lastFiredDay) {
-                val customDays = trigger.config["days"]?.split(",")?.map { it.trim() } ?: emptyList()
-                val calDayId = when (now.get(Calendar.DAY_OF_WEEK)) {
-                    Calendar.MONDAY -> "MON"; Calendar.TUESDAY -> "TUE"
-                    Calendar.WEDNESDAY -> "WED"; Calendar.THURSDAY -> "THU"
-                    Calendar.FRIDAY -> "FRI"; Calendar.SATURDAY -> "SAT"
-                    else -> "SUN"
-                }
-                val shouldFire = when (repeat) {
-                    "WEEKDAYS" -> now.get(Calendar.DAY_OF_WEEK) in Calendar.MONDAY..Calendar.FRIDAY
-                    "WEEKENDS" -> now.get(Calendar.DAY_OF_WEEK).let {
-                        it == Calendar.SATURDAY || it == Calendar.SUNDAY
-                    }
-                    "CUSTOM" -> calDayId in customDays
-                    else -> true // DAILY or ONCE
-                }
-                if (shouldFire) {
-                    emit(TriggerEvent(trigger.id, ""))
-                    lastFiredDay = day
-                    if (repeat == "ONCE") return@flow
-                }
-            }
-
-            // Sleep until the start of the next minute
-            val secondsLeft = 60 - now.get(Calendar.SECOND)
-            delay(secondsLeft * 1_000L)
-        }
-    }
+    override fun observe(trigger: Trigger): Flow<TriggerEvent> = emptyFlow()
 }

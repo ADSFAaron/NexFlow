@@ -16,6 +16,13 @@
     <!-- Boot trigger -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!-- TIME trigger exact scheduling. SCHEDULE_EXACT_ALARM (user-grantable via Settings),
+         NOT USE_EXACT_ALARM: Google Play restricts USE_EXACT_ALARM to alarm-clock/calendar
+         apps only, and NexFlow is an automation app. When this permission is not granted
+         (denied by default on Android 14+/targetSdk 33+) the scheduler falls back to the
+         permission-free inexact setAndAllowWhileIdle(), which still survives Doze. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
     <!-- Wi-Fi toggle + SSID detection -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
@@ -34,10 +41,10 @@
     <!-- Do Not Disturb toggle -->
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
 
-    <!-- Airplane mode / advanced toggle (granted via ADB only) -->
-    <uses-permission
-        android:name="android.permission.WRITE_SECURE_SETTINGS"
-        tools:ignore="ProtectedPermissions" />
+    <!-- WRITE_SECURE_SETTINGS (Airplane-mode toggle, ADB-granted only) is declared only in the
+         `github` flavor (src/github/AndroidManifest.xml). The Play Store flavor ships without it
+         because a privileged, non-UI-grantable permission draws extra review scrutiny; the
+         AIRPLANE_TOGGLE action is hidden in the play flavor (see FlavorFeatures). -->
 
     <!-- NFC tag scanning -->
     <uses-permission android:name="android.permission.NFC" />
@@ -193,6 +200,11 @@
         <!-- Geofence transition receiver (woken by Google Play Services) -->
         <receiver
             android:name=".receiver.GeofenceTransitionReceiver"
+            android:exported="false" />
+
+        <!-- TIME trigger alarm receiver (woken by AlarmManager, survives Doze + process death) -->
+        <receiver
+            android:name=".receiver.TimeAlarmReceiver"
             android:exported="false" />
 
         <!-- Quick Settings Tile — user adds from QS edit panel -->

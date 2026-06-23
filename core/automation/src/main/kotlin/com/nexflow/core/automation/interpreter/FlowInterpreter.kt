@@ -22,6 +22,7 @@ import com.nexflow.core.automation.model.ActionType
 import com.nexflow.core.automation.model.Flow
 import com.nexflow.core.automation.model.Variable
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.yield
 
 /**
  * Interprets and executes a Flow's action list, including control-flow constructs
@@ -73,9 +74,15 @@ class FlowInterpreter(
                 }
 
                 ActionType.REPEAT_BLOCK -> {
-                    val count = action.config["count"]?.toIntOrNull() ?: 1
+                    // Clamp to a sane bound: a malformed/imported flow with a huge count would
+                    // otherwise block the single execution dispatcher indefinitely.
+                    val count = (action.config["count"]?.toIntOrNull() ?: 1)
+                        .coerceIn(0, MAX_REPEAT_COUNT)
                     val endRepeatIndex = findMatchingEndRepeat(actions, i)
                     repeat(count) {
+                        // Cooperatively yield so a long loop stays cancellable (e.g. when the
+                        // user stops the flow or the service is torn down).
+                        yield()
                         val result = executeBlock(actions, variables, i + 1, endRepeatIndex, onActionStart)
                         if (result is InterpreterResult.Failure) return result
                     }
@@ -274,6 +281,11 @@ class FlowInterpreter(
 
     private fun buildVariableMap(variables: List<Variable>): MutableMap<String, String> =
         variables.associate { it.name to it.defaultValue }.toMutableMap()
+
+    companion object {
+        /** Upper bound for a single REPEAT block's iteration count. */
+        const val MAX_REPEAT_COUNT = 10_000
+    }
 }
 
 sealed class InterpreterResult {

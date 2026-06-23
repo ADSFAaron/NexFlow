@@ -46,6 +46,7 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -61,6 +62,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -96,6 +98,9 @@ fun SettingsScreen(
     var logRetention by remember { mutableStateOf(LogRetentionPrefs.get(context)) }
     var showLogRetentionDialog by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
+    // Google Play accessibility policy requires a prominent disclosure of what the service
+    // does (and consent) before sending the user to enable it.
+    var showAccessibilityDisclosure by remember { mutableStateOf(false) }
     val currentLanguage = remember { AppLanguage.current() }
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
@@ -178,6 +183,25 @@ fun SettingsScreen(
         val content = context.contentResolver.openInputStream(uri)
             ?.bufferedReader()?.use { it.readText() } ?: return@rememberLauncherForActivityResult
         importVm.importAuto(content)
+    }
+
+    if (showAccessibilityDisclosure) {
+        AlertDialog(
+            onDismissRequest = { showAccessibilityDisclosure = false },
+            title = { Text(stringResource(R.string.accessibility_disclosure_title)) },
+            text = { Text(stringResource(R.string.accessibility_service_description)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showAccessibilityDisclosure = false
+                    accessibilityLauncher.launch(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                }) { Text(stringResource(R.string.accessibility_disclosure_continue)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAccessibilityDisclosure = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
     }
 
     if (showLogRetentionDialog) {
@@ -368,11 +392,7 @@ fun SettingsScreen(
                     trailingContent = {
                         if (!accessibilityGranted.value) {
                             OutlinedButton(
-                                onClick = {
-                                    accessibilityLauncher.launch(
-                                        Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS),
-                                    )
-                                },
+                                onClick = { showAccessibilityDisclosure = true },
                             ) { Text(stringResource(R.string.action_enable)) }
                         }
                     },

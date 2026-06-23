@@ -15,7 +15,9 @@
  */
 package com.nexflow.ui.flows
 
+import android.content.Intent
 import android.net.Uri
+import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -381,12 +383,27 @@ fun FlowsScreen(
             },
             confirmButton = {
                 val runtime = reminder.missing.flatMap { it.runtimePermissions }
-                if (runtime.isNotEmpty()) {
-                    TextButton(
+                when {
+                    // Foreground permissions first — request them via the runtime dialog. Any
+                    // background-location step intentionally reappears on the next attempt,
+                    // once foreground location has been granted.
+                    runtime.isNotEmpty() -> TextButton(
                         onClick = { permissionLauncher.launch(runtime.toTypedArray()) },
                     ) { Text(stringResource(R.string.action_grant)) }
-                } else {
-                    TextButton(
+                    // Background location can only be set to "Allow all the time" in system
+                    // settings on Android 11+, so open the app's settings page directly.
+                    reminder.missing.any { it.openLocationSettings } -> TextButton(
+                        onClick = {
+                            permissionReminder = null
+                            context.startActivity(
+                                Intent(
+                                    Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                    Uri.fromParts("package", context.packageName, null),
+                                ),
+                            )
+                        },
+                    ) { Text(stringResource(R.string.flows_open_settings)) }
+                    else -> TextButton(
                         onClick = {
                             permissionReminder = null
                             onOpenSettings()

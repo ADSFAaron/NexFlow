@@ -1,5 +1,5 @@
 <resources>
-    <string name="accessibility_service_description">NexFlow は、フローのアクションが要求したときにユーザー補助サービスを使ってスクリーンショットを撮影します。ユーザー補助イベントの監視は行いません。</string>
+    <string name="accessibility_service_description">NexFlow はユーザー補助サービスを 2 つの自動化機能に使用します。フローのスクリーンショット アクション実行時に画面を撮影することと、前面に表示されたアプリを検出して「アプリ起動」トリガーを発火させることです。本サービスは前面アプリのパッケージ名のみを読み取り、画面の内容・テキスト・パスワードは読み取りません。</string>
 
     <!-- Widgets -->
     <string name="widget_overview_description">最近のフローを表示してすばやく起動</string>
@@ -122,6 +122,24 @@
     <string name="settings_accessibility">ユーザー補助サービス</string>
     <string name="settings_accessibility_granted">許可済み — アプリ起動トリガーとスクリーンショットが有効</string>
     <string name="settings_accessibility_required">「アプリ起動」トリガーとスクリーンショットアクションに必要</string>
+    <string name="accessibility_disclosure_title">ユーザー補助サービスを有効にする</string>
+    <string name="accessibility_disclosure_continue">設定を開く</string>
+
+    <!-- 権限リマインダーのラベル (FlowPermissionChecker) -->
+    <string name="perm_accessibility">ユーザー補助サービス</string>
+    <string name="perm_notification_access">通知へのアクセス</string>
+    <string name="perm_receive_sms">SMS の受信</string>
+    <string name="perm_phone_state">電話の状態</string>
+    <string name="perm_location">位置情報</string>
+    <string name="perm_background_location">バックグラウンドの位置情報 —「常に許可」に設定してください</string>
+    <string name="perm_location_wifi">位置情報（Wi-Fi SSID 検出）</string>
+    <string name="perm_bluetooth">付近のデバイス（Bluetooth）</string>
+    <string name="perm_send_sms">SMS の送信</string>
+    <string name="perm_call_phone">電話の発信</string>
+    <string name="perm_notifications">通知</string>
+    <string name="perm_dnd">サイレント モードへのアクセス</string>
+    <string name="perm_write_settings">システム設定の変更</string>
+    <string name="perm_airplane_adb">機内モード（ADB）</string>
     <string name="settings_write_settings">システム設定の変更</string>
     <string name="settings_write_settings_required">明るさアクションに必要</string>
     <string name="settings_dnd">サイレントモードへのアクセス</string>

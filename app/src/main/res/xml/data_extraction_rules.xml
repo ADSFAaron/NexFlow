@@ -1,19 +1,18 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample data extraction rules file; uncomment and customize as necessary.
-   See https://developer.android.com/about/versions/12/backup-restore#xml-changes
-   for details.
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Backup/transfer rules for Android 12+ (API 31+).
+  The Room database (nexflow.db) can contain user secrets embedded in flows — e.g. auth
+  headers/tokens on HTTP actions — so it is excluded from Google cloud backup. It is kept
+  for local device-to-device transfer, which never leaves the user's devices. Flows can also
+  be moved manually via the in-app JSON export/import.
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <exclude domain="database" path="nexflow.db" />
+        <exclude domain="database" path="nexflow.db-wal" />
+        <exclude domain="database" path="nexflow.db-shm" />
     </cloud-backup>
-    <!--
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <!-- Local transfer stays between the user's own devices; back everything up. -->
     </device-transfer>
-    -->
 </data-extraction-rules>

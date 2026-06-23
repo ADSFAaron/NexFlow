@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">NexFlow</string>
-    <string name="accessibility_service_description">NexFlow uses the Accessibility Service to take screenshots when a flow action requests it. No accessibility events are monitored.</string>
+    <string name="accessibility_service_description">NexFlow uses the Accessibility Service for two automation features: capturing a screenshot when a flow\'s screenshot action runs, and detecting which app is brought to the foreground so your \"App Launched\" triggers can fire. It only reads the package name of the app in front; it does not read screen content, text, or passwords.</string>
 
     <!-- Widgets -->
     <string name="widget_overview_description">Show recent flows for quick launch</string>
@@ -123,6 +123,24 @@
     <string name="settings_accessibility">Accessibility Service</string>
     <string name="settings_accessibility_granted">Granted — app launch trigger &amp; screenshot active</string>
     <string name="settings_accessibility_required">Required for App Launch trigger &amp; Screenshot actions</string>
+    <string name="accessibility_disclosure_title">Enable Accessibility Service</string>
+    <string name="accessibility_disclosure_continue">Go to Settings</string>
+
+    <!-- Permission reminder labels (FlowPermissionChecker) -->
+    <string name="perm_accessibility">Accessibility Service</string>
+    <string name="perm_notification_access">Notification access</string>
+    <string name="perm_receive_sms">Receive SMS</string>
+    <string name="perm_phone_state">Phone state</string>
+    <string name="perm_location">Location</string>
+    <string name="perm_background_location">Background location — set to \"Allow all the time\"</string>
+    <string name="perm_location_wifi">Location (Wi-Fi SSID detection)</string>
+    <string name="perm_bluetooth">Nearby devices (Bluetooth)</string>
+    <string name="perm_send_sms">Send SMS</string>
+    <string name="perm_call_phone">Call phone</string>
+    <string name="perm_notifications">Notifications</string>
+    <string name="perm_dnd">Do Not Disturb access</string>
+    <string name="perm_write_settings">Modify system settings</string>
+    <string name="perm_airplane_adb">Airplane mode (ADB)</string>
     <string name="settings_write_settings">Modify system settings</string>
     <string name="settings_write_settings_required">Required for Brightness actions</string>
     <string name="settings_dnd">Do Not Disturb access</string>

@@ -23,6 +23,7 @@ import android.os.Build
 import android.provider.Settings
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import com.nexflow.R
 import com.nexflow.core.automation.model.ActionType
 import com.nexflow.core.automation.model.Flow
 import com.nexflow.core.automation.model.TriggerType
@@ -39,6 +40,13 @@ import javax.inject.Singleton
 data class MissingPermission(
     val label: String,
     val runtimePermissions: List<String> = emptyList(),
+    /**
+     * True for ACCESS_BACKGROUND_LOCATION, which on Android 11+ cannot be obtained from the
+     * normal runtime dialog (and never together with foreground location). The user must pick
+     * "Allow all the time" on the app's system location settings page, so the reminder routes
+     * this entry to that screen instead of launching a permission request.
+     */
+    val openLocationSettings: Boolean = false,
 )
 
 /**
@@ -53,39 +61,47 @@ class FlowPermissionChecker @Inject constructor(
     fun missingPermissions(flow: Flow): List<MissingPermission> {
         val missing = linkedMapOf<String, MissingPermission>()
 
-        fun add(label: String, vararg runtime: String) {
+        fun add(labelRes: Int, vararg runtime: String) {
+            val label = context.getString(labelRes)
             missing.getOrPut(label) { MissingPermission(label, runtime.toList()) }
+        }
+
+        fun addLocationSettings(labelRes: Int) {
+            val label = context.getString(labelRes)
+            missing.getOrPut(label) { MissingPermission(label, openLocationSettings = true) }
         }
 
         flow.triggers.forEach { trigger ->
             when (trigger.type) {
                 TriggerType.APP_LAUNCH ->
-                    if (!accessibilityEnabled()) add("Accessibility Service")
+                    if (!accessibilityEnabled()) add(R.string.perm_accessibility)
                 TriggerType.NOTIFICATION_RECEIVED ->
-                    if (!notificationListenerEnabled()) add("Notification access")
+                    if (!notificationListenerEnabled()) add(R.string.perm_notification_access)
                 TriggerType.SMS_RECEIVED ->
                     if (!granted(Manifest.permission.RECEIVE_SMS)) {
-                        add("Receive SMS", Manifest.permission.RECEIVE_SMS)
+                        add(R.string.perm_receive_sms, Manifest.permission.RECEIVE_SMS)
                     }
                 TriggerType.INCOMING_CALL ->
                     if (!granted(Manifest.permission.READ_PHONE_STATE)) {
-                        add("Phone state", Manifest.permission.READ_PHONE_STATE)
+                        add(R.string.perm_phone_state, Manifest.permission.READ_PHONE_STATE)
                     }
                 TriggerType.GEOFENCE -> {
+                    // Staged request (Android 11+ rule): foreground location must be granted via
+                    // the runtime dialog first; only then can the user grant background location,
+                    // and that one is set manually as "Allow all the time" in system settings.
                     if (!granted(Manifest.permission.ACCESS_FINE_LOCATION)) {
-                        add("Location", Manifest.permission.ACCESS_FINE_LOCATION)
-                    }
-                    if (!granted(Manifest.permission.ACCESS_BACKGROUND_LOCATION)) {
-                        add("Background location", Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                        add(R.string.perm_location, Manifest.permission.ACCESS_FINE_LOCATION)
+                    } else if (!granted(Manifest.permission.ACCESS_BACKGROUND_LOCATION)) {
+                        addLocationSettings(R.string.perm_background_location)
                     }
                 }
                 TriggerType.WIFI ->
                     if (!granted(Manifest.permission.ACCESS_FINE_LOCATION)) {
-                        add("Location (Wi-Fi SSID detection)", Manifest.permission.ACCESS_FINE_LOCATION)
+                        add(R.string.perm_location_wifi, Manifest.permission.ACCESS_FINE_LOCATION)
                     }
                 TriggerType.BLUETOOTH ->
                     if (!bluetoothGranted()) {
-                        add("Nearby devices (Bluetooth)", Manifest.permission.BLUETOOTH_CONNECT)
+                        add(R.string.perm_bluetooth, Manifest.permission.BLUETOOTH_CONNECT)
                     }
                 else -> Unit
             }
@@ -95,31 +111,33 @@ class FlowPermissionChecker @Inject constructor(
             when (action.type) {
                 ActionType.SEND_SMS ->
                     if (!granted(Manifest.permission.SEND_SMS)) {
-                        add("Send SMS", Manifest.permission.SEND_SMS)
+                        add(R.string.perm_send_sms, Manifest.permission.SEND_SMS)
                     }
                 ActionType.CALL_PHONE ->
                     if (!granted(Manifest.permission.CALL_PHONE)) {
-                        add("Call phone", Manifest.permission.CALL_PHONE)
+                        add(R.string.perm_call_phone, Manifest.permission.CALL_PHONE)
                     }
                 ActionType.NOTIFICATION ->
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                         !granted(Manifest.permission.POST_NOTIFICATIONS)
                     ) {
-                        add("Notifications", Manifest.permission.POST_NOTIFICATIONS)
+                        add(R.string.perm_notifications, Manifest.permission.POST_NOTIFICATIONS)
                     }
                 ActionType.DND_TOGGLE ->
-                    if (!dndAccessGranted()) add("Do Not Disturb access")
+                    if (!dndAccessGranted()) add(R.string.perm_dnd)
                 ActionType.BRIGHTNESS_ADJUST ->
-                    if (!Settings.System.canWrite(context)) add("Modify system settings")
+                    if (!Settings.System.canWrite(context)) add(R.string.perm_write_settings)
                 ActionType.SCREENSHOT ->
-                    if (!accessibilityEnabled()) add("Accessibility Service")
+                    if (!accessibilityEnabled()) add(R.string.perm_accessibility)
                 ActionType.BLUETOOTH_TOGGLE ->
                     if (!bluetoothGranted()) {
-                        add("Nearby devices (Bluetooth)", Manifest.permission.BLUETOOTH_CONNECT)
+                        add(R.string.perm_bluetooth, Manifest.permission.BLUETOOTH_CONNECT)
                     }
-                ActionType.WIFI_TOGGLE, ActionType.AIRPLANE_TOGGLE ->
+                // WIFI_TOGGLE has a Settings-panel fallback (no permission needed), so it is not
+                // listed here. AIRPLANE_TOGGLE strictly needs ADB-granted WRITE_SECURE_SETTINGS.
+                ActionType.AIRPLANE_TOGGLE ->
                     if (!granted("android.permission.WRITE_SECURE_SETTINGS")) {
-                        add("Wi-Fi & Airplane mode (ADB)")
+                        add(R.string.perm_airplane_adb)
                     }
                 else -> Unit
             }

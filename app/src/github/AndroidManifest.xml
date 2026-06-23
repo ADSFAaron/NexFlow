@@ -5,7 +5,13 @@
   permissions to apps registered as the default SMS/Phone handler, which an automation
   app is not. Merged on top of src/main/AndroidManifest.xml for the `github` flavor.
 -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Airplane mode / advanced toggle (granted via ADB only). github-only: see src/main note. -->
+    <uses-permission
+        android:name="android.permission.WRITE_SECURE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
 
     <!-- SMS trigger + action -->
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
