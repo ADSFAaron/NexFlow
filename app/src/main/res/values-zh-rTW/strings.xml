@@ -68,7 +68,6 @@
     <string name="fd_disabled">已停用</string>
     <string name="fd_logic_any">任一</string>
     <string name="fd_logic_all">全部</string>
-    <string name="fd_reorder">重新排序</string>
     <string name="fd_clear_search">清除搜尋</string>
     <string name="fd_nothing_matches">找不到符合「%1$s」的項目</string>
     <string name="fd_no_config_needed">此類型不需要設定。</string>
@@ -140,6 +139,10 @@
     <string name="perm_dnd">勿擾模式存取權</string>
     <string name="perm_write_settings">修改系統設定</string>
     <string name="perm_airplane_adb">飛航模式（ADB）</string>
+
+    <!-- 背景定位顯著揭露 (Google Play 政策) -->
+    <string name="bg_location_disclosure_title">允許背景定位</string>
+    <string name="bg_location_disclosure_body">NexFlow 會在背景存取本裝置的位置（即使 App 已關閉或未在使用中），以便在您進入或離開特定地點時執行您的地理圍欄自動化。請在下一個畫面將「位置」設為「一律允許」。您的位置僅在本裝置上用於觸發您的流程;NexFlow 不會收集、儲存或分享您的位置。</string>
     <string name="settings_write_settings">修改系統設定</string>
     <string name="settings_write_settings_required">亮度動作所需</string>
     <string name="settings_dnd">勿擾存取權</string>

@@ -71,8 +71,8 @@ class ConfigDialogRenderTest {
             rule.runOnIdle { current = spec }
             rule.waitForIdle()
 
-            assertDisplayed(spec.name, "Save")
-            assertDisplayed(spec.name, "Cancel")
+            assertDisplayed(spec.name, context.getString(com.nexflow.R.string.action_save))
+            assertDisplayed(spec.name, context.getString(com.nexflow.R.string.action_cancel))
             spec.fields.forEach { field -> assertFieldRendered(spec.name, field) }
         }
     }

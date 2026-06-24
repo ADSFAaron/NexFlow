@@ -68,7 +68,6 @@
     <string name="fd_disabled">無効</string>
     <string name="fd_logic_any">いずれか</string>
     <string name="fd_logic_all">すべて</string>
-    <string name="fd_reorder">並べ替え</string>
     <string name="fd_clear_search">検索をクリア</string>
     <string name="fd_nothing_matches">「%1$s」に一致する項目はありません</string>
     <string name="fd_no_config_needed">このタイプに設定は不要です。</string>
@@ -140,6 +139,10 @@
     <string name="perm_dnd">サイレント モードへのアクセス</string>
     <string name="perm_write_settings">システム設定の変更</string>
     <string name="perm_airplane_adb">機内モード（ADB）</string>
+
+    <!-- バックグラウンド位置情報の重要な開示 (Google Play ポリシー) -->
+    <string name="bg_location_disclosure_title">バックグラウンドの位置情報を許可</string>
+    <string name="bg_location_disclosure_body">NexFlow は、アプリが閉じている、または使用していないときでも、デバイスの位置情報をバックグラウンドで取得し、特定の場所に出入りした際にジオフェンス オートメーションを実行します。次の画面で位置情報を「常に許可」に設定してください。位置情報はフローのトリガーのためにこのデバイス上でのみ使用され、NexFlow が収集・保存・共有することはありません。</string>
     <string name="settings_write_settings">システム設定の変更</string>
     <string name="settings_write_settings_required">明るさアクションに必要</string>
     <string name="settings_dnd">サイレントモードへのアクセス</string>

@@ -75,7 +75,6 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Code
-import androidx.compose.material.icons.rounded.DragHandle
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.MyLocation
@@ -395,13 +394,18 @@ fun FlowDetailScreen(
 
             itemsIndexed(sortedActions, key = { _, a -> a.id }) { index, action ->
                 val haptic = LocalHapticFeedback.current
-                ReorderableItem(reorderState, key = action.id) { _ ->
+                ReorderableItem(reorderState, key = action.id) { isDragging ->
                     val ai = action.type.info(context)
                     val isExecuting = currentActionId == action.id
                     GroupedItem(
                         index = index,
                         count = sortedActions.size + 1,
                         highlighted = isExecuting,
+                        dragging = isDragging,
+                        // Long-press anywhere on the row to start reordering (no visible handle).
+                        dragModifier = if (isExecuting) Modifier else Modifier.longPressDraggableHandle(
+                            onDragStarted = { haptic.performHapticFeedback(HapticFeedbackType.LongPress) },
+                        ),
                     ) {
                         TriggerOrActionRow(
                             icon = {
@@ -414,10 +418,6 @@ fun FlowDetailScreen(
                             isExecuting = isExecuting,
                             onEdit = { pendingConfig = PendingConfig.EditAction(action) },
                             onDelete = { vm.removeAction(action.id) },
-                            showDragHandle = true,
-                            dragHandleModifier = Modifier.draggableHandle(
-                                onDragStarted = { haptic.performHapticFeedback(HapticFeedbackType.LongPress) },
-                            ),
                         )
                     }
                 }
@@ -805,7 +805,9 @@ private fun GroupedItem(
     index: Int,
     count: Int,
     highlighted: Boolean = false,
+    dragging: Boolean = false,
     onClick: (() -> Unit)? = null,
+    dragModifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
     val large = 18.dp
@@ -835,11 +837,21 @@ private fun GroupedItem(
         label = "item_border",
     )
 
+    // Smooth "lift" feedback while the row is being dragged (official pattern:
+    // animate Surface shadowElevation on isDragging — no graphicsLayer/scale,
+    // which would composite into a separate layer and ghost during the drag).
+    val dragElevation by animateDpAsState(
+        targetValue = if (dragging) 8.dp else 0.dp,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "item_drag_elevation",
+    )
+
     val modifier = Modifier
         .fillMaxWidth()
         .padding(horizontal = 16.dp)
         .padding(bottom = 2.dp)
         .then(if (highlighted) Modifier.zIndex(1f) else Modifier)
+        .then(dragModifier)
         .border(width = 2.dp, color = borderColor, shape = shape)
 
     if (onClick != null) {
@@ -847,14 +859,14 @@ private fun GroupedItem(
             onClick = onClick,
             shape = shape,
             color = surfaceColor,
-            shadowElevation = shadowElevation,
+            shadowElevation = maxOf(shadowElevation, dragElevation),
             modifier = modifier,
         ) { content() }
     } else {
         Surface(
             shape = shape,
             color = surfaceColor,
-            shadowElevation = shadowElevation,
+            shadowElevation = maxOf(shadowElevation, dragElevation),
             modifier = modifier,
         ) { content() }
     }
@@ -897,8 +909,6 @@ private fun TriggerOrActionRow(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     isExecuting: Boolean = false,
-    showDragHandle: Boolean = false,
-    dragHandleModifier: Modifier = Modifier,
 ) {
     ListItem(
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
@@ -918,14 +928,6 @@ private fun TriggerOrActionRow(
         supportingContent = { Text(supporting, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         trailingContent = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (showDragHandle && !isExecuting) {
-                    Icon(
-                        Icons.Rounded.DragHandle,
-                        contentDescription = stringResource(R.string.fd_reorder),
-                        modifier = dragHandleModifier.size(24.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
                 IconButton(onClick = onEdit) {
                     Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.action_edit), modifier = Modifier.size(20.dp))
                 }

@@ -69,7 +69,6 @@
     <string name="fd_disabled">Disabled</string>
     <string name="fd_logic_any">ANY</string>
     <string name="fd_logic_all">ALL</string>
-    <string name="fd_reorder">Reorder</string>
     <string name="fd_clear_search">Clear search</string>
     <string name="fd_nothing_matches">Nothing matches “%1$s”</string>
     <string name="fd_no_config_needed">No configuration needed for this type.</string>
@@ -141,6 +140,10 @@
     <string name="perm_dnd">Do Not Disturb access</string>
     <string name="perm_write_settings">Modify system settings</string>
     <string name="perm_airplane_adb">Airplane mode (ADB)</string>
+
+    <!-- Background location prominent disclosure (Google Play policy) -->
+    <string name="bg_location_disclosure_title">Allow background location</string>
+    <string name="bg_location_disclosure_body">NexFlow accesses this device\'s location in the background — even when the app is closed or not in use — to run your geofence automations when you enter or leave a place. On the next screen, set Location to \"Allow all the time\". Your location is used only on this device to trigger your flows; NexFlow never collects, stores, or shares it.</string>
     <string name="settings_write_settings">Modify system settings</string>
     <string name="settings_write_settings_required">Required for Brightness actions</string>
     <string name="settings_dnd">Do Not Disturb access</string>

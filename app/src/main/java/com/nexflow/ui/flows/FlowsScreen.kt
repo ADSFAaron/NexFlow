@@ -122,6 +122,9 @@ fun FlowsScreen(
     val importResult by importVm.result.collectAsState()
     var showCreateDialog by rememberSaveable { mutableStateOf(false) }
     var permissionReminder by remember { mutableStateOf<PermissionReminder?>(null) }
+    // Prominent disclosure shown before sending the user to grant background location
+    // ("Allow all the time"), as required by Google Play's background-location policy.
+    var showBgLocationDisclosure by remember { mutableStateOf(false) }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val listState = rememberLazyListState()
     val context = LocalContext.current
@@ -390,17 +393,12 @@ fun FlowsScreen(
                     runtime.isNotEmpty() -> TextButton(
                         onClick = { permissionLauncher.launch(runtime.toTypedArray()) },
                     ) { Text(stringResource(R.string.action_grant)) }
-                    // Background location can only be set to "Allow all the time" in system
-                    // settings on Android 11+, so open the app's settings page directly.
+                    // Background location: show the prominent disclosure first, then (on consent)
+                    // send the user to settings to pick "Allow all the time".
                     reminder.missing.any { it.openLocationSettings } -> TextButton(
                         onClick = {
                             permissionReminder = null
-                            context.startActivity(
-                                Intent(
-                                    Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                    Uri.fromParts("package", context.packageName, null),
-                                ),
-                            )
+                            showBgLocationDisclosure = true
                         },
                     ) { Text(stringResource(R.string.flows_open_settings)) }
                     else -> TextButton(
@@ -413,6 +411,30 @@ fun FlowsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { permissionReminder = null }) { Text(stringResource(R.string.action_later)) }
+            },
+        )
+    }
+
+    if (showBgLocationDisclosure) {
+        AlertDialog(
+            onDismissRequest = { showBgLocationDisclosure = false },
+            title = { Text(stringResource(R.string.bg_location_disclosure_title)) },
+            text = { Text(stringResource(R.string.bg_location_disclosure_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showBgLocationDisclosure = false
+                    context.startActivity(
+                        Intent(
+                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.fromParts("package", context.packageName, null),
+                        ),
+                    )
+                }) { Text(stringResource(R.string.accessibility_disclosure_continue)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBgLocationDisclosure = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
             },
         )
     }
