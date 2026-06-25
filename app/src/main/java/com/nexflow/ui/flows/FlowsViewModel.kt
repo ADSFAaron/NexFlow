@@ -27,10 +27,12 @@ import com.nexflow.permissions.MissingPermission
 import com.nexflow.service.FlowEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -54,10 +56,46 @@ class FlowsViewModel @Inject constructor(
     private val _permissionReminder = MutableSharedFlow<PermissionReminder>(extraBufferCapacity = 1)
     val permissionReminder: SharedFlow<PermissionReminder> = _permissionReminder.asSharedFlow()
 
+    // Bumped whenever the screen resumes so the warning set is recomputed: the user may have
+    // granted (or revoked) a permission in system Settings while the app was backgrounded.
+    private val _permissionRefresh = MutableStateFlow(0)
+
+    /**
+     * Ids of flows that are enabled but still missing a required permission — so the user can see
+     * at a glance that an "on" flow is not actually able to run. Recomputed on every flow-list
+     * change and on each [refreshPermissionWarnings] (screen resume).
+     */
+    val flowsMissingPermissions: StateFlow<Set<String>> =
+        combine(flows, _permissionRefresh) { list, _ ->
+            list.filter { it.enabled && permissionChecker.missingPermissions(it).isNotEmpty() }
+                .map { it.id }
+                .toSet()
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+
+    fun refreshPermissionWarnings() {
+        _permissionRefresh.value++
+    }
+
+    /** Re-open the permission guidance dialog for a specific flow (tapping the warning chip). */
+    fun showMissingPermissions(id: String) {
+        viewModelScope.launch { remindIfMissingPermissions(id) }
+    }
+
     fun toggleEnabled(id: String, enabled: Boolean) {
         viewModelScope.launch {
+            // Block enabling while required permissions are missing — otherwise the engine would
+            // immediately subscribe the trigger (e.g. GeofencingClient.addGeofences) and a
+            // missing-permission SecurityException would crash the app. Guide the user to grant
+            // first; the DB stays disabled so the Switch reverts to off. Disabling is never blocked.
+            if (enabled) {
+                val flow = repository.getById(id) ?: return@launch
+                val missing = permissionChecker.missingPermissions(flow)
+                if (missing.isNotEmpty()) {
+                    _permissionReminder.emit(PermissionReminder(flow.name, missing))
+                    return@launch
+                }
+            }
             repository.setEnabled(id, enabled)
-            if (enabled) remindIfMissingPermissions(id)
         }
     }
 

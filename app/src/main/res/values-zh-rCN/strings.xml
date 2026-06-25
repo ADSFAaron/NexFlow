@@ -177,6 +177,8 @@
     <string name="flows_bullet">• %1$s</string>
     <string name="flows_and_more">…还有 %1$d 个</string>
     <string name="flows_permissions_needed">需要权限</string>
+    <string name="flows_missing_permission">缺少权限</string>
+    <string name="flows_missing_permission_desc">此流程已启用但缺少权限，点击前往授权</string>
     <string name="flows_permissions_body">“%1$s”使用了需要尚未授予权限的触发器或动作：</string>
     <string name="flows_open_settings">打开设置</string>
     <string name="flows_start_service">启动自动化服务</string>

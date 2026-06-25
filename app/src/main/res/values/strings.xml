@@ -178,6 +178,8 @@
     <string name="flows_bullet">• %1$s</string>
     <string name="flows_and_more">… and %1$d more</string>
     <string name="flows_permissions_needed">Permissions needed</string>
+    <string name="flows_missing_permission">Permission required</string>
+    <string name="flows_missing_permission_desc">This flow is enabled but missing permissions; tap to grant</string>
     <string name="flows_permissions_body">“%1$s” uses triggers or actions that need permissions you haven\'t granted yet:</string>
     <string name="flows_open_settings">Open Settings</string>
     <string name="flows_start_service">Start automation service</string>

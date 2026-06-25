@@ -15,9 +15,12 @@
  */
 package com.nexflow.trigger
 
+import android.Manifest
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingRequest
 import com.google.android.gms.location.LocationServices
@@ -53,6 +56,21 @@ class GeofenceTriggerHandler @Inject constructor(
         val radiusM = trigger.config["radius_m"]?.toFloatOrNull() ?: 200f
         val targetEvent = trigger.config["event"]?.uppercase() ?: "ENTER"
 
+        // ACCESS_FINE_LOCATION must be granted BEFORE calling addGeofences. Play Services does not
+        // surface the missing-permission error through addOnFailureListener or a synchronous throw —
+        // it rethrows a SecurityException asynchronously on its own connection-callback thread
+        // (onConnected), which no try/catch here can intercept and which crashes the app. So the
+        // only safe guard is to never call addGeofences without the permission. This also covers a
+        // flow that was persisted as enabled before the permission existed (engine subscribes on
+        // startup) and the case where the user revokes location while the flow is enabled.
+        val hasFineLocation = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_FINE_LOCATION,
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!hasFineLocation) {
+            close()
+            return@callbackFlow
+        }
+
         val client = LocationServices.getGeofencingClient(context)
 
         val pendingIntent = PendingIntent.getBroadcast(
@@ -74,8 +92,14 @@ class GeofenceTriggerHandler @Inject constructor(
             .addGeofence(geofence)
             .build()
 
-        client.addGeofences(request, pendingIntent)
-            .addOnFailureListener { close(it) }
+        // Belt-and-suspenders for a permission revoked in the tiny window after the check above.
+        try {
+            client.addGeofences(request, pendingIntent)
+                .addOnFailureListener { close(it) }
+        } catch (e: SecurityException) {
+            close(e)
+            return@callbackFlow
+        }
 
         val collectionJob = launch {
             GeofenceEventSource.events.collect { event ->

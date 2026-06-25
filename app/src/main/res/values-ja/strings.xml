@@ -177,6 +177,8 @@
     <string name="flows_bullet">• %1$s</string>
     <string name="flows_and_more">…他 %1$d 件</string>
     <string name="flows_permissions_needed">権限が必要です</string>
+    <string name="flows_missing_permission">権限が不足</string>
+    <string name="flows_missing_permission_desc">このフローは有効ですが権限が不足しています。タップして許可してください</string>
     <string name="flows_permissions_body">「%1$s」には、まだ許可されていない権限が必要なトリガーまたはアクションが含まれています：</string>
     <string name="flows_open_settings">設定を開く</string>
     <string name="flows_start_service">自動化サービスを開始</string>

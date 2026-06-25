@@ -21,6 +21,8 @@ import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
@@ -49,6 +51,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.FileOpen
@@ -77,6 +80,7 @@ import androidx.compose.material3.ToggleFloatingActionButtonDefaults
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -94,6 +98,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -119,6 +124,7 @@ fun FlowsScreen(
     onOpenSettings: () -> Unit = {},
 ) {
     val flows by vm.flows.collectAsState()
+    val flowsMissingPermissions by vm.flowsMissingPermissions.collectAsState()
     val importResult by importVm.result.collectAsState()
     var showCreateDialog by rememberSaveable { mutableStateOf(false) }
     var permissionReminder by remember { mutableStateOf<PermissionReminder?>(null) }
@@ -199,6 +205,17 @@ fun FlowsScreen(
 
     LaunchedEffect(vm) {
         vm.permissionReminder.collect { permissionReminder = it }
+    }
+
+    // Re-check permission warnings each time the screen resumes — the user may have just returned
+    // from system Settings after granting (or revoking) a permission.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) vm.refreshPermissionWarnings()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     BackHandler(enabled = fabMenuExpanded) { fabMenuExpanded = false }
@@ -330,9 +347,11 @@ fun FlowsScreen(
                     ) {
                         FlowCard(
                             flow = flow,
+                            permissionWarning = flow.id in flowsMissingPermissions,
                             onClick = { onFlowClick(flow.id) },
                             onToggle = { vm.toggleEnabled(flow.id, it) },
                             onRun = { vm.runFlow(flow.id) },
+                            onWarningClick = { vm.showMissingPermissions(flow.id) },
                         )
                     }
                 }
@@ -538,9 +557,11 @@ private fun EmptyFlowsContent(modifier: Modifier = Modifier) {
 @Composable
 private fun FlowCard(
     flow: Flow,
+    permissionWarning: Boolean,
     onClick: () -> Unit,
     onToggle: (Boolean) -> Unit,
     onRun: () -> Unit,
+    onWarningClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var runActivated by remember { mutableStateOf(false) }
@@ -597,6 +618,32 @@ private fun FlowCard(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
+            }
+
+            if (permissionWarning) {
+                Surface(
+                    onClick = onWarningClick,
+                    shape = MaterialTheme.shapes.small,
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.padding(top = 4.dp, end = 8.dp),
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    ) {
+                        Icon(
+                            Icons.Filled.Warning,
+                            contentDescription = stringResource(R.string.flows_missing_permission_desc),
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Text(
+                            stringResource(R.string.flows_missing_permission),
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                    }
+                }
             }
 
             Row(
