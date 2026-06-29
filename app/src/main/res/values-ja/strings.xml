@@ -142,7 +142,7 @@
 
     <!-- バックグラウンド位置情報の重要な開示 (Google Play ポリシー) -->
     <string name="bg_location_disclosure_title">バックグラウンドの位置情報を許可</string>
-    <string name="bg_location_disclosure_body">NexFlow は、アプリが閉じている、または使用していないときでも、デバイスの位置情報をバックグラウンドで取得し、特定の場所に出入りした際にジオフェンス オートメーションを実行します。次の画面で位置情報を「常に許可」に設定してください。位置情報はフローのトリガーのためにこのデバイス上でのみ使用され、NexFlow が収集・保存・共有することはありません。</string>
+    <string name="bg_location_disclosure_body">NexFlow は、アプリが閉じているときでも位置情報をバックグラウンドで使用し、場所への出入りに合わせてジオフェンス オートメーションを実行します。\n\n次の画面で位置情報を「常に許可」に設定してください。\n\n位置情報はこの端末内にとどまり、NexFlow が収集・保存・共有することはありません。</string>
     <string name="settings_write_settings">システム設定の変更</string>
     <string name="settings_write_settings_required">明るさアクションに必要</string>
     <string name="settings_dnd">サイレントモードへのアクセス</string>

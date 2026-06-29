@@ -20,6 +20,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.util.Log
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingRequest
@@ -47,6 +48,10 @@ import javax.inject.Singleton
 class GeofenceTriggerHandler @Inject constructor(
     @ApplicationContext private val context: Context,
 ) : TriggerHandler {
+
+    private companion object {
+        const val TAG = "GeofenceTrigger"
+    }
 
     override val supportedType = TriggerType.GEOFENCE
 
@@ -95,7 +100,15 @@ class GeofenceTriggerHandler @Inject constructor(
         // Belt-and-suspenders for a permission revoked in the tiny window after the check above.
         try {
             client.addGeofences(request, pendingIntent)
-                .addOnFailureListener { close(it) }
+                .addOnFailureListener { e ->
+                    // Registration can fail for reasons outside our control — most commonly
+                    // GEOFENCE_NOT_AVAILABLE (status 1000) when the device has no usable location
+                    // fix / NLP, or the service is briefly unavailable. Close the flow gracefully
+                    // instead of rethrowing: propagating the exception would crash the collector
+                    // coroutine in the flow engine. The geofence simply isn't armed this time.
+                    Log.w(TAG, "addGeofences failed for ${trigger.id}; geofence not armed", e)
+                    close()
+                }
         } catch (e: SecurityException) {
             close(e)
             return@callbackFlow

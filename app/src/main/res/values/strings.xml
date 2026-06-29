@@ -143,7 +143,7 @@
 
     <!-- Background location prominent disclosure (Google Play policy) -->
     <string name="bg_location_disclosure_title">Allow background location</string>
-    <string name="bg_location_disclosure_body">NexFlow accesses this device\'s location in the background — even when the app is closed or not in use — to run your geofence automations when you enter or leave a place. On the next screen, set Location to \"Allow all the time\". Your location is used only on this device to trigger your flows; NexFlow never collects, stores, or shares it.</string>
+    <string name="bg_location_disclosure_body">NexFlow uses your location in the background — even when the app is closed — to run geofence automations as you enter or leave a place.\n\nOn the next screen, set Location to \"Allow all the time\".\n\nYour location stays on this device. NexFlow never collects, stores, or shares it.</string>
     <string name="settings_write_settings">Modify system settings</string>
     <string name="settings_write_settings_required">Required for Brightness actions</string>
     <string name="settings_dnd">Do Not Disturb access</string>

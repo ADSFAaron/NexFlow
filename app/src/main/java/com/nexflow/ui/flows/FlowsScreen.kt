@@ -23,12 +23,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -96,6 +94,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -239,46 +238,8 @@ fun FlowsScreen(
                 },
             )
         },
-        floatingActionButton = {
-            FloatingActionButtonMenu(
-                expanded = fabMenuExpanded,
-                button = {
-                    ToggleFloatingActionButton(
-                        checked = fabMenuExpanded,
-                        onCheckedChange = { fabMenuExpanded = it },
-                        containerSize = ToggleFloatingActionButtonDefaults.containerSizeLarge(),
-                        containerCornerRadius = ToggleFloatingActionButtonDefaults.containerCornerRadiusLarge(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            Icons.Default.Add,
-                            contentDescription = if (fabMenuExpanded) stringResource(R.string.flows_close_menu) else stringResource(R.string.flows_open_actions),
-                            modifier = Modifier
-                                .size(ToggleFloatingActionButtonDefaults.iconSizeLarge()(checkedProgress))
-                                .rotate(checkedProgress * 45f),
-                        )
-                    }
-                },
-            ) {
-                FloatingActionButtonMenuItem(
-                    onClick = {
-                        fabMenuExpanded = false
-                        filePicker.launch(arrayOf("*/*"))
-                    },
-                    text = { Text(stringResource(R.string.settings_import_flow)) },
-                    icon = { Icon(Icons.Outlined.FileOpen, contentDescription = null) },
-                )
-                FloatingActionButtonMenuItem(
-                    onClick = {
-                        fabMenuExpanded = false
-                        showCreateDialog = true
-                    },
-                    text = { Text(stringResource(R.string.flows_new_flow)) },
-                    icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                )
-            }
-        },
     ) { innerPadding ->
+        Box(modifier = Modifier.fillMaxSize()) {
         if (flows.isEmpty()) {
             EmptyFlowsContent(modifier = Modifier.padding(innerPadding))
         } else {
@@ -357,6 +318,59 @@ fun FlowsScreen(
                 }
                 item { Spacer(Modifier.height(128.dp)) }
             }
+        }
+
+        // Official M3 placement: the FAB menu lives in a full-size Box and aligns itself
+        // BottomEnd, handling its own 16dp edge spacing internally (per the FAB-menu spec).
+        // padding(innerPadding) keeps the collapsed "x" clear of the system nav bar.
+        FloatingActionButtonMenu(
+            expanded = fabMenuExpanded,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(innerPadding),
+            button = {
+                ToggleFloatingActionButton(
+                    checked = fabMenuExpanded,
+                    onCheckedChange = { fabMenuExpanded = it },
+                    containerSize = ToggleFloatingActionButtonDefaults.containerSizeLarge(),
+                    containerCornerRadius = ToggleFloatingActionButtonDefaults.containerCornerRadiusLarge(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = if (fabMenuExpanded) stringResource(R.string.flows_close_menu) else stringResource(R.string.flows_open_actions),
+                        // animateIcon animates both size AND color across checkedProgress, so the
+                        // "x" flips to the on-checked content color (proper contrast on the checked
+                        // container) instead of keeping the unchecked tint. rotate turns + into x.
+                        modifier = with(ToggleFloatingActionButtonDefaults) {
+                            Modifier
+                                .animateIcon(
+                                    checkedProgress = { checkedProgress },
+                                    size = iconSizeLarge(),
+                                )
+                                .rotate(checkedProgress * 45f)
+                        },
+                    )
+                }
+            },
+        ) {
+            FloatingActionButtonMenuItem(
+                onClick = {
+                    fabMenuExpanded = false
+                    filePicker.launch(arrayOf("*/*"))
+                },
+                text = { Text(stringResource(R.string.settings_import_flow)) },
+                icon = { Icon(Icons.Outlined.FileOpen, contentDescription = null) },
+            )
+            FloatingActionButtonMenuItem(
+                onClick = {
+                    fabMenuExpanded = false
+                    showCreateDialog = true
+                },
+                text = { Text(stringResource(R.string.flows_new_flow)) },
+                icon = { Icon(Icons.Default.Add, contentDescription = null) },
+            )
+        }
         }
     }
 
@@ -521,35 +535,49 @@ private fun ServiceCapsule(
 
 @Composable
 private fun EmptyFlowsContent(modifier: Modifier = Modifier) {
-    var visible by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { visible = true }
-
-    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        AnimatedVisibility(
-            visible = visible,
-            enter = scaleIn(
+    // Drive the bounce ourselves: a bouncy spring overshoots past scale 1.0, and
+    // AnimatedVisibility clips that overshoot to the content's settled bounds — cutting off
+    // the edges of the text. A graphicsLayer with clip = false lets the scaled-up content
+    // draw in full.
+    val scale = remember { Animatable(0f) }
+    val alpha = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        launch {
+            scale.animateTo(
+                targetValue = 1f,
                 animationSpec = spring(
                     dampingRatio = Spring.DampingRatioMediumBouncy,
                     stiffness = Spring.StiffnessMediumLow,
                 ),
-            ) + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
+            )
+        }
+        launch { alpha.animateTo(1f, spring(stiffness = Spring.StiffnessMediumLow)) }
+    }
+
+    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.graphicsLayer {
+                scaleX = scale.value
+                scaleY = scale.value
+                this.alpha = alpha.value
+                clip = false
+            },
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(
-                    imageVector = Icons.Filled.Bolt,
-                    contentDescription = null,
-                    modifier = Modifier.size(72.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
-                )
-                Spacer(Modifier.height(16.dp))
-                Text(stringResource(R.string.flows_empty_title), style = MaterialTheme.typography.titleLarge)
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    stringResource(R.string.flows_empty_subtitle),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            Icon(
+                imageVector = Icons.Filled.Bolt,
+                contentDescription = null,
+                modifier = Modifier.size(72.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
+            )
+            Spacer(Modifier.height(16.dp))
+            Text(stringResource(R.string.flows_empty_title), style = MaterialTheme.typography.titleLarge)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                stringResource(R.string.flows_empty_subtitle),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

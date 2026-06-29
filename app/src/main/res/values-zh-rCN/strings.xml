@@ -142,7 +142,7 @@
 
     <!-- 后台定位显著披露 (Google Play 政策) -->
     <string name="bg_location_disclosure_title">允许后台定位</string>
-    <string name="bg_location_disclosure_body">NexFlow 会在后台访问本设备的位置（即使 App 已关闭或未在使用中），以便在您进入或离开特定地点时执行您的地理围栏自动化。请在下一个界面将“位置”设为“始终允许”。您的位置仅在本设备上用于触发您的流程;NexFlow 不会收集、存储或分享您的位置。</string>
+    <string name="bg_location_disclosure_body">NexFlow 会在后台使用您的位置（即使 App 已关闭），在您进入或离开地点时执行地理围栏自动化。\n\n请在下一个界面将“位置”设为“始终允许”。\n\n您的位置只会留在本设备,NexFlow 不会收集、存储或分享。</string>
     <string name="settings_write_settings">修改系统设置</string>
     <string name="settings_write_settings_required">亮度动作所需</string>
     <string name="settings_dnd">勿扰访问权限</string>

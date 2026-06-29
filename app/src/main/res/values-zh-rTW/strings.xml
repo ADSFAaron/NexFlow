@@ -142,7 +142,7 @@
 
     <!-- 背景定位顯著揭露 (Google Play 政策) -->
     <string name="bg_location_disclosure_title">允許背景定位</string>
-    <string name="bg_location_disclosure_body">NexFlow 會在背景存取本裝置的位置（即使 App 已關閉或未在使用中），以便在您進入或離開特定地點時執行您的地理圍欄自動化。請在下一個畫面將「位置」設為「一律允許」。您的位置僅在本裝置上用於觸發您的流程;NexFlow 不會收集、儲存或分享您的位置。</string>
+    <string name="bg_location_disclosure_body">NexFlow 會在背景使用您的位置（即使 App 已關閉），在您進入或離開地點時執行地理圍欄自動化。\n\n請在下一個畫面將「位置」設為「一律允許」。\n\n您的位置只會留在本裝置,NexFlow 不會收集、儲存或分享。</string>
     <string name="settings_write_settings">修改系統設定</string>
     <string name="settings_write_settings_required">亮度動作所需</string>
     <string name="settings_dnd">勿擾存取權</string>
