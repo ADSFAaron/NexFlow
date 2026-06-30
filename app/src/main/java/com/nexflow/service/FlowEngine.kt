@@ -15,6 +15,7 @@
  */
 package com.nexflow.service
 
+import android.util.Log
 import com.nexflow.core.automation.executor.ActionExecutor
 import com.nexflow.core.automation.interpreter.FlowInterpreter
 import com.nexflow.core.automation.interpreter.InterpreterResult
@@ -29,6 +30,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.distinctUntilChangedBy
@@ -47,6 +49,10 @@ class FlowEngine @Inject constructor(
     private val actionExecutorSet: Set<@JvmSuppressWildcards ActionExecutor>,
     private val timeTriggerScheduler: TimeTriggerScheduler,
 ) {
+    private companion object {
+        const val TAG = "FlowEngine"
+    }
+
     private val triggerHandlers = triggerHandlerSet.associateBy { it.supportedType }
     private val interpreter by lazy { FlowInterpreter(actionExecutorSet.associateBy { it.supportedType }) }
 
@@ -85,6 +91,19 @@ class FlowEngine @Inject constructor(
                                         triggerHandlers[trigger.type]
                                             ?.observe(trigger)
                                             ?.map { flow.id }
+                                            // Isolate per-trigger failures: a handler that errors
+                                            // (e.g. geofence registration failing) must not crash
+                                            // the merged collector and tear down EVERY other
+                                            // trigger. Swallow + log; that one stream just ends.
+                                            ?.catch { e ->
+                                                if (e is CancellationException) throw e
+                                                Log.w(
+                                                    TAG,
+                                                    "Trigger ${trigger.type} for flow ${flow.id} " +
+                                                        "failed; stream stopped",
+                                                    e,
+                                                )
+                                            }
                                     }
                             }
                             if (streams.isNotEmpty()) {

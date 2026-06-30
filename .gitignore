@@ -70,3 +70,5 @@ docs/PLAY_BG_LOCATION_DECLARATION.md
 docs/play-screenshots/*
 docs/play-accessibility/*
 docs/demo_subtitles.srt
+docs/demo_subtitles.en.srt
+docs/demo_subtitles.zh.srt

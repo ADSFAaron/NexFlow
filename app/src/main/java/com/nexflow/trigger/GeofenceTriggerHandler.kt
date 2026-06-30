@@ -110,7 +110,11 @@ class GeofenceTriggerHandler @Inject constructor(
                     close()
                 }
         } catch (e: SecurityException) {
-            close(e)
+            // Permission revoked in the tiny window after the check above. Close gracefully —
+            // rethrowing (close(e)) would crash the flow-engine collector, same as a failed
+            // registration. The geofence just isn't armed.
+            Log.w(TAG, "addGeofences SecurityException for ${trigger.id}; geofence not armed", e)
+            close()
             return@callbackFlow
         }
 

@@ -61,9 +61,17 @@
          without them because Google Play restricts SMS/Call permissions to default
          handler apps. -->
 
-    <!-- Query all installed apps for AppPicker + APP_LAUNCH trigger -->
-    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
-        tools:ignore="QueryAllPackagesPermission" />
+    <!-- Package visibility (Android 11+). The app picker (OPEN_APP action, APP_LAUNCH trigger
+         config) only ever lists *launchable* apps via queryIntentActivities(MAIN/LAUNCHER), and
+         OPEN_APP launches one of those. That is fully served by a <queries> filter for launchable
+         apps — the Play-policy-compliant alternative — so QUERY_ALL_PACKAGES is NOT needed and was
+         removed (it would be rejected for a non-qualifying use case). -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
 
     <application
         android:name=".NexFlowApplication"
