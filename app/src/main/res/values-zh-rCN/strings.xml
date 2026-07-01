@@ -455,4 +455,14 @@
     <string name="onboarding_skip">跳过</string>
     <string name="onboarding_next">下一步</string>
     <string name="onboarding_get_started">开始使用</string>
+
+    <!-- Guided permission setup -->
+    <string name="flows_perm_setup_start">开始设置</string>
+    <string name="flows_perm_setup_title">授予权限</string>
+    <string name="flows_perm_setup_current">接下来：启用「%1$s」</string>
+    <string name="flows_perm_setup_remaining">之后还有 %1$d 项</string>
+    <string name="flows_perm_setup_skip">跳过此项</string>
+    <string name="flows_perm_setup_done">「%1$s」已可运行</string>
+    <string name="flows_perm_setup_incomplete">「%1$s」仍缺少权限，尚未启用</string>
+    <string name="flows_perm_setup_denied">先前已拒绝——请到 App 设置页手动开启</string>
 </resources>

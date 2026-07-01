@@ -32,21 +32,37 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
+ * A special access that cannot be obtained through the standard runtime-permission
+ * dialog — the user must toggle it on a dedicated system Settings page.
+ * [PermissionIntents] maps each of these to the intent that deep-links (and, where
+ * supported, flashes) the exact entry to enable.
+ */
+enum class SpecialAccess {
+    ACCESSIBILITY,
+    NOTIFICATION_LISTENER,
+    DND,
+    WRITE_SETTINGS,
+
+    /**
+     * ACCESS_BACKGROUND_LOCATION — on Android 11+ it cannot be obtained from the runtime
+     * dialog (and never together with foreground location). The user must pick "Allow all
+     * the time" on the app's location page, shown only after a prominent disclosure.
+     */
+    BACKGROUND_LOCATION,
+
+    /** WRITE_SECURE_SETTINGS — grantable only via ADB, no system UI to send the user to. */
+    WRITE_SECURE_SETTINGS,
+}
+
+/**
  * A permission the flow needs but the user has not granted.
- * [runtimePermissions] is non-empty when it can be requested with the
- * standard runtime-permission dialog; empty means a special access the
- * user must enable manually (Settings screen has the entry points).
+ * [runtimePermissions] is non-empty when it can be requested with the standard
+ * runtime-permission dialog; [special] is non-null when it needs a Settings page instead.
  */
 data class MissingPermission(
     val label: String,
     val runtimePermissions: List<String> = emptyList(),
-    /**
-     * True for ACCESS_BACKGROUND_LOCATION, which on Android 11+ cannot be obtained from the
-     * normal runtime dialog (and never together with foreground location). The user must pick
-     * "Allow all the time" on the app's system location settings page, so the reminder routes
-     * this entry to that screen instead of launching a permission request.
-     */
-    val openLocationSettings: Boolean = false,
+    val special: SpecialAccess? = null,
 )
 
 /**
@@ -66,17 +82,19 @@ class FlowPermissionChecker @Inject constructor(
             missing.getOrPut(label) { MissingPermission(label, runtime.toList()) }
         }
 
-        fun addLocationSettings(labelRes: Int) {
+        fun addSpecial(labelRes: Int, special: SpecialAccess) {
             val label = context.getString(labelRes)
-            missing.getOrPut(label) { MissingPermission(label, openLocationSettings = true) }
+            missing.getOrPut(label) { MissingPermission(label, special = special) }
         }
 
         flow.triggers.forEach { trigger ->
             when (trigger.type) {
                 TriggerType.APP_LAUNCH ->
-                    if (!accessibilityEnabled()) add(R.string.perm_accessibility)
+                    if (!accessibilityEnabled()) addSpecial(R.string.perm_accessibility, SpecialAccess.ACCESSIBILITY)
                 TriggerType.NOTIFICATION_RECEIVED ->
-                    if (!notificationListenerEnabled()) add(R.string.perm_notification_access)
+                    if (!notificationListenerEnabled()) {
+                        addSpecial(R.string.perm_notification_access, SpecialAccess.NOTIFICATION_LISTENER)
+                    }
                 TriggerType.SMS_RECEIVED ->
                     if (!granted(Manifest.permission.RECEIVE_SMS)) {
                         add(R.string.perm_receive_sms, Manifest.permission.RECEIVE_SMS)
@@ -92,7 +110,7 @@ class FlowPermissionChecker @Inject constructor(
                     if (!granted(Manifest.permission.ACCESS_FINE_LOCATION)) {
                         add(R.string.perm_location, Manifest.permission.ACCESS_FINE_LOCATION)
                     } else if (!granted(Manifest.permission.ACCESS_BACKGROUND_LOCATION)) {
-                        addLocationSettings(R.string.perm_background_location)
+                        addSpecial(R.string.perm_background_location, SpecialAccess.BACKGROUND_LOCATION)
                     }
                 }
                 TriggerType.WIFI ->
@@ -124,11 +142,13 @@ class FlowPermissionChecker @Inject constructor(
                         add(R.string.perm_notifications, Manifest.permission.POST_NOTIFICATIONS)
                     }
                 ActionType.DND_TOGGLE ->
-                    if (!dndAccessGranted()) add(R.string.perm_dnd)
+                    if (!dndAccessGranted()) addSpecial(R.string.perm_dnd, SpecialAccess.DND)
                 ActionType.BRIGHTNESS_ADJUST ->
-                    if (!Settings.System.canWrite(context)) add(R.string.perm_write_settings)
+                    if (!Settings.System.canWrite(context)) {
+                        addSpecial(R.string.perm_write_settings, SpecialAccess.WRITE_SETTINGS)
+                    }
                 ActionType.SCREENSHOT ->
-                    if (!accessibilityEnabled()) add(R.string.perm_accessibility)
+                    if (!accessibilityEnabled()) addSpecial(R.string.perm_accessibility, SpecialAccess.ACCESSIBILITY)
                 ActionType.BLUETOOTH_TOGGLE ->
                     if (!bluetoothGranted()) {
                         add(R.string.perm_bluetooth, Manifest.permission.BLUETOOTH_CONNECT)
@@ -137,7 +157,7 @@ class FlowPermissionChecker @Inject constructor(
                 // listed here. AIRPLANE_TOGGLE strictly needs ADB-granted WRITE_SECURE_SETTINGS.
                 ActionType.AIRPLANE_TOGGLE ->
                     if (!granted("android.permission.WRITE_SECURE_SETTINGS")) {
-                        add(R.string.perm_airplane_adb)
+                        addSpecial(R.string.perm_airplane_adb, SpecialAccess.WRITE_SECURE_SETTINGS)
                     }
                 else -> Unit
             }

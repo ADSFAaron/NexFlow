@@ -467,4 +467,14 @@
     <string name="onboarding_skip">Skip</string>
     <string name="onboarding_next">Next</string>
     <string name="onboarding_get_started">Get started</string>
+
+    <!-- Guided permission setup -->
+    <string name="flows_perm_setup_start">Set up</string>
+    <string name="flows_perm_setup_title">Grant permissions</string>
+    <string name="flows_perm_setup_current">Next: enable \"%1$s\"</string>
+    <string name="flows_perm_setup_remaining">%1$d more after this</string>
+    <string name="flows_perm_setup_skip">Skip this</string>
+    <string name="flows_perm_setup_done">\"%1$s\" is ready to run</string>
+    <string name="flows_perm_setup_incomplete">\"%1$s\" still needs some permissions and was left off</string>
+    <string name="flows_perm_setup_denied">Denied earlier — turn it on from the app\'s settings page</string>
 </resources>

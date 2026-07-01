@@ -455,4 +455,14 @@
     <string name="onboarding_skip">スキップ</string>
     <string name="onboarding_next">次へ</string>
     <string name="onboarding_get_started">始める</string>
+
+    <!-- Guided permission setup -->
+    <string name="flows_perm_setup_start">設定を開始</string>
+    <string name="flows_perm_setup_title">権限を許可</string>
+    <string name="flows_perm_setup_current">次に「%1$s」を有効にしてください</string>
+    <string name="flows_perm_setup_remaining">この後さらに %1$d 件</string>
+    <string name="flows_perm_setup_skip">この項目をスキップ</string>
+    <string name="flows_perm_setup_done">「%1$s」を実行できます</string>
+    <string name="flows_perm_setup_incomplete">「%1$s」はまだ権限が不足しており、オフのままです</string>
+    <string name="flows_perm_setup_denied">以前に拒否されました — アプリの設定ページから有効にしてください</string>
 </resources>
