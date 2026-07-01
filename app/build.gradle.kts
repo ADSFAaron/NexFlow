@@ -27,8 +27,8 @@ android {
         applicationId = "com.adsf.nexflow"
         minSdk = 30
         targetSdk = 37
-        versionCode = 2
-        versionName = "1.0.1"
+        versionCode = 3
+        versionName = "1.0.2"
 
         testInstrumentationRunner = "com.nexflow.HiltTestRunner"
     }
@@ -60,6 +60,12 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = true
+            // Bundle native debug symbols (from dependency .so files, e.g. androidx.graphics.path)
+            // so Play can symbolicate native crash/ANR stack traces. Clears the Play Console
+            // "no debug symbols" warning.
+            ndk {
+                debugSymbolLevel = "FULL"
+            }
             // Only attach the signing config when the keystore is present, so
             // release builds on machines without it still configure (just unsigned).
             if (keystorePropertiesFile.exists()) {
