@@ -443,4 +443,16 @@
     <plurals name="flows_warning_count">
         <item quantity="other">%1$d 個警告：</item>
     </plurals>
+
+    <!-- Onboarding -->
+    <string name="onboarding_welcome_title">歡迎使用 NexFlow</string>
+    <string name="onboarding_welcome_body">自動化你的手機。建立在特定事件發生時自動執行的流程，完全不需要寫程式。</string>
+    <string name="onboarding_how_title">從觸發到動作</string>
+    <string name="onboarding_how_body">每個流程都由「觸發器」開始——例如開啟某個 App、收到通知，或抵達某個地點——接著執行你設定的動作。</string>
+    <string name="onboarding_perms_title">設定權限</string>
+    <string name="onboarding_perms_body">NexFlow 使用少數選用權限來驅動觸發器與動作。只需授予你的流程所需的權限即可。</string>
+    <string name="onboarding_perms_footer">你可以隨時在「設定」中變更這些權限。</string>
+    <string name="onboarding_skip">略過</string>
+    <string name="onboarding_next">下一步</string>
+    <string name="onboarding_get_started">開始使用</string>
 </resources>

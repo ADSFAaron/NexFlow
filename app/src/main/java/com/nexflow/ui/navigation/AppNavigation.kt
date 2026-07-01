@@ -15,15 +15,12 @@
  */
 package com.nexflow.ui.navigation
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.History
@@ -32,9 +29,12 @@ import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Text
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldDefaults
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -66,6 +66,8 @@ sealed class Screen(
 }
 
 val bottomNavScreens = listOf(Screen.Flows, Screen.Logs, Screen.Settings)
+
+private data class NavItem(val screen: Screen, val selected: Boolean, val label: String)
 
 private val slideSpec = spring<Float>(
     dampingRatio = Spring.DampingRatioNoBouncy,
@@ -142,34 +144,41 @@ fun NexFlowNavHost(navController: NavHostController, modifier: Modifier = Modifi
     }
 }
 
+/**
+ * Adaptive navigation container. On compact width (phones) it renders a bottom
+ * [androidx.compose.material3.NavigationBar]; on medium/expanded width (foldables,
+ * tablets, landscape) it automatically switches to a NavigationRail — see
+ * developer.android.com/develop/ui/compose/layouts/adaptive/build-adaptive-navigation.
+ *
+ * The navigation container is hidden ([NavigationSuiteType.None]) on non-top-level
+ * routes (flow detail, about) so those screens get the full width.
+ */
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
-fun NexFlowBottomBar(navController: NavController) {
+fun NexFlowNavigationScaffold(
+    navController: NavController,
+    content: @Composable () -> Unit,
+) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val isTopLevel = bottomNavScreens.any { it.route == currentRoute }
 
-    AnimatedVisibility(
-        visible = isTopLevel,
-        enter = slideInVertically(
-            initialOffsetY = { it },
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessMedium,
-            ),
-        ) + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMedium)),
-        exit = slideOutVertically(
-            targetOffsetY = { it },
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioNoBouncy,
-                stiffness = Spring.StiffnessMedium,
-            ),
-        ) + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMedium)),
-    ) {
-        NavigationBar {
-            bottomNavScreens.forEach { screen ->
-                val selected = currentRoute == screen.route
-                val label = stringResource(screen.labelRes)
-                NavigationBarItem(
+    val layoutType = if (isTopLevel) {
+        NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(currentWindowAdaptiveInfo())
+    } else {
+        NavigationSuiteType.None
+    }
+
+    // Resolve labels here (composable context); navigationSuiteItems is a plain builder scope.
+    val items = bottomNavScreens.map { screen ->
+        NavItem(screen, selected = currentRoute == screen.route, label = stringResource(screen.labelRes))
+    }
+
+    NavigationSuiteScaffold(
+        layoutType = layoutType,
+        navigationSuiteItems = {
+            items.forEach { (screen, selected, label) ->
+                item(
                     selected = selected,
                     onClick = {
                         navController.navigate(screen.route) {
@@ -187,6 +196,7 @@ fun NexFlowBottomBar(navController: NavController) {
                     label = { Text(label) },
                 )
             }
-        }
-    }
+        },
+        content = content,
+    )
 }

@@ -15,6 +15,7 @@
  */
 package com.nexflow.ui.theme
 
+import android.app.UiModeManager
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -262,19 +263,49 @@ val NexFlowShapes = Shapes(
     extraLarge = RoundedCornerShape(32.dp),
 )
 
+/**
+ * Reads the system contrast preference (Settings → Accessibility → Contrast) on API 34+.
+ * Returns a bucket used to pick the matching static color scheme.
+ * Dynamic color already honours system contrast on API 34+, so this only drives the
+ * static fallback schemes (pre-API-31, or when [dynamicColor] is disabled).
+ */
+private enum class ContrastLevel { STANDARD, MEDIUM, HIGH }
+
+@Composable
+private fun rememberSystemContrast(): ContrastLevel {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return ContrastLevel.STANDARD
+    val context = LocalContext.current
+    val uiModeManager = context.getSystemService(UiModeManager::class.java)
+    return when (uiModeManager?.contrast ?: 0f) {
+        in 0.67f..1f -> ContrastLevel.HIGH
+        in 0.34f..0.66f -> ContrastLevel.MEDIUM
+        else -> ContrastLevel.STANDARD
+    }
+}
+
 @Composable
 fun NexFlowTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit,
 ) {
+    val contrast = rememberSystemContrast()
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+            // Dynamic schemes already reflect the system contrast setting on API 34+.
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-        darkTheme -> darkScheme
-        else -> lightScheme
+        darkTheme -> when (contrast) {
+            ContrastLevel.HIGH -> highContrastDarkScheme
+            ContrastLevel.MEDIUM -> mediumContrastDarkScheme
+            ContrastLevel.STANDARD -> darkScheme
+        }
+        else -> when (contrast) {
+            ContrastLevel.HIGH -> highContrastLightScheme
+            ContrastLevel.MEDIUM -> mediumContrastLightScheme
+            ContrastLevel.STANDARD -> lightScheme
+        }
     }
 
     MaterialTheme(

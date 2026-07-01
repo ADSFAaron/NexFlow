@@ -455,4 +455,16 @@
         <item quantity="one">%1$d warning:</item>
         <item quantity="other">%1$d warnings:</item>
     </plurals>
+
+    <!-- Onboarding -->
+    <string name="onboarding_welcome_title">Welcome to NexFlow</string>
+    <string name="onboarding_welcome_body">Automate your phone. Build flows that run by themselves when something happens — no coding required.</string>
+    <string name="onboarding_how_title">Triggers to Actions</string>
+    <string name="onboarding_how_body">Every flow starts with a trigger — an event like an app opening, a notification, or arriving at a place — and runs the actions you choose in response.</string>
+    <string name="onboarding_perms_title">Set up permissions</string>
+    <string name="onboarding_perms_body">NexFlow uses a few optional permissions to power its triggers and actions. Grant only what your flows need.</string>
+    <string name="onboarding_perms_footer">You can change these anytime in Settings.</string>
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_get_started">Get started</string>
 </resources>

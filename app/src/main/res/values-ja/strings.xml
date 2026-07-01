@@ -443,4 +443,16 @@
     <plurals name="flows_warning_count">
         <item quantity="other">%1$d 件の警告：</item>
     </plurals>
+
+    <!-- Onboarding -->
+    <string name="onboarding_welcome_title">NexFlow へようこそ</string>
+    <string name="onboarding_welcome_body">スマホを自動化しましょう。何かが起きたときに自動で実行されるフローを、コード不要で作成できます。</string>
+    <string name="onboarding_how_title">トリガーからアクションへ</string>
+    <string name="onboarding_how_body">すべてのフローはトリガー（アプリの起動、通知、特定の場所への到着などのイベント）から始まり、設定したアクションを実行します。</string>
+    <string name="onboarding_perms_title">権限を設定</string>
+    <string name="onboarding_perms_body">NexFlow はトリガーとアクションのためにいくつかの任意の権限を使用します。フローに必要なものだけを許可してください。</string>
+    <string name="onboarding_perms_footer">これらはいつでも設定から変更できます。</string>
+    <string name="onboarding_skip">スキップ</string>
+    <string name="onboarding_next">次へ</string>
+    <string name="onboarding_get_started">始める</string>
 </resources>

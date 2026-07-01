@@ -22,16 +22,24 @@ import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import com.nexflow.event.ImportEventSource
 import com.nexflow.event.NfcEventSource
+import com.nexflow.prefs.OnboardingPrefs
 import com.nexflow.service.FlowExecutionService
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
-import com.nexflow.ui.navigation.NexFlowBottomBar
+import com.nexflow.ui.navigation.NexFlowNavigationScaffold
 import com.nexflow.ui.navigation.NexFlowNavHost
+import com.nexflow.ui.onboarding.OnboardingScreen
 import com.nexflow.ui.theme.NexFlowTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -47,17 +55,31 @@ class MainActivity : AppCompatActivity() {
         enableEdgeToEdge()
         setContent {
             NexFlowTheme {
-                val navController = rememberNavController()
-                Scaffold(
-                    modifier = Modifier.fillMaxSize(),
-                    bottomBar = { NexFlowBottomBar(navController) },
-                ) { innerPadding ->
-                    // Each screen's own Scaffold + TopAppBar consumes the top inset.
-                    // We only pass bottom padding here so the NavBar is avoided.
-                    NexFlowNavHost(
-                        navController = navController,
-                        modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding()),
+                var onboardingDone by rememberSaveable {
+                    mutableStateOf(OnboardingPrefs.isCompleted(this))
+                }
+                if (!onboardingDone) {
+                    OnboardingScreen(
+                        onFinished = {
+                            OnboardingPrefs.setCompleted(this)
+                            onboardingDone = true
+                        },
                     )
+                } else {
+                    val navController = rememberNavController()
+                    // NavigationSuiteScaffold renders a bottom bar on phones and a
+                    // navigation rail on large screens, and owns the navigation insets.
+                    // Each destination's own Scaffold + TopAppBar consumes the top inset.
+                    NexFlowNavigationScaffold(navController) {
+                        // Keep content clear of a landscape display cutout (notch on the side);
+                        // vertical system-bar insets are handled by each screen's own Scaffold.
+                        NexFlowNavHost(
+                            navController = navController,
+                            modifier = Modifier.windowInsetsPadding(
+                                WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal),
+                            ),
+                        )
+                    }
                 }
             }
         }
