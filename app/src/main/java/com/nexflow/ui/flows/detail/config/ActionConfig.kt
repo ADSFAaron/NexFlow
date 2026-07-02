@@ -43,6 +43,7 @@ import androidx.compose.material.icons.outlined.Sms
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.TravelExplore
 import androidx.compose.material.icons.outlined.VolumeUp
+import androidx.compose.material.icons.outlined.Wallpaper
 import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.nexflow.R
@@ -79,7 +80,7 @@ val ActionType.category: ActionCategory
         -> ActionCategory.CONNECTIVITY
 
         ActionType.VOLUME_ADJUST, ActionType.BRIGHTNESS_ADJUST,
-        ActionType.DND_TOGGLE, ActionType.SCREENSHOT,
+        ActionType.DND_TOGGLE, ActionType.SCREENSHOT, ActionType.SET_WALLPAPER,
         -> ActionCategory.DEVICE
 
         ActionType.SEND_SMS, ActionType.CALL_PHONE,
@@ -102,6 +103,12 @@ private fun toggleOptions(context: Context) = listOf(
     "ON" to context.getString(R.string.opt_on),
     "OFF" to context.getString(R.string.opt_off),
     "TOGGLE" to context.getString(R.string.opt_toggle),
+)
+
+private fun wallpaperTargets(context: Context) = listOf(
+    "BOTH" to context.getString(R.string.opt_wallpaper_both),
+    "HOME" to context.getString(R.string.opt_wallpaper_home),
+    "LOCK" to context.getString(R.string.opt_wallpaper_lock),
 )
 
 // HTTP verbs are protocol tokens, not localizable.
@@ -265,6 +272,18 @@ fun ActionType.info(context: Context): ActionInfo = when (this) {
             ),
         ),
     )
+    ActionType.SET_WALLPAPER -> ActionInfo(
+        context.getString(R.string.act_set_wallpaper_label), Icons.Outlined.Wallpaper, context.getString(R.string.act_set_wallpaper_desc),
+        listOf(
+            ConfigField.ImagePicker("image", context.getString(R.string.cfg_wallpaper_image)),
+            ConfigField.Dropdown("target", context.getString(R.string.cfg_wallpaper_target), wallpaperTargets(context)),
+            ConfigField.InfoText(
+                "_wallpaper_info",
+                context.getString(R.string.cfg_info_note_label),
+                context.getString(R.string.cfg_info_wallpaper_body),
+            ),
+        ),
+    )
     ActionType.IF_BLOCK -> ActionInfo(
         context.getString(R.string.act_if_label), Icons.Outlined.MergeType, context.getString(R.string.act_if_desc),
         listOf(
@@ -360,6 +379,13 @@ fun ActionType.configSummary(context: Context, config: Map<String, String>): Str
     ActionType.WRITE_FILE -> config["path"]?.take(40) ?: context.getString(R.string.sum_no_path)
     ActionType.SHARE -> config["text"]?.take(40) ?: context.getString(R.string.sum_no_text)
     ActionType.SCREENSHOT -> context.getString(R.string.sum_take_screenshot)
+    ActionType.SET_WALLPAPER -> context.getString(
+        when (config["target"]) {
+            "HOME" -> R.string.opt_wallpaper_home
+            "LOCK" -> R.string.opt_wallpaper_lock
+            else -> R.string.opt_wallpaper_both
+        },
+    )
     ActionType.REPEAT_BLOCK -> "${config["count"] ?: "1"}×"
     ActionType.IF_BLOCK -> config["expression"]?.takeIf { it.isNotBlank() } ?: context.getString(R.string.sum_no_condition)
     ActionType.ELSE_BLOCK -> context.getString(R.string.sum_otherwise)

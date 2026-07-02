@@ -27,7 +27,14 @@ import android.location.LocationManager
 import android.net.wifi.WifiManager
 import android.nfc.NfcAdapter
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import android.graphics.Bitmap
+import android.net.Uri
+import android.view.WindowManager
+import com.canhub.cropper.CropImageContract
+import com.canhub.cropper.CropImageContractOptions
+import com.canhub.cropper.CropImageOptions
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -77,6 +84,7 @@ import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.outlined.Nfc
 import androidx.compose.material.icons.outlined.Share
@@ -147,6 +155,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import com.nexflow.R
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -175,6 +184,7 @@ import com.nexflow.ui.flows.detail.config.category
 import com.nexflow.ui.flows.detail.config.configSummary
 import com.nexflow.ui.flows.detail.config.info
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.util.UUID
@@ -1285,6 +1295,114 @@ internal fun ConfigDialog(
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
                                     )
+                                }
+                            }
+
+                            is ConfigField.ImagePicker -> {
+                                val current = values[field.key] ?: ""
+                                // The stored value is a private copy under filesDir; flag it if the
+                                // copy is somehow gone so the user re-picks instead of silently
+                                // failing when the flow later runs.
+                                val imageMissing = remember(current) {
+                                    current.isNotBlank() && !File(current).exists()
+                                }
+                                val pickerScope = rememberCoroutineScope()
+                                var copying by remember { mutableStateOf(false) }
+
+                                // Persist the cropped image into app-private storage. Reading our own
+                                // durable copy at run time means the flow keeps working even if the
+                                // user later moves or deletes the original from their gallery.
+                                fun persistCrop(cropped: Uri) {
+                                    copying = true
+                                    pickerScope.launch {
+                                        try {
+                                            val savedPath = withContext(Dispatchers.IO) {
+                                                runCatching {
+                                                    val dir = File(context.filesDir, "wallpapers")
+                                                        .apply { mkdirs() }
+                                                    val dest = File(dir, "wp_${UUID.randomUUID()}.img")
+                                                    context.contentResolver.openInputStream(cropped)?.use { input ->
+                                                        dest.outputStream().use { input.copyTo(it) }
+                                                    } ?: return@runCatching null
+                                                    dest.absolutePath
+                                                }.getOrNull()
+                                            }
+                                            if (savedPath != null) {
+                                                // Drop the previous copy so re-picking doesn't pile up files.
+                                                current.takeIf { it.startsWith(context.filesDir.path) }
+                                                    ?.let { old -> runCatching { File(old).delete() } }
+                                                values[field.key] = savedPath
+                                            }
+                                        } finally {
+                                            copying = false
+                                        }
+                                    }
+                                }
+
+                                val cropLauncher = rememberLauncherForActivityResult(
+                                    CropImageContract(),
+                                ) { result ->
+                                    if (result.isSuccessful) {
+                                        result.uriContent?.let { persistCrop(it) }
+                                    }
+                                }
+
+                                val imagePicker = rememberLauncherForActivityResult(
+                                    ActivityResultContracts.PickVisualMedia(),
+                                ) { uri ->
+                                    if (uri != null) {
+                                        // Lock the crop frame to THIS device's screen aspect ratio so the
+                                        // wallpaper fills the screen without the system blindly centre-
+                                        // cropping (and never stretched — aspect is preserved throughout).
+                                        val bounds = context.getSystemService(WindowManager::class.java)
+                                            .currentWindowMetrics.bounds
+                                        cropLauncher.launch(
+                                            CropImageContractOptions(
+                                                uri,
+                                                CropImageOptions(
+                                                    fixAspectRatio = true,
+                                                    aspectRatioX = bounds.width().coerceAtLeast(1),
+                                                    aspectRatioY = bounds.height().coerceAtLeast(1),
+                                                    outputCompressFormat = Bitmap.CompressFormat.JPEG,
+                                                    outputCompressQuality = 90,
+                                                    // We already picked the image; don't show the library's
+                                                    // own source chooser.
+                                                    imageSourceIncludeGallery = false,
+                                                    imageSourceIncludeCamera = false,
+                                                ),
+                                            ),
+                                        )
+                                    }
+                                }
+                                Column {
+                                    OutlinedButton(
+                                        enabled = !copying,
+                                        onClick = {
+                                            imagePicker.launch(
+                                                PickVisualMediaRequest(
+                                                    ActivityResultContracts.PickVisualMedia.ImageOnly,
+                                                ),
+                                            )
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                    ) {
+                                        Icon(Icons.Outlined.Image, contentDescription = null)
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(
+                                            when {
+                                                copying -> stringResource(R.string.fd_image_processing)
+                                                current.isNotBlank() && !imageMissing -> stringResource(R.string.fd_image_selected)
+                                                else -> field.label
+                                            },
+                                        )
+                                    }
+                                    if (imageMissing) {
+                                        Text(
+                                            stringResource(R.string.fd_image_missing),
+                                            color = MaterialTheme.colorScheme.error,
+                                            style = MaterialTheme.typography.bodySmall,
+                                        )
+                                    }
                                 }
                             }
 

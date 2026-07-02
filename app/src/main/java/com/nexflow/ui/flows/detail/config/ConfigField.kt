@@ -109,6 +109,16 @@ sealed class ConfigField {
         override val label: String,
     ) : ConfigField()
 
+    /**
+     * System photo-picker button (no storage permission needed). Stores the selected
+     * image's content:// URI as a string, taking a persistable read grant so the flow
+     * can still read it later from the background.
+     */
+    data class ImagePicker(
+        override val key: String,
+        override val label: String,
+    ) : ConfigField()
+
     /** Boolean toggle (Switch); stores "true" or "false". */
     data class Toggle(
         override val key: String,

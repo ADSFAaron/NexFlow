@@ -20,6 +20,7 @@ workmanager = "2.10.0"
 glance = "1.1.1"
 reorderable = "3.1.0"
 playServicesLocation = "21.3.0"
+imageCropper = "4.7.0"
 # Test
 junit = "4.13.2"
 junitVersion = "1.2.1"
@@ -84,6 +85,7 @@ androidx-glance-material3 = { group = "androidx.glance", name = "glance-material
 androidx-compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
 reorderable = { group = "sh.calvin.reorderable", name = "reorderable", version.ref = "reorderable" }
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
+android-image-cropper = { group = "com.vanniktech", name = "android-image-cropper", version.ref = "imageCropper" }
 
 # Test – JVM / Unit
 junit = { group = "junit", name = "junit", version.ref = "junit" }

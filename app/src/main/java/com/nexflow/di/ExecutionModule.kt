@@ -30,6 +30,7 @@ import com.nexflow.executor.NotificationActionExecutor
 import com.nexflow.executor.OpenAppActionExecutor
 import com.nexflow.executor.OpenUrlActionExecutor
 import com.nexflow.executor.ScreenshotActionExecutor
+import com.nexflow.executor.SetWallpaperActionExecutor
 import com.nexflow.executor.ShareActionExecutor
 import com.nexflow.executor.ToastActionExecutor
 import com.nexflow.executor.TtsActionExecutor
@@ -154,6 +155,9 @@ abstract class ExecutionModule {
 
     @Binds @IntoSet
     abstract fun bindScreenshot(impl: ScreenshotActionExecutor): ActionExecutor
+
+    @Binds @IntoSet
+    abstract fun bindSetWallpaper(impl: SetWallpaperActionExecutor): ActionExecutor
 
     // SendSms + CallPhone action bindings live in the `github` flavor (TelephonyModule).
 

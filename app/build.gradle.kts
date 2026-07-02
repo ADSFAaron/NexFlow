@@ -159,6 +159,9 @@ dependencies {
     // Google Location Services (Geofencing)
     implementation(libs.play.services.location)
 
+    // Image cropper (wallpaper action — aspect-locked crop UI)
+    implementation(libs.android.image.cropper)
+
     // Test
     testImplementation(libs.junit)
     testImplementation(libs.junit5.api)

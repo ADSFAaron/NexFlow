@@ -46,6 +46,9 @@
          because a privileged, non-UI-grantable permission draws extra review scrutiny; the
          AIRPLANE_TOGGLE action is hidden in the play flavor (see FlavorFeatures). -->
 
+    <!-- Set wallpaper action (normal/install-time permission, auto-granted) -->
+    <uses-permission android:name="android.permission.SET_WALLPAPER" />
+
     <!-- NFC tag scanning -->
     <uses-permission android:name="android.permission.NFC" />
     <uses-feature android:name="android.hardware.nfc" android:required="false" />
