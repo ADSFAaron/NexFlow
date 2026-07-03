@@ -25,6 +25,11 @@ import com.nexflow.core.automation.model.Trigger
 import com.nexflow.core.automation.model.TriggerLogic
 import com.nexflow.core.automation.model.Variable
 import com.nexflow.core.automation.repository.FlowRepository
+import com.nexflow.permissions.FlowPermissionChecker
+import com.nexflow.permissions.PermissionReminder
+import com.nexflow.permissions.PermissionSetup
+import com.nexflow.permissions.PermissionSetupManager
+import com.nexflow.permissions.PermissionSetupResult
 import com.nexflow.core.flowschema.ActionJson
 import com.nexflow.core.flowschema.ConditionJson
 import com.nexflow.core.flowschema.FlowJson
@@ -37,9 +42,12 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -52,6 +60,7 @@ class FlowDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: FlowRepository,
     private val flowEngine: FlowEngine,
+    private val permissionChecker: FlowPermissionChecker,
 ) : ViewModel() {
 
     private val flowId: String = checkNotNull(savedStateHandle["flowId"])
@@ -59,6 +68,31 @@ class FlowDetailViewModel @Inject constructor(
     val flow: StateFlow<Flow?> = repository.observeAll()
         .map { flows -> flows.find { it.id == flowId } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    // Same permission gate as the Flows list: enabling a flow that is missing permissions
+    // must be blocked and walked through the guided setup, never written silently.
+    private val _permissionReminder = MutableSharedFlow<PermissionReminder>(extraBufferCapacity = 1)
+    val permissionReminder: SharedFlow<PermissionReminder> = _permissionReminder.asSharedFlow()
+
+    private val setupManager = PermissionSetupManager(repository, permissionChecker)
+    val permissionSetup: StateFlow<PermissionSetup?> = setupManager.setup
+    val setupComplete: SharedFlow<PermissionSetupResult> = setupManager.complete
+
+    fun beginPermissionSetup(id: String, autoEnable: Boolean) {
+        viewModelScope.launch { setupManager.begin(id, autoEnable) }
+    }
+
+    fun advancePermissionSetup() {
+        viewModelScope.launch { setupManager.advance() }
+    }
+
+    fun markPermissionAttempted(permissions: List<String>) = setupManager.markAttempted(permissions)
+
+    fun skipCurrentPermission() {
+        viewModelScope.launch { setupManager.skip() }
+    }
+
+    fun cancelPermissionSetup() = setupManager.cancel()
 
     fun addTrigger(trigger: Trigger) = edit { copy(triggers = triggers + trigger) }
 
@@ -179,7 +213,22 @@ class FlowDetailViewModel @Inject constructor(
     }
 
     fun setEnabled(enabled: Boolean) {
-        viewModelScope.launch { repository.setEnabled(flowId, enabled) }
+        viewModelScope.launch {
+            // Block enabling while required permissions are missing — otherwise the engine
+            // would subscribe the trigger and crash with a SecurityException. Guide the user
+            // through the setup instead; on completion the flow is enabled automatically.
+            if (enabled) {
+                val current = flow.value ?: return@launch
+                val missing = permissionChecker.missingPermissions(current)
+                if (missing.isNotEmpty()) {
+                    _permissionReminder.emit(
+                        PermissionReminder(current.id, current.name, missing, autoEnableOnComplete = true),
+                    )
+                    return@launch
+                }
+            }
+            repository.setEnabled(flowId, enabled)
+        }
     }
 
     private val _isRunning = MutableStateFlow(false)

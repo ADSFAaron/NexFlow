@@ -20,6 +20,7 @@ import android.content.Context
 import android.content.Intent
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.automation.repository.FlowRepository
+import com.nexflow.prefs.ServiceEnabledPrefs
 import com.nexflow.service.FlowExecutionService
 import com.nexflow.trigger.TimeTriggerScheduler
 import dagger.hilt.EntryPoint
@@ -63,7 +64,12 @@ class TimeAlarmReceiver : BroadcastReceiver() {
                 // Flow deleted/disabled or trigger removed since the alarm was set: drop it.
                 if (flow == null || !flow.enabled || trigger == null) return@launch
 
-                FlowExecutionService.runFlow(context, flowId)
+                // Master switch off: skip this occurrence (an alarm-driven run is automation,
+                // not a manual action) but keep chaining below, so turning the service back
+                // on resumes the schedule without re-editing the flow.
+                if (ServiceEnabledPrefs.get(context)) {
+                    FlowExecutionService.runFlow(context, flowId)
+                }
 
                 // Chain the next occurrence for repeating triggers (ONCE does not repeat).
                 if (trigger.config["repeat"] != "ONCE") {

@@ -155,7 +155,7 @@
     <string name="settings_import_flow">匯入流程</string>
     <string name="settings_import_flow_desc">選擇 NexFlow JSON 或 MacroDroid .mdr 檔案</string>
     <string name="settings_autostart">開機自動啟動</string>
-    <string name="settings_autostart_desc">裝置啟動時恢復已啟用的流程</string>
+    <string name="settings_autostart_desc">裝置重新開機後自動恢復自動化服務（服務開啟時才生效）</string>
     <string name="settings_log_retention">日誌保留</string>
     <string name="settings_log_retention_desc">每週自動清理一次</string>
     <string name="settings_about_nexflow">關於 NexFlow</string>
@@ -189,6 +189,8 @@
     <string name="flows_empty_subtitle">點按 + 建立您的第一個自動化</string>
     <string name="flows_flow_activated">流程已觸發</string>
     <string name="flows_flow_started">流程已啟動</string>
+    <string name="flows_service_off_banner">自動化服務已停止——觸發器不會執行</string>
+    <string name="flows_service_off_action">啟動</string>
 
     <!-- About -->
     <string name="about_title">關於</string>

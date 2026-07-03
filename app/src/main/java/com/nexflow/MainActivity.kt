@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import com.nexflow.event.ImportEventSource
 import com.nexflow.event.NfcEventSource
 import com.nexflow.prefs.OnboardingPrefs
+import com.nexflow.prefs.ServiceEnabledPrefs
 import com.nexflow.service.FlowExecutionService
 import androidx.navigation.compose.rememberNavController
 import com.nexflow.ui.navigation.NexFlowNavigationScaffold
@@ -51,7 +52,11 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         nfcAdapter = NfcAdapter.getDefaultAdapter(this)
-        FlowExecutionService.start(this)
+        // Respect the persistent master switch: if the user stopped the automation
+        // service, opening the app must not silently restart it.
+        if (ServiceEnabledPrefs.get(this)) {
+            FlowExecutionService.start(this)
+        }
         enableEdgeToEdge()
         setContent {
             NexFlowTheme {

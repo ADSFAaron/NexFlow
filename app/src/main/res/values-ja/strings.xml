@@ -155,7 +155,7 @@
     <string name="settings_import_flow">フローをインポート</string>
     <string name="settings_import_flow_desc">NexFlow JSON または MacroDroid .mdr ファイルを選択</string>
     <string name="settings_autostart">起動時に自動開始</string>
-    <string name="settings_autostart_desc">デバイス起動時に有効なフローを再開</string>
+    <string name="settings_autostart_desc">端末の再起動後に自動化サービスを再開します（サービスがオンのときのみ）</string>
     <string name="settings_log_retention">ログの保持</string>
     <string name="settings_log_retention_desc">週に一度自動的に整理します</string>
     <string name="settings_about_nexflow">NexFlow について</string>
@@ -189,6 +189,8 @@
     <string name="flows_empty_subtitle">+ をタップして最初の自動化を作成</string>
     <string name="flows_flow_activated">フローを実行しました</string>
     <string name="flows_flow_started">フローを開始しました</string>
+    <string name="flows_service_off_banner">自動化サービスは停止中です — トリガーは実行されません</string>
+    <string name="flows_service_off_action">開始</string>
 
     <!-- About -->
     <string name="about_title">情報</string>

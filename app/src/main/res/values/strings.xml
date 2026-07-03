@@ -156,7 +156,7 @@
     <string name="settings_import_flow">Import flow</string>
     <string name="settings_import_flow_desc">Pick a NexFlow JSON or MacroDroid .mdr file</string>
     <string name="settings_autostart">Auto-start on boot</string>
-    <string name="settings_autostart_desc">Resume enabled flows when device starts</string>
+    <string name="settings_autostart_desc">Resume the automation service after the device restarts (only while the service is switched on)</string>
     <string name="settings_log_retention">Log retention</string>
     <string name="settings_log_retention_desc">Cleans up automatically once a week</string>
     <string name="settings_about_nexflow">About NexFlow</string>
@@ -190,6 +190,8 @@
     <string name="flows_empty_subtitle">Tap + to create your first automation</string>
     <string name="flows_flow_activated">Flow activated</string>
     <string name="flows_flow_started">Flow started</string>
+    <string name="flows_service_off_banner">Automation service is stopped — triggers won\'t run</string>
+    <string name="flows_service_off_action">Start</string>
 
     <!-- About -->
     <string name="about_title">About</string>

@@ -179,9 +179,11 @@ import com.nexflow.core.automation.model.ActionType
 import com.nexflow.core.automation.model.Trigger
 import com.nexflow.core.automation.model.TriggerLogic
 import com.nexflow.core.automation.model.TriggerType
+import com.nexflow.permissions.PermissionReminder
 import com.nexflow.ui.common.AppPickerDialog
 import com.nexflow.ui.common.FlowIconPickerDialog
 import com.nexflow.ui.common.FlowIcons
+import com.nexflow.ui.common.PermissionSetupDialogs
 import com.nexflow.core.automation.model.Variable
 import com.nexflow.core.automation.model.VariableType
 import androidx.compose.ui.graphics.Color
@@ -267,6 +269,35 @@ private fun FlowDetailContent(
             if (result == SnackbarResult.ActionPerformed) undo()
         }
     }
+
+    // Enabling from this screen goes through the same permission gate as the Flows list:
+    // missing permissions block the toggle and open the reminder + guided setup instead.
+    var permissionReminder by remember { mutableStateOf<PermissionReminder?>(null) }
+    val permissionSetup by vm.permissionSetup.collectAsState()
+    LaunchedEffect(vm) {
+        vm.permissionReminder.collect { permissionReminder = it }
+    }
+    LaunchedEffect(vm) {
+        vm.setupComplete.collect { result ->
+            val msg = if (result.allGranted) {
+                context.getString(R.string.flows_perm_setup_done, result.flowName)
+            } else {
+                context.getString(R.string.flows_perm_setup_incomplete, result.flowName)
+            }
+            snackbarHostState.showSnackbar(msg)
+        }
+    }
+
+    PermissionSetupDialogs(
+        reminder = permissionReminder,
+        onReminderDismiss = { permissionReminder = null },
+        onBeginSetup = { vm.beginPermissionSetup(it.flowId, it.autoEnableOnComplete) },
+        setup = permissionSetup,
+        onAdvance = vm::advancePermissionSetup,
+        onMarkAttempted = vm::markPermissionAttempted,
+        onSkip = vm::skipCurrentPermission,
+        onCancel = vm::cancelPermissionSetup,
+    )
 
     val flowVariables = remember(f.actions, f.variables) {
         (

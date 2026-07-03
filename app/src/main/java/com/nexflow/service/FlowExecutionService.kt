@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import com.nexflow.R
 import com.nexflow.core.automation.repository.FlowRepository
+import com.nexflow.prefs.ServiceEnabledPrefs
 import com.nexflow.shortcut.ShortcutSyncManager
 import com.nexflow.widget.NexFlowWidget
 import dagger.hilt.android.AndroidEntryPoint
@@ -57,15 +58,28 @@ class FlowExecutionService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
+            // Notification Stop = the user turned automation off; persist that intent so
+            // reopening the app (or a reboot) doesn't silently restart the service.
+            ServiceEnabledPrefs.set(this, false)
             stopSelf()
             return START_NOT_STICKY
         }
+        val serviceEnabled = ServiceEnabledPrefs.get(this)
         if (intent?.action == ACTION_RUN_FLOW) {
-            val flowId = intent.getStringExtra(EXTRA_FLOW_ID) ?: return START_STICKY
-            serviceScope.launch { flowEngine.runNow(flowId) }
-            return START_STICKY
+            val flowId = intent.getStringExtra(EXTRA_FLOW_ID)
+            if (flowId != null) {
+                serviceScope.launch {
+                    flowEngine.runNow(flowId)
+                    // Manual runs are allowed while the master switch is off, but the
+                    // service must not linger afterwards — run one flow, then leave.
+                    if (!ServiceEnabledPrefs.get(this@FlowExecutionService)) stopSelf()
+                }
+            }
+            if (!serviceEnabled) return START_NOT_STICKY
+            // Master switch on: fall through so a run request also (re)starts the engine —
+            // e.g. after the OS killed the sticky service, the next widget run revives it.
         }
-        if (!engineStarted) {
+        if (serviceEnabled && !engineStarted) {
             engineStarted = true
             flowEngine.start(serviceScope)
             shortcutSyncManager.startSync(serviceScope)
@@ -79,7 +93,7 @@ class FlowExecutionService : Service() {
                 }
             }
         }
-        return START_STICKY
+        return if (serviceEnabled) START_STICKY else START_NOT_STICKY
     }
 
     override fun onDestroy() {

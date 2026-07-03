@@ -15,12 +15,10 @@
  */
 package com.nexflow.ui.flows
 
-import android.app.Activity
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.app.ActivityCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.animation.AnimatedContent
@@ -58,7 +56,6 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.FileOpen
-import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -118,9 +115,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.nexflow.R
 import com.nexflow.core.automation.model.Flow
 import com.nexflow.event.ImportEventSource
-import com.nexflow.permissions.PermissionIntents
-import com.nexflow.permissions.SpecialAccess
+import com.nexflow.permissions.PermissionReminder
+import com.nexflow.prefs.ServiceEnabledPrefs
 import com.nexflow.ui.common.FlowIcons
+import com.nexflow.ui.common.PermissionSetupDialogs
 import com.nexflow.ui.flows.detail.config.info
 import com.nexflow.service.FlowExecutionService
 import com.nexflow.ui.flowimport.ImportViewModel
@@ -139,9 +137,6 @@ fun FlowsScreen(
     val importResult by importVm.result.collectAsState()
     var showCreateDialog by rememberSaveable { mutableStateOf(false) }
     var permissionReminder by remember { mutableStateOf<PermissionReminder?>(null) }
-    // Prominent disclosure shown before sending the user to grant background location
-    // ("Allow all the time"), as required by Google Play's background-location policy.
-    var showBgLocationDisclosure by remember { mutableStateOf(false) }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val listState = rememberLazyListState()
     val context = LocalContext.current
@@ -164,17 +159,6 @@ fun FlowsScreen(
         delay(3000L)
         serviceNotification = null
     }
-
-    // Runtime-permission dialog doesn't reliably fire ON_RESUME, so advance the wizard here.
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions(),
-    ) { vm.advancePermissionSetup() }
-
-    // Settings pages are separate activities; the result callback fires on return (ON_RESUME
-    // also advances, so double-firing is harmless — advancePermissionSetup just recomputes).
-    val settingsLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult(),
-    ) { vm.advancePermissionSetup() }
 
     val filePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
@@ -239,16 +223,13 @@ fun FlowsScreen(
         }
     }
 
-    // Re-check permission warnings each time the screen resumes — the user may have just returned
-    // from system Settings after granting (or revoking) a permission. When a guided setup is in
-    // progress, also advance it to the next still-missing permission (or finish it).
+    // Re-check permission warnings each time the screen resumes — the user may have just
+    // returned from system Settings after granting (or revoking) a permission. (The wizard
+    // itself advances on resume inside PermissionSetupDialogs.)
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                vm.refreshPermissionWarnings()
-                vm.advancePermissionSetup()
-            }
+            if (event == Lifecycle.Event.ON_RESUME) vm.refreshPermissionWarnings()
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
@@ -268,8 +249,15 @@ fun FlowsScreen(
                         running = serviceRunning,
                         notification = serviceNotification,
                         onClick = {
-                            if (serviceRunning) FlowExecutionService.stop(context)
-                            else FlowExecutionService.start(context)
+                            // The capsule is the persistent master switch: remember the choice
+                            // so reopening the app / rebooting doesn't override it.
+                            if (serviceRunning) {
+                                ServiceEnabledPrefs.set(context, false)
+                                FlowExecutionService.stop(context)
+                            } else {
+                                ServiceEnabledPrefs.set(context, true)
+                                FlowExecutionService.start(context)
+                            }
                         },
                     )
                 },
@@ -286,8 +274,22 @@ fun FlowsScreen(
             transitionSpec = { fadeIn(contentFade) togetherWith fadeOut(contentFade) },
             label = "flows_content",
         ) { currentFlows ->
+        // Master switch off ⇒ triggers won't fire no matter what the per-flow switches say;
+        // surface that state prominently with a one-tap way back on.
+        val startService = {
+            ServiceEnabledPrefs.set(context, true)
+            FlowExecutionService.start(context)
+        }
         if (currentFlows.isEmpty()) {
-            EmptyFlowsContent(modifier = Modifier.padding(innerPadding))
+            Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+                if (!serviceRunning) {
+                    ServiceOffBanner(
+                        onStart = startService,
+                        modifier = Modifier.align(Alignment.TopCenter),
+                    )
+                }
+                EmptyFlowsContent(modifier = Modifier.fillMaxSize())
+            }
         } else {
             LazyColumn(
                 state = listState,
@@ -295,6 +297,14 @@ fun FlowsScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxSize(),
             ) {
+                if (!serviceRunning) {
+                    item(key = "service_off_banner") {
+                        ServiceOffBanner(
+                            onStart = startService,
+                            modifier = Modifier.animateItem(),
+                        )
+                    }
+                }
                 items(currentFlows, key = { it.id }) { flow ->
                     var lastRunMs by remember { mutableStateOf(0L) }
                     // positionalThreshold is left at the spec default (56dp) — the previous 15%
@@ -480,135 +490,17 @@ fun FlowsScreen(
         )
     }
 
-    permissionReminder?.let { reminder ->
-        AlertDialog(
-            onDismissRequest = { permissionReminder = null },
-            title = { Text(stringResource(R.string.flows_permissions_needed)) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(stringResource(R.string.flows_permissions_body, reminder.flowName))
-                    Spacer(Modifier.height(4.dp))
-                    reminder.missing.forEach {
-                        Text(stringResource(R.string.flows_bullet, it.label), style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
-            },
-            confirmButton = {
-                // Kick off the guided, one-at-a-time setup: each grant walks the user to the
-                // next still-missing permission until the flow can run.
-                TextButton(
-                    onClick = {
-                        val id = reminder.flowId
-                        val autoEnable = reminder.autoEnableOnComplete
-                        permissionReminder = null
-                        vm.beginPermissionSetup(id, autoEnable)
-                    },
-                ) { Text(stringResource(R.string.flows_perm_setup_start)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { permissionReminder = null }) { Text(stringResource(R.string.action_later)) }
-            },
-        )
-    }
-
-    // Step-by-step permission wizard. Shows one permission at a time; the current one is
-    // launched with the exact runtime dialog or the deep-linked (and flashing) Settings page.
-    permissionSetup?.let { setup ->
-        val current = setup.remaining.firstOrNull()
-        if (current != null) {
-            val activity = context as? Activity
-            val isRuntime = current.runtimePermissions.isNotEmpty()
-            // A runtime permission is permanently denied ("Don't ask again") when it has been
-            // requested already but the system now refuses to show a rationale. In that state the
-            // runtime dialog will not reappear, so route the user to the app's settings page.
-            val permanentlyDenied = isRuntime && activity != null &&
-                current.runtimePermissions.all { it in setup.attempted } &&
-                current.runtimePermissions.none {
-                    ActivityCompat.shouldShowRequestPermissionRationale(activity, it)
-                }
-            AlertDialog(
-                onDismissRequest = { vm.cancelPermissionSetup() },
-                icon = { Icon(Icons.Outlined.Shield, contentDescription = null) },
-                title = { Text(stringResource(R.string.flows_perm_setup_title)) },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(stringResource(R.string.flows_perm_setup_current, current.label))
-                        if (permanentlyDenied) {
-                            Text(
-                                text = stringResource(R.string.flows_perm_setup_denied),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.error,
-                            )
-                        }
-                        val more = setup.remaining.size - 1
-                        if (more > 0) {
-                            Text(
-                                text = stringResource(R.string.flows_perm_setup_remaining, more),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            when {
-                                // Denied for good → the app settings page is the only way to grant.
-                                permanentlyDenied ->
-                                    settingsLauncher.launch(PermissionIntents.appDetailsSettings(context))
-                                isRuntime -> {
-                                    vm.markPermissionAttempted(current.runtimePermissions)
-                                    permissionLauncher.launch(current.runtimePermissions.toTypedArray())
-                                }
-                                current.special == SpecialAccess.BACKGROUND_LOCATION ->
-                                    showBgLocationDisclosure = true
-                                current.special != null -> {
-                                    val intent = PermissionIntents.forSpecial(context, current.special)
-                                    if (intent != null) settingsLauncher.launch(intent) else vm.skipCurrentPermission()
-                                }
-                                else -> vm.skipCurrentPermission()
-                            }
-                        },
-                    ) {
-                        Text(
-                            when {
-                                permanentlyDenied -> stringResource(R.string.flows_open_settings)
-                                isRuntime -> stringResource(R.string.action_grant)
-                                else -> stringResource(R.string.action_enable)
-                            },
-                        )
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { vm.skipCurrentPermission() }) {
-                        Text(stringResource(R.string.flows_perm_setup_skip))
-                    }
-                },
-            )
-        }
-    }
-
-    if (showBgLocationDisclosure) {
-        AlertDialog(
-            onDismissRequest = { showBgLocationDisclosure = false },
-            title = { Text(stringResource(R.string.bg_location_disclosure_title)) },
-            text = { Text(stringResource(R.string.bg_location_disclosure_body)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    showBgLocationDisclosure = false
-                    PermissionIntents.forSpecial(context, SpecialAccess.BACKGROUND_LOCATION)?.let {
-                        settingsLauncher.launch(it)
-                    }
-                }) { Text(stringResource(R.string.accessibility_disclosure_continue)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showBgLocationDisclosure = false }) {
-                    Text(stringResource(R.string.action_cancel))
-                }
-            },
-        )
-    }
+    // Shared permission UI: reminder dialog + step-by-step wizard + bg-location disclosure.
+    PermissionSetupDialogs(
+        reminder = permissionReminder,
+        onReminderDismiss = { permissionReminder = null },
+        onBeginSetup = { vm.beginPermissionSetup(it.flowId, it.autoEnableOnComplete) },
+        setup = permissionSetup,
+        onAdvance = vm::advancePermissionSetup,
+        onMarkAttempted = vm::markPermissionAttempted,
+        onSkip = vm::skipCurrentPermission,
+        onCancel = vm::cancelPermissionSetup,
+    )
 
     if (showCreateDialog) {
         CreateFlowDialog(
@@ -664,6 +556,37 @@ private fun ServiceCapsule(
                     style = MaterialTheme.typography.labelMedium,
                 )
             }
+        }
+    }
+}
+
+/** Warning banner shown while the automation service (master switch) is stopped. */
+@Composable
+private fun ServiceOffBanner(onStart: () -> Unit, modifier: Modifier = Modifier) {
+    Surface(
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start = 16.dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
+        ) {
+            Icon(
+                Icons.Filled.Warning,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(Modifier.width(10.dp))
+            Text(
+                stringResource(R.string.flows_service_off_banner),
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(onClick = onStart) { Text(stringResource(R.string.flows_service_off_action)) }
         }
     }
 }

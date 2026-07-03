@@ -20,6 +20,7 @@ import android.content.Context
 import android.content.Intent
 import com.nexflow.core.automation.repository.FlowRepository
 import com.nexflow.prefs.AutoStartPrefs
+import com.nexflow.prefs.ServiceEnabledPrefs
 import com.nexflow.service.FlowExecutionService
 import com.nexflow.trigger.BootTriggerHandler
 import com.nexflow.trigger.TimeTriggerScheduler
@@ -54,7 +55,9 @@ class BootReceiver : BroadcastReceiver() {
             }
         }
 
-        if (AutoStartPrefs.get(context)) {
+        // Resume the service only when auto-start is on AND the master switch wasn't
+        // turned off by the user — a reboot must not override an explicit stop.
+        if (AutoStartPrefs.get(context) && ServiceEnabledPrefs.get(context)) {
             FlowExecutionService.start(context)
         }
     }

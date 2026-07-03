@@ -23,7 +23,10 @@ import com.nexflow.core.automation.model.TriggerLogic
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.automation.repository.FlowRepository
 import com.nexflow.permissions.FlowPermissionChecker
-import com.nexflow.permissions.MissingPermission
+import com.nexflow.permissions.PermissionReminder
+import com.nexflow.permissions.PermissionSetup
+import com.nexflow.permissions.PermissionSetupManager
+import com.nexflow.permissions.PermissionSetupResult
 import com.nexflow.service.FlowEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -38,33 +41,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
-
-/** Overview shown before the guided setup: the flow and everything it still needs. */
-data class PermissionReminder(
-    val flowId: String,
-    val flowName: String,
-    val missing: List<MissingPermission>,
-    val autoEnableOnComplete: Boolean,
-)
-
-/**
- * State of the step-by-step permission wizard. [remaining] is recomputed after every grant
- * so the user is walked through one permission at a time; [skipped] labels are dropped so a
- * permission the user declined (or an ADB-only one) does not loop forever. [attempted] holds
- * runtime permissions already requested once, so the UI can tell a first-time request apart
- * from a permanent "Don't ask again" denial (where the system dialog no longer appears).
- */
-data class PermissionSetup(
-    val flowId: String,
-    val flowName: String,
-    val remaining: List<MissingPermission>,
-    val autoEnableOnComplete: Boolean,
-    val skipped: Set<String> = emptySet(),
-    val attempted: Set<String> = emptySet(),
-)
-
-/** Outcome of the wizard: [allGranted] is false when the user skipped a still-missing permission. */
-data class PermissionSetupResult(val flowName: String, val allGranted: Boolean)
 
 @HiltViewModel
 class FlowsViewModel @Inject constructor(
@@ -82,12 +58,10 @@ class FlowsViewModel @Inject constructor(
     private val _permissionReminder = MutableSharedFlow<PermissionReminder>(extraBufferCapacity = 1)
     val permissionReminder: SharedFlow<PermissionReminder> = _permissionReminder.asSharedFlow()
 
-    private val _permissionSetup = MutableStateFlow<PermissionSetup?>(null)
-    val permissionSetup: StateFlow<PermissionSetup?> = _permissionSetup.asStateFlow()
-
-    // Emits when the wizard finishes (all granted, or closed with some skipped-and-still-missing).
-    private val _setupComplete = MutableSharedFlow<PermissionSetupResult>(extraBufferCapacity = 1)
-    val setupComplete: SharedFlow<PermissionSetupResult> = _setupComplete.asSharedFlow()
+    // Guided wizard state machine, shared implementation with the flow detail screen.
+    private val setupManager = PermissionSetupManager(repository, permissionChecker)
+    val permissionSetup: StateFlow<PermissionSetup?> = setupManager.setup
+    val setupComplete: SharedFlow<PermissionSetupResult> = setupManager.complete
 
     // Bumped whenever the screen resumes so the warning set is recomputed: the user may have
     // granted (or revoked) a permission in system Settings while the app was backgrounded.
@@ -114,77 +88,23 @@ class FlowsViewModel @Inject constructor(
         viewModelScope.launch { remindIfMissingPermissions(id, autoEnable = false) }
     }
 
-    /**
-     * Start the guided, one-at-a-time permission setup for a flow. Called from the reminder
-     * dialog's primary button. If nothing is actually missing (a race with the user granting
-     * elsewhere), it just enables the flow when [autoEnable] is set.
-     */
+    /** Start the guided setup for a flow (from the reminder dialog's primary button). */
     fun beginPermissionSetup(id: String, autoEnable: Boolean) {
-        viewModelScope.launch {
-            val flow = repository.getById(id) ?: return@launch
-            val missing = permissionChecker.missingPermissions(flow)
-            if (missing.isEmpty()) {
-                if (autoEnable) repository.setEnabled(id, true)
-                return@launch
-            }
-            _permissionSetup.value = PermissionSetup(id, flow.name, missing, autoEnable)
-        }
+        viewModelScope.launch { setupManager.begin(id, autoEnable) }
     }
 
-    /**
-     * Re-check the active setup after the user returns from a grant step and advance to the
-     * next still-missing permission — or finish (optionally enabling the flow) when done.
-     * Safe to call repeatedly (e.g. on every ON_RESUME); it is a no-op with no active setup.
-     */
+    /** Advance the wizard after a grant step; safe to call on every ON_RESUME. */
     fun advancePermissionSetup() {
-        val setup = _permissionSetup.value ?: return
-        viewModelScope.launch {
-            val flow = repository.getById(setup.flowId) ?: run {
-                if (_permissionSetup.value === setup) _permissionSetup.value = null
-                return@launch
-            }
-            // Returning from a settings page fires both the result callback and ON_RESUME, so two
-            // advances can run concurrently. If another has already superseded/finished this setup,
-            // stop — otherwise the completion below would emit twice (duplicate snackbar).
-            if (_permissionSetup.value !== setup) return@launch
-            val stillMissing = permissionChecker.missingPermissions(flow)
-            val remaining = stillMissing.filter { it.label !in setup.skipped }
-            if (remaining.isNotEmpty()) {
-                if (_permissionSetup.value === setup) _permissionSetup.value = setup.copy(remaining = remaining)
-                return@launch
-            }
-            // Claim completion atomically: null the (still-current) setup *before* the suspending
-            // setEnabled below, so a concurrent advance sees null and bails at the guard above.
-            if (_permissionSetup.value !== setup) return@launch
-            _permissionSetup.value = null
-            // Only enable the flow when *nothing* is actually missing — a skipped-but-required
-            // permission would otherwise let the engine subscribe a trigger without its permission
-            // and crash. Skipped ⇒ report "not fully granted".
-            val allGranted = stillMissing.isEmpty()
-            if (allGranted && setup.autoEnableOnComplete) {
-                repository.setEnabled(setup.flowId, true)
-            }
-            _setupComplete.emit(PermissionSetupResult(setup.flowName, allGranted))
-        }
+        viewModelScope.launch { setupManager.advance() }
     }
 
-    /** Record that a runtime permission has been requested at least once in this session. */
-    fun markPermissionAttempted(permissions: List<String>) {
-        val setup = _permissionSetup.value ?: return
-        _permissionSetup.value = setup.copy(attempted = setup.attempted + permissions)
-    }
+    fun markPermissionAttempted(permissions: List<String>) = setupManager.markAttempted(permissions)
 
-    /** Drop the current permission from the queue (user declined / ADB-only) and move on. */
     fun skipCurrentPermission() {
-        val setup = _permissionSetup.value ?: return
-        val current = setup.remaining.firstOrNull() ?: return
-        _permissionSetup.value = setup.copy(skipped = setup.skipped + current.label)
-        advancePermissionSetup()
+        viewModelScope.launch { setupManager.skip() }
     }
 
-    fun cancelPermissionSetup() {
-        _permissionSetup.value = null
-    }
+    fun cancelPermissionSetup() = setupManager.cancel()
 
     fun toggleEnabled(id: String, enabled: Boolean) {
         viewModelScope.launch {
