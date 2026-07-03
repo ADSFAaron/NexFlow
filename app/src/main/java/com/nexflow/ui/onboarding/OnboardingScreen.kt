@@ -22,6 +22,13 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -41,9 +48,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.outlined.AutoAwesome
-import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Shield
-import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ElevatedCard
@@ -68,6 +73,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.nexflow.R
+import com.nexflow.ui.common.PermissionStatusIcon
 import kotlinx.coroutines.launch
 
 private const val PAGE_COUNT = 3
@@ -326,11 +332,7 @@ private fun PermissionRow(
                 .padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                imageVector = if (granted) Icons.Outlined.CheckCircle else Icons.Outlined.Warning,
-                contentDescription = null,
-                tint = if (granted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-            )
+            PermissionStatusIcon(granted)
             Spacer(Modifier.size(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(title, style = MaterialTheme.typography.titleMedium)
@@ -340,7 +342,11 @@ private fun PermissionRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            if (!granted) {
+            AnimatedVisibility(
+                visible = !granted,
+                enter = expandHorizontally() + fadeIn(),
+                exit = shrinkHorizontally() + fadeOut(),
+            ) {
                 OutlinedButton(onClick = onAction) { Text(actionLabel) }
             }
         }
@@ -354,10 +360,22 @@ private fun PageIndicator(pageCount: Int, currentPage: Int, modifier: Modifier =
     Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         repeat(pageCount) { index ->
             val active = index == currentPage
+            // Active dot morphs into a pill: the width change is spatial motion (with the
+            // expressive scheme's overshoot), the color shift is an effect.
+            val width by animateDpAsState(
+                targetValue = if (active) 22.dp else 8.dp,
+                animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
+                label = "dot_width",
+            )
+            val color by animateColorAsState(
+                targetValue = if (active) activeColor else inactiveColor,
+                animationSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
+                label = "dot_color",
+            )
             Box(
                 modifier = Modifier
-                    .size(if (active) 10.dp else 8.dp)
-                    .background(if (active) activeColor else inactiveColor, CircleShape),
+                    .size(width = width, height = 8.dp)
+                    .background(color, CircleShape),
             )
         }
     }

@@ -23,10 +23,15 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -65,9 +70,10 @@ import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SuggestionChip
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwipeToDismissBox
@@ -97,9 +103,12 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -112,6 +121,7 @@ import com.nexflow.event.ImportEventSource
 import com.nexflow.permissions.PermissionIntents
 import com.nexflow.permissions.SpecialAccess
 import com.nexflow.ui.common.FlowIcons
+import com.nexflow.ui.flows.detail.config.info
 import com.nexflow.service.FlowExecutionService
 import com.nexflow.ui.flowimport.ImportViewModel
 import kotlinx.coroutines.delay
@@ -138,6 +148,8 @@ fun FlowsScreen(
     var fabMenuExpanded by rememberSaveable { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    // Captured here: AnimatedContent's transitionSpec lambda is not composable.
+    val contentFade = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
 
     val serviceRunning by FlowExecutionService.running.collectAsState()
     // null = 無提示, true = 已啟動, false = 已關閉
@@ -265,7 +277,16 @@ fun FlowsScreen(
         },
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize()) {
-        if (flows.isEmpty()) {
+        // Crossfade empty state ↔ list. targetState is the list itself with an isEmpty
+        // contentKey: the outgoing branch keeps its captured items, so deleting the last
+        // flow fades the card out instead of blanking it before the transition.
+        AnimatedContent(
+            targetState = flows,
+            contentKey = { it.isEmpty() },
+            transitionSpec = { fadeIn(contentFade) togetherWith fadeOut(contentFade) },
+            label = "flows_content",
+        ) { currentFlows ->
+        if (currentFlows.isEmpty()) {
             EmptyFlowsContent(modifier = Modifier.padding(innerPadding))
         } else {
             LazyColumn(
@@ -274,10 +295,12 @@ fun FlowsScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxSize(),
             ) {
-                items(flows, key = { it.id }) { flow ->
+                items(currentFlows, key = { it.id }) { flow ->
                     var lastRunMs by remember { mutableStateOf(0L) }
+                    // positionalThreshold is left at the spec default (56dp) — the previous 15%
+                    // fraction made accidental swipes delete flows. Deletion is also recoverable
+                    // via the snackbar's Undo action below.
                     val dismissState = rememberSwipeToDismissBoxState(
-                        positionalThreshold = { totalDistance -> totalDistance * 0.15f },
                         confirmValueChange = { value ->
                             when (value) {
                                 SwipeToDismissBoxValue.StartToEnd -> {
@@ -291,12 +314,30 @@ fun FlowsScreen(
                                 }
                                 SwipeToDismissBoxValue.EndToStart -> {
                                     vm.deleteFlow(flow.id)
+                                    scope.launch {
+                                        val result = snackbarHostState.showSnackbar(
+                                            message = context.getString(R.string.snackbar_deleted, flow.name),
+                                            actionLabel = context.getString(R.string.action_undo),
+                                            duration = SnackbarDuration.Long,
+                                        )
+                                        if (result == SnackbarResult.ActionPerformed) vm.restoreFlow(flow)
+                                    }
                                     true
                                 }
                                 else -> false
                             }
                         },
                     )
+                    // The state is saveable and keyed by flow id, so a row restored via the
+                    // snackbar's Undo comes back with its saved *dismissed* value — it would
+                    // render as the bare red delete background forever. Animate it back to
+                    // Settled: the undone card slides in from the edge. Keyed on the state
+                    // instance so it never re-fires mid-delete for a live row.
+                    LaunchedEffect(dismissState) {
+                        if (dismissState.currentValue == SwipeToDismissBoxValue.EndToStart) {
+                            dismissState.reset()
+                        }
+                    }
                     SwipeToDismissBox(
                         state = dismissState,
                         enableDismissFromStartToEnd = true,
@@ -344,6 +385,7 @@ fun FlowsScreen(
                 item { Spacer(Modifier.height(128.dp)) }
             }
         }
+        }
 
         // Official M3 placement: the FAB menu lives in a full-size Box and aligns itself
         // BottomEnd, handling its own 16dp edge spacing internally (per the FAB-menu spec).
@@ -354,12 +396,21 @@ fun FlowsScreen(
                 .align(Alignment.BottomEnd)
                 .padding(innerPadding),
             button = {
+                // Compact height (phone in landscape, < 480dp tall): the large 96dp FAB's
+                // expanded menu doesn't fit — the item column becomes scroll-constrained and
+                // the close button overlaps the pills. Fall back to the baseline FAB size.
+                val compactHeight = LocalConfiguration.current.screenHeightDp < 480
                 ToggleFloatingActionButton(
                     checked = fabMenuExpanded,
                     onCheckedChange = { fabMenuExpanded = it },
-                    containerSize = ToggleFloatingActionButtonDefaults.containerSizeLarge(),
-                    containerCornerRadius = ToggleFloatingActionButtonDefaults.containerCornerRadiusLarge(),
-                    contentAlignment = Alignment.Center,
+                    containerSize = if (compactHeight) ToggleFloatingActionButtonDefaults.containerSize()
+                        else ToggleFloatingActionButtonDefaults.containerSizeLarge(),
+                    containerCornerRadius = if (compactHeight) ToggleFloatingActionButtonDefaults.containerCornerRadius()
+                        else ToggleFloatingActionButtonDefaults.containerCornerRadiusLarge(),
+                    // contentAlignment is left at the spec default (TopEnd): as the FAB morphs
+                    // into the 56dp close button it pins to the top-end of its box, so the X
+                    // stays flush with the menu pills' trailing edge (Keep-style) instead of
+                    // shrinking into the middle.
                 ) {
                     Icon(
                         Icons.Default.Add,
@@ -371,7 +422,7 @@ fun FlowsScreen(
                             Modifier
                                 .animateIcon(
                                     checkedProgress = { checkedProgress },
-                                    size = iconSizeLarge(),
+                                    size = if (compactHeight) iconSize() else iconSizeLarge(),
                                 )
                                 .rotate(checkedProgress * 45f)
                         },
@@ -593,12 +644,9 @@ private fun ServiceCapsule(
         contentColor = contentColor,
         modifier = modifier
             .padding(end = 8.dp)
-            .animateContentSize(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMediumLow,
-                ),
-            ),
+            // Size change = spatial motion; the theme's expressive token keeps the bounce
+            // consistent with built-in component motion.
+            .animateContentSize(animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec()),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -628,17 +676,12 @@ private fun EmptyFlowsContent(modifier: Modifier = Modifier) {
     // draw in full.
     val scale = remember { Animatable(0f) }
     val alpha = remember { Animatable(0f) }
+    // Theme motion tokens: scale is spatial (may overshoot), fade is an effect (no bounce).
+    val scaleSpec = MaterialTheme.motionScheme.slowSpatialSpec<Float>()
+    val alphaSpec = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
     LaunchedEffect(Unit) {
-        launch {
-            scale.animateTo(
-                targetValue = 1f,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMediumLow,
-                ),
-            )
-        }
-        launch { alpha.animateTo(1f, spring(stiffness = Spring.StiffnessMediumLow)) }
+        launch { scale.animateTo(1f, scaleSpec) }
+        launch { alpha.animateTo(1f, alphaSpec) }
     }
 
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -718,10 +761,15 @@ private fun FlowCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                // The card's own click opens the detail screen, so the row can't be the
+                // toggleable — give the bare Switch an explicit label for TalkBack instead.
+                val switchDesc = stringResource(R.string.flows_flow_switch_desc, flow.name)
                 Switch(
                     checked = flow.enabled,
                     onCheckedChange = onToggle,
-                    modifier = Modifier.padding(end = 8.dp),
+                    modifier = Modifier
+                        .padding(end = 8.dp)
+                        .semantics { contentDescription = switchDesc },
                 )
             }
 
@@ -735,7 +783,13 @@ private fun FlowCard(
                 )
             }
 
-            if (permissionWarning) {
+            // Animate the badge in/out so granting a permission doesn't hard-jump the card
+            // layout — expand/shrink is spatial, the fade is an effect.
+            AnimatedVisibility(
+                visible = permissionWarning,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut(),
+            ) {
                 Surface(
                     onClick = onWarningClick,
                     shape = MaterialTheme.shapes.small,
@@ -765,17 +819,22 @@ private fun FlowCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                // Plain badges, not chips: they aren't tappable, so an onClick-less Surface
+                // keeps TalkBack from announcing a button that does nothing. Labels come from
+                // the localized trigger catalog rather than the raw enum name.
+                val context = LocalContext.current
                 flow.triggers.take(2).forEach { trigger ->
-                    SuggestionChip(
-                        onClick = {},
-                        label = {
-                            Text(
-                                trigger.type.name.lowercase().replace('_', ' ')
-                                    .replaceFirstChar { it.uppercase() },
-                                style = MaterialTheme.typography.labelSmall,
-                            )
-                        },
-                    )
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    ) {
+                        Text(
+                            trigger.type.info(context).label,
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        )
+                    }
                 }
                 Spacer(Modifier.weight(1f))
                 RunCapsule(
@@ -814,10 +873,7 @@ private fun RunCapsule(
         color = containerColor,
         contentColor = contentColor,
         modifier = modifier.animateContentSize(
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessMediumLow,
-            ),
+            animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
         ),
     ) {
         Row(
@@ -839,8 +895,9 @@ private fun RunCapsule(
 
 @Composable
 private fun CreateFlowDialog(onDismiss: () -> Unit, onCreate: (String, String) -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
+    // rememberSaveable: typed text must survive rotation / process death (Core App Quality).
+    var name by rememberSaveable { mutableStateOf("") }
+    var description by rememberSaveable { mutableStateOf("") }
     val nameFocusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
     LaunchedEffect(Unit) {

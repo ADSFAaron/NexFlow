@@ -477,4 +477,14 @@
     <string name="flows_perm_setup_done">「%1$s」已可运行</string>
     <string name="flows_perm_setup_incomplete">「%1$s」仍缺少权限，尚未启用</string>
     <string name="flows_perm_setup_denied">先前已拒绝——请到 App 设置页手动开启</string>
+
+    <!-- Delete undo snackbar -->
+    <string name="action_undo">撤销</string>
+    <string name="snackbar_deleted">已删除“%1$s”</string>
+
+    <!-- Accessibility (TalkBack) labels -->
+    <string name="flows_flow_switch_desc">启用“%1$s”</string>
+    <string name="log_status_success">成功</string>
+    <string name="log_status_fail">失败</string>
+    <string name="log_status_skipped">已跳过</string>
 </resources>

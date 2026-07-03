@@ -477,4 +477,14 @@
     <string name="flows_perm_setup_done">「%1$s」を実行できます</string>
     <string name="flows_perm_setup_incomplete">「%1$s」はまだ権限が不足しており、オフのままです</string>
     <string name="flows_perm_setup_denied">以前に拒否されました — アプリの設定ページから有効にしてください</string>
+
+    <!-- Delete undo snackbar -->
+    <string name="action_undo">元に戻す</string>
+    <string name="snackbar_deleted">「%1$s」を削除しました</string>
+
+    <!-- Accessibility (TalkBack) labels -->
+    <string name="flows_flow_switch_desc">「%1$s」を有効にする</string>
+    <string name="log_status_success">成功</string>
+    <string name="log_status_fail">失敗</string>
+    <string name="log_status_skipped">スキップ</string>
 </resources>

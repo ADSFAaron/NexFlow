@@ -15,8 +15,6 @@
  */
 package com.nexflow.ui.navigation
 
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -29,6 +27,7 @@ import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
@@ -40,6 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.IntOffset
 import androidx.annotation.StringRes
 import com.nexflow.R
 import androidx.navigation.NavController
@@ -69,13 +69,12 @@ val bottomNavScreens = listOf(Screen.Flows, Screen.Logs, Screen.Settings)
 
 private data class NavItem(val screen: Screen, val selected: Boolean, val label: String)
 
-private val slideSpec = spring<Float>(
-    dampingRatio = Spring.DampingRatioNoBouncy,
-    stiffness = Spring.StiffnessMedium,
-)
-
 @Composable
 fun NexFlowNavHost(navController: NavHostController, modifier: Modifier = Modifier) {
+    // Read the theme's motion tokens here (the transition lambdas are not composable):
+    // slides are spatial motion, fades are effects — same physics as component motion.
+    val slideSpec = MaterialTheme.motionScheme.defaultSpatialSpec<IntOffset>()
+    val fadeSpec = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
     NavHost(
         navController = navController,
         startDestination = Screen.Flows.route,
@@ -86,8 +85,8 @@ fun NexFlowNavHost(navController: NavHostController, modifier: Modifier = Modifi
             val isLeftward = fromIdx >= 0 && toIdx >= 0 && toIdx < fromIdx
             slideInHorizontally(
                 initialOffsetX = { if (isLeftward) -it / 4 else it / 4 },
-                animationSpec = spring(stiffness = Spring.StiffnessMedium, dampingRatio = Spring.DampingRatioNoBouncy),
-            ) + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMedium))
+                animationSpec = slideSpec,
+            ) + fadeIn(animationSpec = fadeSpec)
         },
         exitTransition = {
             val fromIdx = bottomNavScreens.indexOfFirst { it.route == initialState.destination.route }
@@ -95,8 +94,8 @@ fun NexFlowNavHost(navController: NavHostController, modifier: Modifier = Modifi
             val isLeftward = fromIdx >= 0 && toIdx >= 0 && toIdx < fromIdx
             slideOutHorizontally(
                 targetOffsetX = { if (isLeftward) it / 4 else -it / 4 },
-                animationSpec = spring(stiffness = Spring.StiffnessMedium, dampingRatio = Spring.DampingRatioNoBouncy),
-            ) + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMedium))
+                animationSpec = slideSpec,
+            ) + fadeOut(animationSpec = fadeSpec)
         },
         popEnterTransition = {
             val fromIdx = bottomNavScreens.indexOfFirst { it.route == initialState.destination.route }
@@ -105,8 +104,8 @@ fun NexFlowNavHost(navController: NavHostController, modifier: Modifier = Modifi
             val isLeftward = isBottomNav && toIdx < fromIdx
             slideInHorizontally(
                 initialOffsetX = { if (isBottomNav && !isLeftward) it / 4 else -it / 4 },
-                animationSpec = spring(stiffness = Spring.StiffnessMedium, dampingRatio = Spring.DampingRatioNoBouncy),
-            ) + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMedium))
+                animationSpec = slideSpec,
+            ) + fadeIn(animationSpec = fadeSpec)
         },
         popExitTransition = {
             val fromIdx = bottomNavScreens.indexOfFirst { it.route == initialState.destination.route }
@@ -115,8 +114,8 @@ fun NexFlowNavHost(navController: NavHostController, modifier: Modifier = Modifi
             val isLeftward = isBottomNav && toIdx < fromIdx
             slideOutHorizontally(
                 targetOffsetX = { if (isBottomNav && !isLeftward) -it / 4 else it / 4 },
-                animationSpec = spring(stiffness = Spring.StiffnessMedium, dampingRatio = Spring.DampingRatioNoBouncy),
-            ) + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMedium))
+                animationSpec = slideSpec,
+            ) + fadeOut(animationSpec = fadeSpec)
         },
     ) {
         composable(Screen.Flows.route) {

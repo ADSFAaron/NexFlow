@@ -28,7 +28,14 @@ import android.os.Process
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -45,7 +52,6 @@ import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -79,12 +85,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.nexflow.R
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.nexflow.prefs.AutoStartPrefs
+import com.nexflow.ui.common.PermissionStatusIcon
 import com.nexflow.ui.flowimport.ImportViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -229,20 +237,19 @@ fun SettingsScreen(
                         )
                     },
                     leadingContent = {
-                        RadioButton(
-                            selected = logRetention == option,
-                            onClick = {
-                                logRetention = option
-                                LogRetentionPrefs.set(context, option)
-                                showLogRetentionDialog = false
-                            },
-                        )
+                        // onClick = null: the whole row is the selectable — a second clickable
+                        // here would give TalkBack two focus stops for one choice.
+                        RadioButton(selected = logRetention == option, onClick = null)
                     },
-                    modifier = Modifier.clickable {
-                        logRetention = option
-                        LogRetentionPrefs.set(context, option)
-                        showLogRetentionDialog = false
-                    },
+                    modifier = Modifier.selectable(
+                        selected = logRetention == option,
+                        role = Role.RadioButton,
+                        onClick = {
+                            logRetention = option
+                            LogRetentionPrefs.set(context, option)
+                            showLogRetentionDialog = false
+                        },
+                    ),
                 )
             }
             Spacer(Modifier.height(16.dp))
@@ -265,18 +272,16 @@ fun SettingsScreen(
                 ListItem(
                     headlineContent = { Text(label) },
                     leadingContent = {
-                        RadioButton(
-                            selected = currentLanguage == language,
-                            onClick = {
-                                showLanguageDialog = false
-                                AppLanguage.apply(language)
-                            },
-                        )
+                        RadioButton(selected = currentLanguage == language, onClick = null)
                     },
-                    modifier = Modifier.clickable {
-                        showLanguageDialog = false
-                        AppLanguage.apply(language)
-                    },
+                    modifier = Modifier.selectable(
+                        selected = currentLanguage == language,
+                        role = Role.RadioButton,
+                        onClick = {
+                            showLanguageDialog = false
+                            AppLanguage.apply(language)
+                        },
+                    ),
                 )
             }
             Spacer(Modifier.height(16.dp))
@@ -318,19 +323,13 @@ fun SettingsScreen(
                     supportingContent = {
                         Text(if (notifGranted.value) stringResource(R.string.settings_granted) else stringResource(R.string.settings_notifications_required))
                     },
-                    leadingContent = {
-                        Icon(
-                            if (notifGranted.value) Icons.Outlined.CheckCircle else Icons.Outlined.Warning,
-                            contentDescription = null,
-                            tint = if (notifGranted.value) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.error
-                            },
-                        )
-                    },
+                    leadingContent = { PermissionStatusIcon(notifGranted.value) },
                     trailingContent = {
-                        if (!notifGranted.value && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        AnimatedVisibility(
+                            visible = !notifGranted.value && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU,
+                            enter = expandHorizontally() + fadeIn(),
+                            exit = shrinkHorizontally() + fadeOut(),
+                        ) {
                             OutlinedButton(
                                 onClick = {
                                     notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -350,16 +349,13 @@ fun SettingsScreen(
                             else stringResource(R.string.settings_notif_access_required),
                         )
                     },
-                    leadingContent = {
-                        Icon(
-                            if (notifListenerGranted.value) Icons.Outlined.CheckCircle else Icons.Outlined.Warning,
-                            contentDescription = null,
-                            tint = if (notifListenerGranted.value) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.error,
-                        )
-                    },
+                    leadingContent = { PermissionStatusIcon(notifListenerGranted.value) },
                     trailingContent = {
-                        if (!notifListenerGranted.value) {
+                        AnimatedVisibility(
+                            visible = !notifListenerGranted.value,
+                            enter = expandHorizontally() + fadeIn(),
+                            exit = shrinkHorizontally() + fadeOut(),
+                        ) {
                             OutlinedButton(
                                 onClick = {
                                     notifListenerLauncher.launch(
@@ -381,16 +377,13 @@ fun SettingsScreen(
                             else stringResource(R.string.settings_accessibility_required),
                         )
                     },
-                    leadingContent = {
-                        Icon(
-                            if (accessibilityGranted.value) Icons.Outlined.CheckCircle else Icons.Outlined.Warning,
-                            contentDescription = null,
-                            tint = if (accessibilityGranted.value) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.error,
-                        )
-                    },
+                    leadingContent = { PermissionStatusIcon(accessibilityGranted.value) },
                     trailingContent = {
-                        if (!accessibilityGranted.value) {
+                        AnimatedVisibility(
+                            visible = !accessibilityGranted.value,
+                            enter = expandHorizontally() + fadeIn(),
+                            exit = shrinkHorizontally() + fadeOut(),
+                        ) {
                             OutlinedButton(
                                 onClick = { showAccessibilityDisclosure = true },
                             ) { Text(stringResource(R.string.action_enable)) }
@@ -408,16 +401,13 @@ fun SettingsScreen(
                             else stringResource(R.string.settings_write_settings_required),
                         )
                     },
-                    leadingContent = {
-                        Icon(
-                            if (writeSettingsGranted.value) Icons.Outlined.CheckCircle else Icons.Outlined.Warning,
-                            contentDescription = null,
-                            tint = if (writeSettingsGranted.value) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.error,
-                        )
-                    },
+                    leadingContent = { PermissionStatusIcon(writeSettingsGranted.value) },
                     trailingContent = {
-                        if (!writeSettingsGranted.value) {
+                        AnimatedVisibility(
+                            visible = !writeSettingsGranted.value,
+                            enter = expandHorizontally() + fadeIn(),
+                            exit = shrinkHorizontally() + fadeOut(),
+                        ) {
                             OutlinedButton(
                                 onClick = {
                                     writeSettingsLauncher.launch(
@@ -442,16 +432,13 @@ fun SettingsScreen(
                             else stringResource(R.string.settings_dnd_required),
                         )
                     },
-                    leadingContent = {
-                        Icon(
-                            if (dndGranted.value) Icons.Outlined.CheckCircle else Icons.Outlined.Warning,
-                            contentDescription = null,
-                            tint = if (dndGranted.value) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.error,
-                        )
-                    },
+                    leadingContent = { PermissionStatusIcon(dndGranted.value) },
                     trailingContent = {
-                        if (!dndGranted.value) {
+                        AnimatedVisibility(
+                            visible = !dndGranted.value,
+                            enter = expandHorizontally() + fadeIn(),
+                            exit = shrinkHorizontally() + fadeOut(),
+                        ) {
                             OutlinedButton(
                                 onClick = {
                                     dndLauncher.launch(
@@ -554,14 +541,18 @@ fun SettingsScreen(
                         Icon(Icons.Outlined.Autorenew, contentDescription = null)
                     },
                     trailingContent = {
-                        Switch(
-                            checked = autoStart,
-                            onCheckedChange = { value ->
-                                autoStart = value
-                                AutoStartPrefs.set(context, value)
-                            },
-                        )
+                        // onCheckedChange = null: the row itself is the toggleable, so the
+                        // whole row is one 48dp+ target and TalkBack reads label + state.
+                        Switch(checked = autoStart, onCheckedChange = null)
                     },
+                    modifier = Modifier.toggleable(
+                        value = autoStart,
+                        role = Role.Switch,
+                        onValueChange = { value ->
+                            autoStart = value
+                            AutoStartPrefs.set(context, value)
+                        },
+                    ),
                 )
             }
             item { HorizontalDivider() }

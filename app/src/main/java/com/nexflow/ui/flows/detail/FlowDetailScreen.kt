@@ -36,8 +36,6 @@ import com.canhub.cropper.CropImageContract
 import com.canhub.cropper.CropImageContractOptions
 import com.canhub.cropper.CropImageOptions
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -68,6 +66,8 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -122,8 +122,11 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -136,6 +139,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -143,10 +147,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -162,10 +168,12 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.nexflow.core.automation.model.Action
+import com.nexflow.core.automation.model.Flow
 import com.nexflow.FlavorFeatures
 import com.nexflow.core.automation.model.ActionType
 import com.nexflow.core.automation.model.Trigger
@@ -193,7 +201,7 @@ import java.util.UUID
 // Public entry point
 // ---------------------------------------------------------------------------
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun FlowDetailScreen(
     vm: FlowDetailViewModel = hiltViewModel(),
@@ -201,27 +209,64 @@ fun FlowDetailScreen(
 ) {
     val flow by vm.flow.collectAsState()
 
-    if (flow == null) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            LoadingIndicator()
+    // Crossfade loading → editor. contentKey limits the transition to the null ↔ loaded
+    // switch, so ordinary flow edits (every save changes the state) don't re-animate.
+    val fadeSpec = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
+    AnimatedContent(
+        targetState = flow,
+        contentKey = { it == null },
+        transitionSpec = { fadeIn(fadeSpec) togetherWith fadeOut(fadeSpec) },
+        label = "fd_loading",
+    ) { loaded ->
+        if (loaded == null) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                LoadingIndicator()
+            }
+        } else {
+            FlowDetailContent(f = loaded, vm = vm, onBack = onBack)
         }
-        return
     }
+}
 
-    val f = flow!!
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun FlowDetailContent(
+    f: Flow,
+    vm: FlowDetailViewModel,
+    onBack: () -> Unit,
+) {
     val isRunning by vm.isRunning.collectAsState()
     val currentActionId by vm.currentActionId.collectAsState()
 
     var showTriggerPicker by rememberSaveable { mutableStateOf(false) }
     var showActionPicker by rememberSaveable { mutableStateOf(false) }
-    var pendingConfig by remember { mutableStateOf<PendingConfig?>(null) }
+    // Saveable so an open config dialog (and what it points at) survives rotation and
+    // process death — otherwise a screen rotation silently discards the user's input.
+    var pendingConfig by rememberSaveable(stateSaver = PendingConfigSaver) {
+        mutableStateOf<PendingConfig?>(null)
+    }
     var showRenameDialog by rememberSaveable { mutableStateOf(false) }
     var showIconPicker by rememberSaveable { mutableStateOf(false) }
     // null = closed; Variable with blank name = creating a new one
-    var editingVariable by remember { mutableStateOf<Variable?>(null) }
+    var editingVariable by rememberSaveable(stateSaver = EditingVariableSaver) {
+        mutableStateOf<Variable?>(null)
+    }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+
+    // Deleting a trigger/action/variable is one tap with no confirmation, so every delete
+    // must be recoverable: show a snackbar whose Undo action re-inserts the captured item.
+    val showDeletedSnackbar: (String, () -> Unit) -> Unit = { label, undo ->
+        scope.launch {
+            val result = snackbarHostState.showSnackbar(
+                message = context.getString(R.string.snackbar_deleted, label),
+                actionLabel = context.getString(R.string.action_undo),
+                duration = SnackbarDuration.Long,
+            )
+            if (result == SnackbarResult.ActionPerformed) undo()
+        }
+    }
 
     val flowVariables = remember(f.actions, f.variables) {
         (
@@ -268,23 +313,33 @@ fun FlowDetailScreen(
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        // The visible circle stays 34dp, but the clickable node is expanded to
+                        // the 48dp accessibility minimum (minimumInteractiveComponentSize);
+                        // end padding compensates for the extra 7dp so spacing looks the same.
                         Box(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier
-                                .padding(end = 12.dp)
-                                .size(34.dp)
-                                .background(
-                                    FlowIcons.color(f.iconColor) ?: MaterialTheme.colorScheme.primary,
-                                    CircleShape,
-                                )
+                                .padding(end = 5.dp)
+                                .minimumInteractiveComponentSize()
+                                .clip(CircleShape)
                                 .clickable { showIconPicker = true },
                         ) {
-                            Icon(
-                                FlowIcons.vector(f.icon),
-                                contentDescription = stringResource(R.string.fd_change_icon),
-                                tint = Color.White,
-                                modifier = Modifier.size(20.dp),
-                            )
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .background(
+                                        FlowIcons.color(f.iconColor) ?: MaterialTheme.colorScheme.primary,
+                                        CircleShape,
+                                    ),
+                            ) {
+                                Icon(
+                                    FlowIcons.vector(f.icon),
+                                    contentDescription = stringResource(R.string.fd_change_icon),
+                                    tint = Color.White,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
                         }
                         Text(f.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
@@ -365,21 +420,26 @@ fun FlowDetailScreen(
 
             itemsIndexed(f.triggers, key = { _, t -> t.id }) { index, trigger ->
                 val ti = trigger.type.info(context)
-                GroupedItem(index = index, count = f.triggers.size + 1) {
+                // animateItem: added/removed/undone rows slide into place instead of popping.
+                GroupedItem(index = index, count = f.triggers.size + 1, modifier = Modifier.animateItem()) {
                     TriggerOrActionRow(
                         icon = { Icon(ti.icon, contentDescription = null, modifier = Modifier.size(24.dp)) },
                         headline = ti.label,
                         supporting = trigger.type.configSummary(context, trigger.config),
-                        onEdit = { pendingConfig = PendingConfig.EditTrigger(trigger) },
-                        onDelete = { vm.removeTrigger(trigger.id) },
+                        onEdit = { pendingConfig = PendingConfig.EditTrigger(trigger.id) },
+                        onDelete = {
+                            vm.removeTrigger(trigger.id)
+                            showDeletedSnackbar(ti.label) { vm.addTrigger(trigger) }
+                        },
                     )
                 }
             }
 
-            item {
+            item(key = "add_trigger") {
                 GroupedItem(
                     index = f.triggers.size,
                     count = f.triggers.size + 1,
+                    modifier = Modifier.animateItem(),
                     onClick = { showTriggerPicker = true },
                 ) {
                     AddRowContent(stringResource(R.string.fd_add_trigger))
@@ -426,17 +486,21 @@ fun FlowDetailScreen(
                             headline = ai.label,
                             supporting = action.type.configSummary(context, action.config),
                             isExecuting = isExecuting,
-                            onEdit = { pendingConfig = PendingConfig.EditAction(action) },
-                            onDelete = { vm.removeAction(action.id) },
+                            onEdit = { pendingConfig = PendingConfig.EditAction(action.id) },
+                            onDelete = {
+                                vm.removeAction(action.id)
+                                showDeletedSnackbar(ai.label) { vm.restoreAction(action) }
+                            },
                         )
                     }
                 }
             }
 
-            item {
+            item(key = "add_action") {
                 GroupedItem(
                     index = sortedActions.size,
                     count = sortedActions.size + 1,
+                    modifier = Modifier.animateItem(),
                     onClick = { showActionPicker = true },
                 ) {
                     AddRowContent(stringResource(R.string.fd_add_action))
@@ -460,21 +524,25 @@ fun FlowDetailScreen(
             }
 
             itemsIndexed(f.variables, key = { _, v -> "var_${v.name}" }) { index, variable ->
-                GroupedItem(index = index, count = f.variables.size + 1) {
+                GroupedItem(index = index, count = f.variables.size + 1, modifier = Modifier.animateItem()) {
                     TriggerOrActionRow(
                         icon = { Icon(Icons.Outlined.Code, contentDescription = null, modifier = Modifier.size(24.dp)) },
                         headline = variable.name,
                         supporting = variable.defaultValue.ifBlank { stringResource(R.string.fd_empty_value) },
                         onEdit = { editingVariable = variable },
-                        onDelete = { vm.removeVariable(variable.name) },
+                        onDelete = {
+                            vm.removeVariable(variable.name)
+                            showDeletedSnackbar(variable.name) { vm.saveVariable(null, variable) }
+                        },
                     )
                 }
             }
 
-            item {
+            item(key = "add_variable") {
                 GroupedItem(
                     index = f.variables.size,
                     count = f.variables.size + 1,
+                    modifier = Modifier.animateItem(),
                     onClick = { editingVariable = Variable("", VariableType.STRING, "") },
                 ) {
                     AddRowContent(stringResource(R.string.fd_add_variable))
@@ -549,17 +617,24 @@ fun FlowDetailScreen(
                 },
                 onDismiss = { pendingConfig = null },
             )
-            is PendingConfig.EditTrigger -> ConfigDialog(
-                title = cfg.trigger.type.info(context).label,
-                fields = cfg.trigger.type.info(context).fields,
-                initialValues = cfg.trigger.config,
-                availableVariables = flowVariables,
-                onConfirm = { values ->
-                    vm.updateTrigger(cfg.trigger.copy(config = values))
-                    pendingConfig = null
-                },
-                onDismiss = { pendingConfig = null },
-            )
+            is PendingConfig.EditTrigger -> {
+                // Resolved by id: the saveable PendingConfig only stores the id, and the
+                // trigger may be gone after a restore — then there is nothing to edit.
+                val trigger = f.triggers.find { it.id == cfg.triggerId }
+                if (trigger != null) {
+                    ConfigDialog(
+                        title = trigger.type.info(context).label,
+                        fields = trigger.type.info(context).fields,
+                        initialValues = trigger.config,
+                        availableVariables = flowVariables,
+                        onConfirm = { values ->
+                            vm.updateTrigger(trigger.copy(config = values))
+                            pendingConfig = null
+                        },
+                        onDismiss = { pendingConfig = null },
+                    )
+                }
+            }
             is PendingConfig.NewAction -> if (cfg.type == ActionType.SHOW_MENU) {
                 ShowMenuConfigDialog(
                     initialTitle = "",
@@ -591,31 +666,36 @@ fun FlowDetailScreen(
                     onDismiss = { pendingConfig = null },
                 )
             }
-            is PendingConfig.EditAction -> if (cfg.action.type == ActionType.SHOW_MENU) {
-                val currentOptions = runCatching {
-                    Json.decodeFromString<List<String>>(cfg.action.config["options"] ?: "[]")
-                }.getOrElse { listOf("", "") }
-                ShowMenuConfigDialog(
-                    initialTitle = cfg.action.config["title"] ?: "",
-                    initialOptions = currentOptions.ifEmpty { listOf("", "") },
-                    onConfirm = { title, options ->
-                        vm.syncMenuBlock(cfg.action.id, title, options)
-                        pendingConfig = null
-                    },
-                    onDismiss = { pendingConfig = null },
-                )
-            } else {
-                ConfigDialog(
-                    title = cfg.action.type.info(context).label,
-                    fields = cfg.action.type.info(context).fields,
-                    initialValues = cfg.action.config,
-                    availableVariables = flowVariables,
-                    onConfirm = { values ->
-                        vm.updateAction(cfg.action.copy(config = values))
-                        pendingConfig = null
-                    },
-                    onDismiss = { pendingConfig = null },
-                )
+            is PendingConfig.EditAction -> {
+                val action = f.actions.find { it.id == cfg.actionId }
+                when {
+                    action == null -> {}
+                    action.type == ActionType.SHOW_MENU -> {
+                        val currentOptions = runCatching {
+                            Json.decodeFromString<List<String>>(action.config["options"] ?: "[]")
+                        }.getOrElse { listOf("", "") }
+                        ShowMenuConfigDialog(
+                            initialTitle = action.config["title"] ?: "",
+                            initialOptions = currentOptions.ifEmpty { listOf("", "") },
+                            onConfirm = { title, options ->
+                                vm.syncMenuBlock(action.id, title, options)
+                                pendingConfig = null
+                            },
+                            onDismiss = { pendingConfig = null },
+                        )
+                    }
+                    else -> ConfigDialog(
+                        title = action.type.info(context).label,
+                        fields = action.type.info(context).fields,
+                        initialValues = action.config,
+                        availableVariables = flowVariables,
+                        onConfirm = { values ->
+                            vm.updateAction(action.copy(config = values))
+                            pendingConfig = null
+                        },
+                        onDismiss = { pendingConfig = null },
+                    )
+                }
             }
         }
     }
@@ -697,13 +777,25 @@ private fun FlowControlsBar(
                     Icon(Icons.Outlined.Share, contentDescription = stringResource(R.string.fd_export))
                 }
                 Spacer(Modifier.width(4.dp))
+                // The icon already crossfades; animate the container/content colors on the
+                // effects token too so run ↔ stop doesn't hard-swap the button color.
+                val runContainer by animateColorAsState(
+                    targetValue = if (isRunning) MaterialTheme.colorScheme.errorContainer
+                        else MaterialTheme.colorScheme.primary,
+                    animationSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
+                    label = "run_container",
+                )
+                val runContent by animateColorAsState(
+                    targetValue = if (isRunning) MaterialTheme.colorScheme.onErrorContainer
+                        else MaterialTheme.colorScheme.onPrimary,
+                    animationSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
+                    label = "run_content",
+                )
                 FilledIconButton(
                     onClick = if (isRunning) onStop else onRun,
                     colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = if (isRunning) MaterialTheme.colorScheme.errorContainer
-                            else MaterialTheme.colorScheme.primary,
-                        contentColor = if (isRunning) MaterialTheme.colorScheme.onErrorContainer
-                            else MaterialTheme.colorScheme.onPrimary,
+                        containerColor = runContainer,
+                        contentColor = runContent,
                     ),
                 ) {
                     AnimatedContent(
@@ -743,10 +835,7 @@ private fun FlowEnabledCapsule(
         color = containerColor,
         contentColor = contentColor,
         modifier = modifier.animateContentSize(
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessMediumLow,
-            ),
+            animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
         ),
     ) {
         Row(
@@ -800,10 +889,51 @@ private fun TriggerLogicToggle(
 
 private sealed class PendingConfig {
     data class NewTrigger(val type: TriggerType) : PendingConfig()
-    data class EditTrigger(val trigger: Trigger) : PendingConfig()
+    data class EditTrigger(val triggerId: String) : PendingConfig()
     data class NewAction(val type: ActionType) : PendingConfig()
-    data class EditAction(val action: Action) : PendingConfig()
+    data class EditAction(val actionId: String) : PendingConfig()
 }
+
+/**
+ * Serialises [PendingConfig] as `[kind, payload]` so an open config dialog survives
+ * rotation/process death. Edit variants hold only the id; the live Trigger/Action is
+ * re-resolved from the flow when the dialog is (re)composed.
+ */
+private val PendingConfigSaver = listSaver<PendingConfig?, String>(
+    save = { cfg ->
+        when (cfg) {
+            null -> emptyList()
+            is PendingConfig.NewTrigger -> listOf("new_trigger", cfg.type.name)
+            is PendingConfig.EditTrigger -> listOf("edit_trigger", cfg.triggerId)
+            is PendingConfig.NewAction -> listOf("new_action", cfg.type.name)
+            is PendingConfig.EditAction -> listOf("edit_action", cfg.actionId)
+        }
+    },
+    restore = { saved ->
+        val payload = saved.getOrNull(1)
+        when {
+            payload == null -> null
+            saved[0] == "new_trigger" -> runCatching { PendingConfig.NewTrigger(TriggerType.valueOf(payload)) }.getOrNull()
+            saved[0] == "edit_trigger" -> PendingConfig.EditTrigger(payload)
+            saved[0] == "new_action" -> runCatching { PendingConfig.NewAction(ActionType.valueOf(payload)) }.getOrNull()
+            saved[0] == "edit_action" -> PendingConfig.EditAction(payload)
+            else -> null
+        }
+    },
+)
+
+/** Saves the open variable editor (blank name = "new variable" sentinel) across rotation. */
+private val EditingVariableSaver = listSaver<Variable?, String>(
+    save = { v -> if (v == null) emptyList() else listOf(v.name, v.type.name, v.defaultValue) },
+    restore = { saved ->
+        if (saved.size < 3) null
+        else Variable(
+            name = saved[0],
+            type = runCatching { VariableType.valueOf(saved[1]) }.getOrDefault(VariableType.STRING),
+            defaultValue = saved[2],
+        )
+    },
+)
 
 // ---------------------------------------------------------------------------
 // Segmented rounded card group (M3 expressive list style): first/last items get
@@ -814,6 +944,7 @@ private sealed class PendingConfig {
 private fun GroupedItem(
     index: Int,
     count: Int,
+    modifier: Modifier = Modifier,
     highlighted: Boolean = false,
     dragging: Boolean = false,
     onClick: (() -> Unit)? = null,
@@ -830,20 +961,24 @@ private fun GroupedItem(
     )
 
     val primary = MaterialTheme.colorScheme.primary
+    // Highlight ON snaps so the "currently executing" marker tracks the engine with zero
+    // lag; highlight OFF eases out on the effects token (M3: color/elevation = effects).
+    val colorEffects = MaterialTheme.motionScheme.defaultEffectsSpec<Color>()
+    val dpEffects = MaterialTheme.motionScheme.defaultEffectsSpec<Dp>()
     val surfaceColor by animateColorAsState(
         targetValue = if (highlighted) primary.copy(alpha = 0.18f)
                       else MaterialTheme.colorScheme.surfaceContainer,
-        animationSpec = snap(),
+        animationSpec = if (highlighted) snap() else colorEffects,
         label = "item_bg",
     )
     val shadowElevation by animateDpAsState(
         targetValue = if (highlighted) 8.dp else 0.dp,
-        animationSpec = snap(),
+        animationSpec = if (highlighted) snap() else dpEffects,
         label = "item_shadow",
     )
     val borderColor by animateColorAsState(
         targetValue = if (highlighted) primary else androidx.compose.ui.graphics.Color.Transparent,
-        animationSpec = snap(),
+        animationSpec = if (highlighted) snap() else colorEffects,
         label = "item_border",
     )
 
@@ -852,11 +987,11 @@ private fun GroupedItem(
     // which would composite into a separate layer and ghost during the drag).
     val dragElevation by animateDpAsState(
         targetValue = if (dragging) 8.dp else 0.dp,
-        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
         label = "item_drag_elevation",
     )
 
-    val modifier = Modifier
+    val rowModifier = modifier
         .fillMaxWidth()
         .padding(horizontal = 16.dp)
         .padding(bottom = 2.dp)
@@ -870,14 +1005,14 @@ private fun GroupedItem(
             shape = shape,
             color = surfaceColor,
             shadowElevation = maxOf(shadowElevation, dragElevation),
-            modifier = modifier,
+            modifier = rowModifier,
         ) { content() }
     } else {
         Surface(
             shape = shape,
             color = surfaceColor,
             shadowElevation = maxOf(shadowElevation, dragElevation),
-            modifier = modifier,
+            modifier = rowModifier,
         ) { content() }
     }
 }
@@ -925,7 +1060,11 @@ private fun TriggerOrActionRow(
         leadingContent = {
             Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
                 icon()
-                if (isExecuting) {
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = isExecuting,
+                    enter = fadeIn() + scaleIn(),
+                    exit = fadeOut() + scaleOut(),
+                ) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(40.dp),
                         strokeWidth = 3.dp,
@@ -1043,7 +1182,11 @@ private fun <T : Any> SearchPickerSheet(
                             )
                         }
                         items(categoryEntries, key = { it.type.toString() }) { entry ->
-                            PickerRow(entry = entry, onClick = { onSelect(entry.type) })
+                            PickerRow(
+                                entry = entry,
+                                onClick = { onSelect(entry.type) },
+                                modifier = Modifier.animateItem(),
+                            )
                         }
                     }
                 } else {
@@ -1061,8 +1204,14 @@ private fun <T : Any> SearchPickerSheet(
                             )
                         }
                     }
+                    // Same keys as the grouped branch, so rows reflow smoothly as the
+                    // user types instead of the whole list snapping to the filtered set.
                     items(matches, key = { it.type.toString() }) { entry ->
-                        PickerRow(entry = entry, onClick = { onSelect(entry.type) })
+                        PickerRow(
+                            entry = entry,
+                            onClick = { onSelect(entry.type) },
+                            modifier = Modifier.animateItem(),
+                        )
                     }
                 }
                 item { Spacer(Modifier.height(24.dp)) }
@@ -1072,7 +1221,11 @@ private fun <T : Any> SearchPickerSheet(
 }
 
 @Composable
-private fun <T> PickerRow(entry: PickerEntry<T>, onClick: () -> Unit) {
+private fun <T> PickerRow(
+    entry: PickerEntry<T>,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     ListItem(
         leadingContent = {
             Box(
@@ -1093,7 +1246,7 @@ private fun <T> PickerRow(entry: PickerEntry<T>, onClick: () -> Unit) {
         supportingContent = {
             Text(entry.description, maxLines = 1, overflow = TextOverflow.Ellipsis)
         },
-        modifier = Modifier.clickable(onClick = onClick),
+        modifier = modifier.clickable(onClick = onClick),
     )
 }
 
@@ -1112,7 +1265,23 @@ internal fun ConfigDialog(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
-    val values = remember(initialValues) {
+    // Saveable: everything the user has typed must survive rotation. The map is
+    // flattened to [k1, v1, k2, v2, …] because SnapshotStateMap itself isn't bundleable.
+    val values = rememberSaveable(
+        initialValues,
+        saver = listSaver(
+            save = { map -> map.entries.flatMap { (k, v) -> listOf(k, v) } },
+            restore = { flat ->
+                mutableStateMapOf<String, String>().apply {
+                    var i = 0
+                    while (i + 1 < flat.size) {
+                        put(flat[i], flat[i + 1])
+                        i += 2
+                    }
+                }
+            },
+        ),
+    ) {
         mutableStateMapOf<String, String>().also { it.putAll(initialValues) }
     }
     val timePickerStates = remember { mutableMapOf<String, TimePickerState>() }
@@ -1873,8 +2042,13 @@ private fun ShowMenuConfigDialog(
     onConfirm: (title: String, options: List<String>) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var title by remember { mutableStateOf(initialTitle) }
-    val options = remember { mutableStateOf(initialOptions.toMutableList()) }
+    var title by rememberSaveable { mutableStateOf(initialTitle) }
+    val options = rememberSaveable(
+        saver = listSaver<MutableState<MutableList<String>>, String>(
+            save = { it.value.toList() },
+            restore = { mutableStateOf(it.toMutableList()) },
+        ),
+    ) { mutableStateOf(initialOptions.toMutableList()) }
 
     val isValid = options.value.size >= 2 && options.value.all { it.isNotBlank() }
 
@@ -1977,8 +2151,8 @@ private fun VariableDialog(
     onDismiss: () -> Unit,
 ) {
     val isNew = variable.name.isBlank()
-    var name by remember { mutableStateOf(variable.name) }
-    var value by remember { mutableStateOf(variable.defaultValue) }
+    var name by rememberSaveable { mutableStateOf(variable.name) }
+    var value by rememberSaveable { mutableStateOf(variable.defaultValue) }
 
     val trimmedName = name.trim()
     val nameTaken = isNew && trimmedName in existingNames
@@ -2044,8 +2218,8 @@ private fun EditFlowDialog(
     onConfirm: (name: String, description: String, icon: String, iconColor: String) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var name by remember { mutableStateOf(initialName) }
-    var description by remember { mutableStateOf(initialDescription) }
+    var name by rememberSaveable { mutableStateOf(initialName) }
+    var description by rememberSaveable { mutableStateOf(initialDescription) }
     var icon by rememberSaveable { mutableStateOf(initialIcon ?: FlowIcons.DEFAULT_KEY) }
     var iconColor by rememberSaveable {
         mutableStateOf(initialIconColor ?: FlowIcons.colorPalette.first())

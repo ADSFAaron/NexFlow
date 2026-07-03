@@ -31,6 +31,7 @@ fun sampleConfig(fields: List<ConfigField>): Map<String, String> {
             is ConfigField.DayPicker -> values[field.key] = "MON,FRI"
             is ConfigField.WifiSsidInput -> values[field.key] = "HomeWifi"
             is ConfigField.NfcTagScan -> values[field.key] = "04A1B2C3"
+            is ConfigField.ImagePicker -> values[field.key] = "/data/user/0/com.nexflow/files/wallpapers/wp_sample.img"
             is ConfigField.MenuOptionList -> values[field.key] = """["Option A","Option B"]"""
             is ConfigField.CurrentLocationButton -> {
                 values[field.latKey] = "25.033964"

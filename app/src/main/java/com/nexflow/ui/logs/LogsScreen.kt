@@ -15,9 +15,11 @@
  */
 package com.nexflow.ui.logs
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -108,16 +110,28 @@ fun LogsScreen(vm: LogsViewModel = hiltViewModel()) {
             )
         },
     ) { innerPadding ->
-        if (entries.isEmpty()) {
-            EmptyLogsContent(modifier = Modifier.padding(innerPadding))
-        } else {
-            LazyColumn(
-                contentPadding = innerPadding,
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                items(entries, key = { it.log.id }) { entry ->
-                    LogEntryItem(entry = entry)
-                    HorizontalDivider()
+        // Crossfade empty state ↔ list (see FlowsScreen for the contentKey rationale).
+        val contentFade = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
+        AnimatedContent(
+            targetState = entries,
+            contentKey = { it.isEmpty() },
+            transitionSpec = { fadeIn(contentFade) togetherWith fadeOut(contentFade) },
+            label = "logs_content",
+        ) { currentEntries ->
+            if (currentEntries.isEmpty()) {
+                EmptyLogsContent(modifier = Modifier.padding(innerPadding))
+            } else {
+                LazyColumn(
+                    contentPadding = innerPadding,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    items(currentEntries, key = { it.log.id }) { entry ->
+                        // animateItem: new entries slide in at the top instead of popping.
+                        Column(modifier = Modifier.animateItem()) {
+                            LogEntryItem(entry = entry)
+                            HorizontalDivider()
+                        }
+                    }
                 }
             }
         }
@@ -132,17 +146,12 @@ private fun EmptyLogsContent(modifier: Modifier = Modifier) {
     // draw in full.
     val scale = remember { Animatable(0f) }
     val alpha = remember { Animatable(0f) }
+    // Theme motion tokens: scale is spatial (may overshoot), fade is an effect (no bounce).
+    val scaleSpec = MaterialTheme.motionScheme.slowSpatialSpec<Float>()
+    val alphaSpec = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
     LaunchedEffect(Unit) {
-        launch {
-            scale.animateTo(
-                targetValue = 1f,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMediumLow,
-                ),
-            )
-        }
-        launch { alpha.animateTo(1f, spring(stiffness = Spring.StiffnessMediumLow)) }
+        launch { scale.animateTo(1f, scaleSpec) }
+        launch { alpha.animateTo(1f, alphaSpec) }
     }
 
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -181,6 +190,15 @@ private fun LogEntryItem(entry: LogEntry) {
         ExecutionStatus.FAIL -> Icons.Filled.Error to MaterialTheme.colorScheme.error
         ExecutionStatus.SKIPPED -> Icons.Filled.RemoveCircle to MaterialTheme.colorScheme.onSurfaceVariant
     }
+    // The icon is the only thing conveying the result, so TalkBack needs a localized
+    // status here — the raw enum name would be read out in English on every locale.
+    val statusDescription = stringResource(
+        when (entry.log.status) {
+            ExecutionStatus.SUCCESS -> R.string.log_status_success
+            ExecutionStatus.FAIL -> R.string.log_status_fail
+            ExecutionStatus.SKIPPED -> R.string.log_status_skipped
+        },
+    )
 
     ListItem(
         headlineContent = { Text(entry.flowName) },
@@ -211,7 +229,7 @@ private fun LogEntryItem(entry: LogEntry) {
             }
         },
         leadingContent = {
-            Icon(icon, contentDescription = entry.log.status.name, tint = tint)
+            Icon(icon, contentDescription = statusDescription, tint = tint)
         },
     )
 }

@@ -20,6 +20,7 @@ import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -310,6 +311,10 @@ fun NexFlowTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
+        // M3's recommended default: physics-based expressive springs for all built-in
+        // component motion (FAB menu, switches, sheets, nav indicator, …). Custom
+        // animations read the same tokens via MaterialTheme.motionScheme.
+        motionScheme = MotionScheme.expressive(),
         typography = Typography,
         shapes = NexFlowShapes,
         content = content,

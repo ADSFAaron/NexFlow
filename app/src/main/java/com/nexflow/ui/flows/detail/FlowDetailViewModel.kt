@@ -158,6 +158,16 @@ class FlowDetailViewModel @Inject constructor(
         )
     }
 
+    /**
+     * Re-inserts an action captured before [removeAction] at its original position —
+     * the undo path of the delete snackbar. Orders are re-normalised afterwards.
+     */
+    fun restoreAction(action: Action) = edit {
+        val sorted = actions.sortedBy { it.order }.toMutableList()
+        sorted.add(action.order.coerceIn(0, sorted.size), action)
+        copy(actions = sorted.mapIndexed { i, a -> a.copy(order = i) })
+    }
+
     /** Adds a new variable ([originalName] = null) or replaces the one named [originalName]. */
     fun saveVariable(originalName: String?, variable: Variable) = edit {
         val others = variables.filter { it.name != originalName }

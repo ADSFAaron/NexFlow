@@ -209,6 +209,11 @@ class FlowsViewModel @Inject constructor(
         viewModelScope.launch { repository.delete(id) }
     }
 
+    /** Re-saves a flow captured before [deleteFlow] — the undo path of the delete snackbar. */
+    fun restoreFlow(flow: Flow) {
+        viewModelScope.launch { repository.save(flow) }
+    }
+
     fun runFlow(id: String) {
         viewModelScope.launch {
             // If something is missing, guide the user to grant it rather than running a flow

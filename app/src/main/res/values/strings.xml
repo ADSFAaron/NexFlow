@@ -489,4 +489,14 @@
     <string name="flows_perm_setup_done">\"%1$s\" is ready to run</string>
     <string name="flows_perm_setup_incomplete">\"%1$s\" still needs some permissions and was left off</string>
     <string name="flows_perm_setup_denied">Denied earlier — turn it on from the app\'s settings page</string>
+
+    <!-- Delete undo snackbar -->
+    <string name="action_undo">Undo</string>
+    <string name="snackbar_deleted">Deleted “%1$s”</string>
+
+    <!-- Accessibility (TalkBack) labels -->
+    <string name="flows_flow_switch_desc">Enable “%1$s”</string>
+    <string name="log_status_success">Success</string>
+    <string name="log_status_fail">Failed</string>
+    <string name="log_status_skipped">Skipped</string>
 </resources>
