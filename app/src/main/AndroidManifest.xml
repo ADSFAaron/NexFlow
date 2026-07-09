@@ -256,6 +256,14 @@
             </intent-filter>
         </service>
 
+        <!-- Crop screen for the wallpaper action. The library declares this activity
+             without a theme, so it would inherit our NoActionBar app theme — and its
+             crop-confirm button lives in the ActionBar options menu, leaving no way
+             to finish the crop. Override with an ActionBar theme (Theme.NexFlow.Crop). -->
+        <activity
+            android:name="com.canhub.cropper.CropImageActivity"
+            android:theme="@style/Theme.NexFlow.Crop" />
+
         <!-- FileProvider for exporting .flow files -->
         <provider
             android:name="androidx.core.content.FileProvider"

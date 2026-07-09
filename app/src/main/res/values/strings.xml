@@ -87,6 +87,7 @@
     <string name="fd_choose_app">Choose app…</string>
     <string name="fd_remove_option">Remove option</string>
     <string name="fd_add_option">Add option</string>
+    <string name="fd_add_branch_action">Add action to this branch</string>
     <string name="fd_option_n">Option %1$d</string>
     <string name="fd_show_menu">Show Menu</string>
     <string name="fd_prompt_title">Prompt / title</string>

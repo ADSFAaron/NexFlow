@@ -86,6 +86,7 @@
     <string name="fd_choose_app">选择应用…</string>
     <string name="fd_remove_option">移除选项</string>
     <string name="fd_add_option">添加选项</string>
+    <string name="fd_add_branch_action">在此分支内添加动作</string>
     <string name="fd_option_n">选项 %1$d</string>
     <string name="fd_show_menu">显示菜单</string>
     <string name="fd_prompt_title">提示／标题</string>

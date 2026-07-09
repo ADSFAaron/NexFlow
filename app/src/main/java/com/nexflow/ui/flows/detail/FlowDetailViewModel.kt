@@ -116,6 +116,19 @@ class FlowDetailViewModel @Inject constructor(
     }
 
     /**
+     * Inserts actions immediately after [anchorId] — the "add into this branch" path for
+     * block markers (Menu Case / If / Else / Repeat), where appending at the end would
+     * land the new action outside the block. Falls back to appending if the anchor is gone.
+     */
+    fun addActionsAfter(anchorId: String, newActions: List<Action>) = edit {
+        val sorted = actions.sortedBy { it.order }.toMutableList()
+        val idx = sorted.indexOfFirst { it.id == anchorId }
+        val insertAt = if (idx == -1) sorted.size else idx + 1
+        sorted.addAll(insertAt, newActions)
+        copy(actions = sorted.mapIndexed { i, a -> a.copy(order = i) })
+    }
+
+    /**
      * Updates the SHOW_MENU action's title/options and synchronises the MENU_CASE
      * markers that follow it (by position). Extra options append empty cases;
      * removed options drop their case marker and any body actions up to the next case.

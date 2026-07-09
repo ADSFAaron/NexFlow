@@ -242,6 +242,10 @@ private fun FlowDetailContent(
 
     var showTriggerPicker by rememberSaveable { mutableStateOf(false) }
     var showActionPicker by rememberSaveable { mutableStateOf(false) }
+    // Non-null while the action picker was opened from a block marker's "+" (Menu Case /
+    // If / Else / Repeat): the chosen action is inserted right after this id, inside the
+    // branch, instead of being appended after the block's End marker.
+    var insertAnchorId by rememberSaveable { mutableStateOf<String?>(null) }
     // Saveable so an open config dialog (and what it points at) survives rotation and
     // process death — otherwise a screen rotation silently discards the user's input.
     var pendingConfig by rememberSaveable(stateSaver = PendingConfigSaver) {
@@ -522,6 +526,14 @@ private fun FlowDetailContent(
                                 vm.removeAction(action.id)
                                 showDeletedSnackbar(ai.label) { vm.restoreAction(action) }
                             },
+                            // Branch markers get a "+" that inserts the new action INSIDE the
+                            // branch — plain "Add Action" would land it after the End marker.
+                            onAddBranchAction = if (action.type in branchStartTypes) {
+                                {
+                                    insertAnchorId = action.id
+                                    showActionPicker = true
+                                }
+                            } else null,
                         )
                     }
                 }
@@ -624,14 +636,21 @@ private fun FlowDetailContent(
             searchPlaceholder = stringResource(R.string.fd_search_actions),
             onSelect = { type ->
                 showActionPicker = false
+                val anchor = insertAnchorId
+                insertAnchorId = null
                 val ai = type.info(context)
                 if (ai.fields.isEmpty()) {
-                    vm.addAction(Action(UUID.randomUUID().toString(), type, emptyMap(), f.actions.size, true))
+                    val newAction = Action(UUID.randomUUID().toString(), type, emptyMap(), f.actions.size, true)
+                    if (anchor != null) vm.addActionsAfter(anchor, listOf(newAction))
+                    else vm.addAction(newAction)
                 } else {
-                    pendingConfig = PendingConfig.NewAction(type)
+                    pendingConfig = PendingConfig.NewAction(type, anchor)
                 }
             },
-            onDismiss = { showActionPicker = false },
+            onDismiss = {
+                showActionPicker = false
+                insertAnchorId = null
+            },
         )
     }
 
@@ -679,7 +698,8 @@ private fun FlowDetailContent(
                         ) + options.mapIndexed { i, opt ->
                             Action(UUID.randomUUID().toString(), ActionType.MENU_CASE, mapOf("option" to opt), base + 1 + i, true)
                         } + Action(UUID.randomUUID().toString(), ActionType.END_MENU, emptyMap(), base + 1 + options.size, true)
-                        vm.addActions(block)
+                        if (cfg.anchorId != null) vm.addActionsAfter(cfg.anchorId, block)
+                        else vm.addActions(block)
                         pendingConfig = null
                     },
                     onDismiss = { pendingConfig = null },
@@ -691,7 +711,9 @@ private fun FlowDetailContent(
                     initialValues = emptyMap(),
                     availableVariables = flowVariables,
                     onConfirm = { values ->
-                        vm.addAction(Action(UUID.randomUUID().toString(), cfg.type, values, f.actions.size, true))
+                        val newAction = Action(UUID.randomUUID().toString(), cfg.type, values, f.actions.size, true)
+                        if (cfg.anchorId != null) vm.addActionsAfter(cfg.anchorId, listOf(newAction))
+                        else vm.addAction(newAction)
                         pendingConfig = null
                     },
                     onDismiss = { pendingConfig = null },
@@ -918,10 +940,19 @@ private fun TriggerLogicToggle(
 // Sealed state for pending config dialogs
 // ---------------------------------------------------------------------------
 
+/** Block-marker types whose row offers a "+" to insert an action inside the branch. */
+private val branchStartTypes = setOf(
+    ActionType.MENU_CASE,
+    ActionType.IF_BLOCK,
+    ActionType.ELSE_BLOCK,
+    ActionType.REPEAT_BLOCK,
+)
+
 private sealed class PendingConfig {
     data class NewTrigger(val type: TriggerType) : PendingConfig()
     data class EditTrigger(val triggerId: String) : PendingConfig()
-    data class NewAction(val type: ActionType) : PendingConfig()
+    /** [anchorId] non-null = insert the new action right after that row (branch insert). */
+    data class NewAction(val type: ActionType, val anchorId: String? = null) : PendingConfig()
     data class EditAction(val actionId: String) : PendingConfig()
 }
 
@@ -936,7 +967,7 @@ private val PendingConfigSaver = listSaver<PendingConfig?, String>(
             null -> emptyList()
             is PendingConfig.NewTrigger -> listOf("new_trigger", cfg.type.name)
             is PendingConfig.EditTrigger -> listOf("edit_trigger", cfg.triggerId)
-            is PendingConfig.NewAction -> listOf("new_action", cfg.type.name)
+            is PendingConfig.NewAction -> listOf("new_action", cfg.type.name, cfg.anchorId ?: "")
             is PendingConfig.EditAction -> listOf("edit_action", cfg.actionId)
         }
     },
@@ -946,7 +977,12 @@ private val PendingConfigSaver = listSaver<PendingConfig?, String>(
             payload == null -> null
             saved[0] == "new_trigger" -> runCatching { PendingConfig.NewTrigger(TriggerType.valueOf(payload)) }.getOrNull()
             saved[0] == "edit_trigger" -> PendingConfig.EditTrigger(payload)
-            saved[0] == "new_action" -> runCatching { PendingConfig.NewAction(ActionType.valueOf(payload)) }.getOrNull()
+            saved[0] == "new_action" -> runCatching {
+                PendingConfig.NewAction(
+                    ActionType.valueOf(payload),
+                    anchorId = saved.getOrNull(2)?.takeIf { it.isNotEmpty() },
+                )
+            }.getOrNull()
             saved[0] == "edit_action" -> PendingConfig.EditAction(payload)
             else -> null
         }
@@ -1085,6 +1121,7 @@ private fun TriggerOrActionRow(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     isExecuting: Boolean = false,
+    onAddBranchAction: (() -> Unit)? = null,
 ) {
     ListItem(
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
@@ -1108,6 +1145,16 @@ private fun TriggerOrActionRow(
         supportingContent = { Text(supporting, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         trailingContent = {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                if (onAddBranchAction != null) {
+                    IconButton(onClick = onAddBranchAction) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = stringResource(R.string.fd_add_branch_action),
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
                 IconButton(onClick = onEdit) {
                     Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.action_edit), modifier = Modifier.size(20.dp))
                 }

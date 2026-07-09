@@ -86,6 +86,7 @@
     <string name="fd_choose_app">アプリを選択…</string>
     <string name="fd_remove_option">選択肢を削除</string>
     <string name="fd_add_option">選択肢を追加</string>
+    <string name="fd_add_branch_action">この分岐にアクションを追加</string>
     <string name="fd_option_n">選択肢 %1$d</string>
     <string name="fd_show_menu">メニューを表示</string>
     <string name="fd_prompt_title">プロンプト／タイトル</string>

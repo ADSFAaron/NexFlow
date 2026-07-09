@@ -10,6 +10,11 @@
         <item name="android:windowBackground">@color/splash_background</item>
     </style>
 
+    <!-- Crop screen (wallpaper action). The library's confirm button lives in the
+         ActionBar options menu, so this theme MUST have an ActionBar — inheriting the
+         app's NoActionBar theme would leave the user with no way to confirm the crop. -->
+    <style name="Theme.NexFlow.Crop" parent="Theme.AppCompat.DayNight" />
+
     <!-- Transparent host for MenuPickerActivity: only the bottom sheet is visible -->
     <style name="Theme.NexFlow.Transparent" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowIsTranslucent">true</item>

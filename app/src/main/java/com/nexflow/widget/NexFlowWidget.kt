@@ -14,7 +14,10 @@ import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.action.actionStartService
+import androidx.glance.appwidget.appWidgetBackground
 import androidx.glance.appwidget.cornerRadius
+import androidx.glance.appwidget.lazy.LazyColumn
+import androidx.glance.appwidget.lazy.itemsIndexed
 import androidx.glance.appwidget.provideContent
 import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.background
@@ -29,6 +32,7 @@ import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
+import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.layout.size
 import androidx.glance.layout.width
@@ -69,27 +73,32 @@ class NexFlowWidget : GlanceAppWidget() {
             Column(
                 modifier = GlanceModifier
                     .fillMaxSize()
-                    .background(GlanceTheme.colors.background)
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                    .appWidgetBackground()
+                    .background(GlanceTheme.colors.widgetBackground)
+                    .cornerRadius(24.dp)
+                    .padding(16.dp),
             ) {
-                // Header row
+                // Header row — tapping it opens the app.
                 Row(
-                    modifier = GlanceModifier.fillMaxWidth().padding(bottom = 10.dp),
+                    modifier = GlanceModifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp)
+                        .clickable(actionStartActivity<MainActivity>()),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
                         text = "NexFlow",
                         style = TextStyle(
-                            color = GlanceTheme.colors.onBackground,
+                            color = GlanceTheme.colors.onSurface,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
+                            fontSize = 16.sp,
                         ),
                         modifier = GlanceModifier.defaultWeight(),
                     )
                     Text(
                         text = "$enabled/$total",
                         style = TextStyle(
-                            color = GlanceTheme.colors.secondary,
+                            color = GlanceTheme.colors.onSurfaceVariant,
                             fontSize = 12.sp,
                         ),
                     )
@@ -104,51 +113,61 @@ class NexFlowWidget : GlanceAppWidget() {
                     ) {
                         Text(
                             text = context.getString(R.string.widget_no_runs),
-                            style = TextStyle(color = GlanceTheme.colors.onBackground, fontSize = 12.sp),
+                            style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 13.sp),
                         )
                     }
                 } else {
-                    // Limit to 4 items to ensure each row has enough vertical room
-                    recentFlows.take(4).forEach { (flowId, flowName) ->
-                        Row(
-                            modifier = GlanceModifier
-                                .fillMaxWidth()
-                                .padding(vertical = 5.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = flowName,
-                                style = TextStyle(
-                                    color = GlanceTheme.colors.onBackground,
-                                    fontSize = 14.sp,
-                                ),
-                                modifier = GlanceModifier.defaultWeight(),
-                                maxLines = 1,
-                            )
-                            Spacer(modifier = GlanceModifier.width(10.dp))
-                            // 40dp meets the 40dp minimum touch target for compact widget rows
-                            Box(
-                                modifier = GlanceModifier
-                                    .size(40.dp)
-                                    .background(GlanceTheme.colors.primary)
-                                    .cornerRadius(20.dp)
-                                    .clickable(
-                                        actionStartService(
-                                            Intent(context, FlowExecutionService::class.java).apply {
-                                                action = FlowExecutionService.ACTION_RUN_FLOW
-                                                putExtra(FlowExecutionService.EXTRA_FLOW_ID, flowId)
-                                            },
-                                            isForegroundService = true,
+                    // Scrollable list: rows keep their full 52dp height at every widget size
+                    // instead of being squeezed to fit, and older entries stay reachable.
+                    LazyColumn(modifier = GlanceModifier.fillMaxSize()) {
+                        itemsIndexed(recentFlows) { _, entry ->
+                            val (flowId, flowName) = entry
+                            Column {
+                                // One pill per flow; the whole pill is the touch target.
+                                Row(
+                                    modifier = GlanceModifier
+                                        .fillMaxWidth()
+                                        .background(GlanceTheme.colors.secondaryContainer)
+                                        .cornerRadius(16.dp)
+                                        .clickable(
+                                            actionStartService(
+                                                Intent(context, FlowExecutionService::class.java).apply {
+                                                    action = FlowExecutionService.ACTION_RUN_FLOW
+                                                    putExtra(FlowExecutionService.EXTRA_FLOW_ID, flowId)
+                                                },
+                                                isForegroundService = true,
+                                            ),
                                         )
-                                    ),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Image(
-                                    provider = ImageProvider(R.drawable.ic_play),
-                                    contentDescription = null,
-                                    modifier = GlanceModifier.size(20.dp),
-                                    colorFilter = ColorFilter.tint(GlanceTheme.colors.onPrimary),
-                                )
+                                        .padding(start = 14.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        text = flowName,
+                                        style = TextStyle(
+                                            color = GlanceTheme.colors.onSecondaryContainer,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Medium,
+                                        ),
+                                        modifier = GlanceModifier.defaultWeight(),
+                                        maxLines = 1,
+                                    )
+                                    Spacer(modifier = GlanceModifier.width(10.dp))
+                                    Box(
+                                        modifier = GlanceModifier
+                                            .size(40.dp)
+                                            .background(GlanceTheme.colors.primary)
+                                            .cornerRadius(20.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Image(
+                                            provider = ImageProvider(R.drawable.ic_play),
+                                            contentDescription = null,
+                                            modifier = GlanceModifier.size(20.dp),
+                                            colorFilter = ColorFilter.tint(GlanceTheme.colors.onPrimary),
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = GlanceModifier.height(8.dp))
                             }
                         }
                     }
