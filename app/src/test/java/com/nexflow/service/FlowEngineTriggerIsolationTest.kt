@@ -90,11 +90,19 @@ class FlowEngineTriggerIsolationTest {
             flowOf(TriggerEvent(triggerId = "t-good", flowId = "good"))
         }
 
+        // Execution toast disabled so runFlow never touches android.widget.Toast on the JVM.
+        val prefs = mockk<android.content.SharedPreferences> {
+            every { getBoolean(any(), any()) } returns false
+        }
+        val context = mockk<android.content.Context> {
+            every { getSharedPreferences(any(), any()) } returns prefs
+        }
         val engine = FlowEngine(
             repository = repository,
             triggerHandlerSet = setOf(explodingHandler, firingHandler),
             actionExecutorSet = emptySet(),
             timeTriggerScheduler = scheduler,
+            context = context,
         )
 
         engine.start(this)

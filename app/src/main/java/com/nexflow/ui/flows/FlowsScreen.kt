@@ -53,6 +53,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.FileOpen
@@ -63,6 +64,7 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingActionButtonMenu
 import androidx.compose.material3.FloatingActionButtonMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -119,6 +121,7 @@ import com.nexflow.permissions.PermissionReminder
 import com.nexflow.prefs.ServiceEnabledPrefs
 import com.nexflow.ui.common.FlowIcons
 import com.nexflow.ui.common.PermissionSetupDialogs
+import com.nexflow.ui.common.geminiGradientTint
 import com.nexflow.ui.flows.detail.config.info
 import com.nexflow.service.FlowExecutionService
 import com.nexflow.ui.flowimport.ImportViewModel
@@ -131,6 +134,7 @@ fun FlowsScreen(
     vm: FlowsViewModel = hiltViewModel(),
     importVm: ImportViewModel = hiltViewModel(),
     onFlowClick: (String) -> Unit = {},
+    onAiClick: () -> Unit = {},
 ) {
     val flows by vm.flows.collectAsState()
     val flowsMissingPermissions by vm.flowsMissingPermissions.collectAsState()
@@ -245,6 +249,14 @@ fun FlowsScreen(
                 title = { Text(stringResource(R.string.flows_title)) },
                 scrollBehavior = scrollBehavior,
                 actions = {
+                    IconButton(onClick = onAiClick) {
+                        Icon(
+                            Icons.Outlined.AutoAwesome,
+                            contentDescription = stringResource(R.string.ai_chat_title),
+                            tint = Color.White,
+                            modifier = Modifier.geminiGradientTint(),
+                        )
+                    }
                     ServiceCapsule(
                         running = serviceRunning,
                         notification = serviceNotification,

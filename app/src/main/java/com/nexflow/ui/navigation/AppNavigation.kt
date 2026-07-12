@@ -17,6 +17,9 @@ package com.nexflow.ui.navigation
 
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.material.icons.Icons
@@ -49,6 +52,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.nexflow.ui.about.AboutScreen
+import com.nexflow.ui.ai.AiChatScreen
 import com.nexflow.ui.flows.FlowsScreen
 import com.nexflow.ui.flows.detail.FlowDetailScreen
 import com.nexflow.ui.logs.LogsScreen
@@ -75,6 +79,9 @@ fun NexFlowNavHost(navController: NavHostController, modifier: Modifier = Modifi
     // slides are spatial motion, fades are effects — same physics as component motion.
     val slideSpec = MaterialTheme.motionScheme.defaultSpatialSpec<IntOffset>()
     val fadeSpec = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
+    // Slow token: the default spatial spring settles in ~200 ms, which made the AI-chat
+    // scale entrance imperceptible.
+    val scaleSpec = MaterialTheme.motionScheme.slowSpatialSpec<Float>()
     NavHost(
         navController = navController,
         startDestination = Screen.Flows.route,
@@ -121,6 +128,7 @@ fun NexFlowNavHost(navController: NavHostController, modifier: Modifier = Modifi
         composable(Screen.Flows.route) {
             FlowsScreen(
                 onFlowClick = { flowId -> navController.navigate("flows/$flowId") },
+                onAiClick = { navController.navigate("ai_chat") },
             )
         }
         composable(Screen.Logs.route) { LogsScreen() }
@@ -132,6 +140,43 @@ fun NexFlowNavHost(navController: NavHostController, modifier: Modifier = Modifi
         }
         composable("about") {
             AboutScreen(onBack = { navController.popBackStack() })
+        }
+        composable(
+            "ai_chat",
+            // AI reveal, not a lateral page slide: the chat grows out of the tapped sparkle
+            // in the top-right corner (Gemini design language: AI features "expand into view").
+            enterTransition = {
+                scaleIn(
+                    initialScale = 0.8f,
+                    animationSpec = scaleSpec,
+                    transformOrigin = TransformOrigin(0.9f, 0f),
+                ) + fadeIn(animationSpec = fadeSpec)
+            },
+            popExitTransition = {
+                scaleOut(
+                    targetScale = 0.85f,
+                    animationSpec = scaleSpec,
+                    transformOrigin = TransformOrigin(0.9f, 0f),
+                ) + fadeOut(animationSpec = fadeSpec)
+            },
+        ) {
+            AiChatScreen(
+                onBack = { navController.popBackStack() },
+                onFlowSaved = { flowId ->
+                    navController.navigate("flows/$flowId") {
+                        // The saved flow replaces the chat in the back stack: back from the
+                        // flow detail returns to the Flows list, not the finished chat.
+                        popUpTo(Screen.Flows.route)
+                    }
+                },
+                onOpenSettings = {
+                    navController.navigate(Screen.Settings.route) {
+                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
+            )
         }
     }
 }

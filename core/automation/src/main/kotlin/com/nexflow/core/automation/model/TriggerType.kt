@@ -29,5 +29,7 @@ enum class TriggerType {
     HEADSET_PLUG,
     NFC_TAG,
     GEOFENCE,
+    SHAKE,
+    AMBIENT_LIGHT,
     MANUAL,
 }

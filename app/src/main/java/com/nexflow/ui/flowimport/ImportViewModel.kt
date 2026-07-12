@@ -17,27 +17,18 @@ package com.nexflow.ui.flowimport
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.nexflow.core.automation.model.Action
-import com.nexflow.core.automation.model.ActionType
-import com.nexflow.core.automation.model.Condition
-import com.nexflow.core.automation.model.Flow as AutomationFlow
-import com.nexflow.core.automation.model.Trigger
-import com.nexflow.core.automation.model.TriggerLogic
-import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.automation.repository.FlowRepository
-import com.nexflow.core.flowschema.FlowJson
 import com.nexflow.core.flowschema.FlowSchemaValidator
 import com.nexflow.core.flowschema.FlowSerializer
 import com.nexflow.core.macrodroid.MdrToFlowConverter
 import com.nexflow.core.macrodroid.parser.MdrParser
+import com.nexflow.data.toDomain
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
 
 data class ImportResult(
@@ -99,64 +90,4 @@ class ImportViewModel @Inject constructor(
     }
 
     fun clearResult() = _result.update { null }
-}
-
-// ---------------------------------------------------------------------------
-// FlowJson → domain Flow mapper (used only for import)
-// ---------------------------------------------------------------------------
-
-private fun FlowJson.toDomain(): AutomationFlow {
-    val now = System.currentTimeMillis()
-    fun String.toEpochMs() = runCatching {
-        java.time.Instant.parse(this).toEpochMilli()
-    }.getOrDefault(now)
-
-    return AutomationFlow(
-        id = id,
-        schemaVersion = schemaVersion,
-        name = name,
-        description = description,
-        author = author,
-        icon = icon,
-        iconColor = iconColor,
-        tags = tags,
-        // Security: never trust the `enabled` flag from an imported file. An attacker could
-        // craft a flow that is enabled-on-import and auto-runs SMS/HTTP/file actions the moment
-        // the JSON is opened. Imported flows are always disabled until the user enables them.
-        enabled = false,
-        createdAt = createdAt.toEpochMs(),
-        updatedAt = now,
-        triggers = triggers.map { tj ->
-            Trigger(
-                id = tj.id,
-                type = runCatching { TriggerType.valueOf(tj.type) }.getOrDefault(TriggerType.MANUAL),
-                config = tj.config.entries.associate { (k, v) ->
-                    k to (v.jsonPrimitive.contentOrNull ?: v.toString())
-                },
-            )
-        },
-        triggerLogic = runCatching { TriggerLogic.valueOf(triggerLogic) }.getOrDefault(TriggerLogic.ANY),
-        conditions = conditions.map { cj ->
-            Condition(
-                id = cj.id,
-                type = cj.type,
-                config = cj.config.entries.associate { (k, v) ->
-                    k to (v.jsonPrimitive.contentOrNull ?: v.toString())
-                },
-                negate = cj.negate,
-            )
-        },
-        actions = actions.map { aj ->
-            Action(
-                id = aj.id,
-                type = runCatching { ActionType.valueOf(aj.type) }.getOrDefault(ActionType.TOAST),
-                config = aj.config.entries.associate { (k, v) ->
-                    k to (v.jsonPrimitive.contentOrNull ?: v.toString())
-                },
-                order = aj.order,
-                enabled = aj.enabled,
-            )
-        },
-        variables = emptyList(),
-    )
 }
