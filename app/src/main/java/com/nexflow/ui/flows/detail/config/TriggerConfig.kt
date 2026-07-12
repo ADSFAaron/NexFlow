@@ -31,6 +31,8 @@ import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Sms
 import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.TravelExplore
+import androidx.compose.material.icons.outlined.Vibration
+import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.nexflow.R
@@ -62,6 +64,7 @@ val TriggerType.category: TriggerCategory
 
         TriggerType.BATTERY, TriggerType.SCREEN,
         TriggerType.DEVICE_BOOT, TriggerType.HEADSET_PLUG,
+        TriggerType.SHAKE, TriggerType.AMBIENT_LIGHT,
         -> TriggerCategory.DEVICE
 
         TriggerType.BLUETOOTH, TriggerType.WIFI, TriggerType.NFC_TAG,
@@ -173,6 +176,36 @@ fun TriggerType.info(context: Context): TriggerInfo = when (this) {
         context.getString(R.string.trg_nfc_label), Icons.Outlined.Nfc, context.getString(R.string.trg_nfc_desc),
         listOf(ConfigField.NfcTagScan("tag_id", context.getString(R.string.cfg_tag_id_optional))),
     )
+    TriggerType.SHAKE -> TriggerInfo(
+        context.getString(R.string.trg_shake_label), Icons.Outlined.Vibration, context.getString(R.string.trg_shake_desc),
+        listOf(
+            ConfigField.Dropdown(
+                "sensitivity", context.getString(R.string.cfg_sensitivity), listOf(
+                    "LOW" to context.getString(R.string.opt_sens_low),
+                    "MEDIUM" to context.getString(R.string.opt_sens_medium),
+                    "HIGH" to context.getString(R.string.opt_sens_high),
+                ),
+            ),
+            ConfigField.InfoText(
+                "_shake_battery_info",
+                context.getString(R.string.cfg_info_note_label),
+                context.getString(R.string.cfg_info_shake_battery_body),
+                isWarning = true,
+            ),
+        ),
+    )
+    TriggerType.AMBIENT_LIGHT -> TriggerInfo(
+        context.getString(R.string.trg_light_label), Icons.Outlined.WbSunny, context.getString(R.string.trg_light_desc),
+        listOf(
+            ConfigField.Dropdown(
+                "mode", context.getString(R.string.cfg_trigger_when), listOf(
+                    "BELOW" to context.getString(R.string.opt_darker_than),
+                    "ABOVE" to context.getString(R.string.opt_brighter_than),
+                ),
+            ),
+            ConfigField.TextInput("threshold_lux", context.getString(R.string.cfg_lux_threshold), hint = "50"),
+        ),
+    )
     TriggerType.GEOFENCE -> TriggerInfo(
         context.getString(R.string.trg_geofence_label), Icons.Outlined.LocationOn, context.getString(R.string.trg_geofence_desc),
         listOf(
@@ -241,6 +274,17 @@ fun TriggerType.configSummary(context: Context, config: Map<String, String>): St
     TriggerType.DEVICE_BOOT -> context.getString(R.string.sum_on_boot)
     TriggerType.HEADSET_PLUG -> connectEventLabel(context, config["event"])
     TriggerType.NFC_TAG -> config["tag_id"]?.takeIf { it.isNotBlank() } ?: context.getString(R.string.sum_any_tag)
+    TriggerType.SHAKE -> context.getString(
+        when (config["sensitivity"]?.uppercase()) {
+            "LOW" -> R.string.opt_sens_low
+            "HIGH" -> R.string.opt_sens_high
+            else -> R.string.opt_sens_medium
+        },
+    )
+    TriggerType.AMBIENT_LIGHT -> {
+        val op = if (config["mode"]?.uppercase() == "ABOVE") ">" else "<"
+        "$op ${config["threshold_lux"]?.takeIf { it.isNotBlank() } ?: "50"} lx"
+    }
     TriggerType.GEOFENCE -> buildString {
         append("${config["lat"] ?: "?"},${config["lng"] ?: "?"}")
         config["radius_m"]?.let { append(" · ${it}m") }

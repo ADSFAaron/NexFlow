@@ -29,6 +29,7 @@
     <string name="action_enable">Enable</string>
     <string name="action_save">Save</string>
     <string name="action_edit">Edit</string>
+    <string name="action_copy">Copy</string>
     <string name="action_delete">Delete</string>
     <string name="field_name">Name</string>
     <string name="field_description_optional">Description (optional)</string>
@@ -109,6 +110,46 @@
     <!-- Settings -->
     <string name="settings_title">Settings</string>
     <string name="settings_section_general">General</string>
+    <string name="settings_section_ai">AI assistant</string>
+    <string name="settings_ai_api_key">Gemini API key</string>
+    <string name="settings_ai_api_key_desc">Stored only on this device and excluded from backups. Get a free key at aistudio.google.com.</string>
+    <string name="settings_ai_api_key_hint">Paste your API key</string>
+    <string name="settings_ai_api_key_set">Configured</string>
+    <string name="settings_ai_api_key_unset">Not set — required for the AI assistant</string>
+    <string name="settings_ai_api_key_show">Show API key</string>
+    <string name="settings_ai_api_key_hide">Hide API key</string>
+    <string name="settings_ai_model">AI model</string>
+    <string name="settings_ai_model_need_key">Set your API key first</string>
+    <string name="settings_ai_model_load_failed">Couldn\'t load the model list</string>
+    <string name="action_retry">Retry</string>
+    <string name="ai_chat_title">AI assistant</string>
+    <string name="ai_greeting">Describe the automation you want — for example: \"When I plug in headphones, set media volume to 80% and open Spotify.\"</string>
+    <string name="ai_input_hint">Describe your automation…</string>
+    <string name="ai_send">Send</string>
+    <string name="ai_key_get">Get a free API key</string>
+    <string name="ai_thinking">Thinking…</string>
+    <string name="ai_step_contacting">Contacting Gemini…</string>
+    <string name="ai_step_searching_apps">Searching installed apps…</string>
+    <string name="ai_step_building_flow">Building and validating the flow…</string>
+    <string name="ai_step_repairing">Fixing validation errors (attempt %1$d)…</string>
+    <string name="ai_new_chat">New chat</string>
+    <string name="ai_update_flow">Update flow</string>
+    <string name="ai_save_flow">Save flow</string>
+    <string name="ai_flow_saved">Saved</string>
+    <string name="ai_flow_disabled_note">The flow is saved disabled — review it, grant any permissions, then enable it.</string>
+    <string name="ai_key_missing_title">Gemini API key required</string>
+    <string name="ai_key_missing_body">Add your Gemini API key in Settings to use the AI assistant. You can get a free key at aistudio.google.com.</string>
+    <string name="ai_key_missing_button">Open Settings</string>
+    <string name="ai_error_invalid_key">The API key was rejected. Check the Gemini API key in Settings.</string>
+    <string name="ai_error_rate_limited">Rate limit reached. Wait a moment and try again.</string>
+    <string name="ai_error_model_not_found">Model not found. Pick another model in Settings.</string>
+    <string name="ai_error_network">Network error. Check your connection and try again.</string>
+    <string name="ai_error_generic">Something went wrong: %1$s</string>
+    <string name="ai_mic_content_desc">Voice input</string>
+    <string name="ai_mic_stop_content_desc">Stop voice input</string>
+    <string name="ai_listening">Listening…</string>
+    <string name="ai_voice_error">Speech recognition failed. Try again.</string>
+    <string name="ai_voice_unavailable">Speech recognition is not available on this device.</string>
     <string name="settings_section_permissions">Permissions</string>
     <string name="settings_section_import_export">Import / Export</string>
     <string name="settings_section_automation">Automation</string>
@@ -128,6 +169,8 @@
 
     <!-- Permission reminder labels (FlowPermissionChecker) -->
     <string name="perm_accessibility">Accessibility Service</string>
+    <string name="perm_app_missing">App not installed: %1$s</string>
+    <string name="action_install">Install</string>
     <string name="perm_notification_access">Notification access</string>
     <string name="perm_receive_sms">Receive SMS</string>
     <string name="perm_phone_state">Phone state</string>
@@ -158,6 +201,9 @@
     <string name="settings_import_flow_desc">Pick a NexFlow JSON or MacroDroid .mdr file</string>
     <string name="settings_autostart">Auto-start on boot</string>
     <string name="settings_autostart_desc">Resume the automation service after the device restarts (only while the service is switched on)</string>
+    <string name="settings_execution_toast">Show a message when flows run</string>
+    <string name="settings_execution_toast_desc">Briefly shows which flow is running, so background triggers never fire silently</string>
+    <string name="toast_flow_running">NexFlow ▶ %1$s</string>
     <string name="settings_log_retention">Log retention</string>
     <string name="settings_log_retention_desc">Cleans up automatically once a week</string>
     <string name="settings_about_nexflow">About NexFlow</string>
@@ -340,6 +386,25 @@
     <string name="trg_nfc_desc">When an NFC tag is scanned</string>
     <string name="trg_geofence_label">Geofence</string>
     <string name="trg_geofence_desc">When entering or leaving an area</string>
+    <string name="trg_shake_label">Shake</string>
+    <string name="trg_shake_desc">When the device is shaken</string>
+    <string name="trg_light_label">Ambient light</string>
+    <string name="trg_light_desc">When surroundings get darker or brighter than a level</string>
+    <string name="cfg_sensitivity">Sensitivity</string>
+    <string name="opt_sens_low">Low (hard shake)</string>
+    <string name="opt_sens_medium">Medium</string>
+    <string name="opt_sens_high">High (gentle shake)</string>
+    <string name="opt_darker_than">Darker than</string>
+    <string name="opt_brighter_than">Brighter than</string>
+    <string name="cfg_lux_threshold">Light level (lux)</string>
+    <string name="act_tap_label">Simulate tap</string>
+    <string name="act_tap_desc">Tap the screen at a coordinate</string>
+    <string name="cfg_tap_x">X coordinate (px)</string>
+    <string name="cfg_tap_y">Y coordinate (px)</string>
+    <string name="cfg_info_tap_body">Simulated taps require the NexFlow Accessibility Service. Coordinates are in screen pixels and differ between devices — enable "Pointer location" in Developer options to find them.</string>
+    <string name="cfg_info_shake_battery_body">Listens to the accelerometer continuously while this flow is enabled, which increases battery use somewhat. Disable the flow when not needed.</string>
+    <string name="act_speaker_label">Speakerphone</string>
+    <string name="act_speaker_desc">Route call audio to the speaker</string>
 
     <!-- Config field labels -->
     <string name="cfg_message">Message</string>

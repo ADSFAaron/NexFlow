@@ -27,8 +27,8 @@ android {
         applicationId = "com.adsf.nexflow"
         minSdk = 30
         targetSdk = 37
-        versionCode = 3
-        versionName = "1.0.2"
+        versionCode = 4
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "com.nexflow.HiltTestRunner"
     }
@@ -83,6 +83,13 @@ android {
     }
     buildFeatures {
         compose = true
+        // BuildConfig.DEBUG gates verbose Gemini request/response logging in GeminiClient.
+        buildConfig = true
+    }
+    testOptions {
+        // android.util.Log used in GeminiClient/AiChatOrchestrator becomes a no-op in JVM
+        // unit tests instead of throwing "not mocked".
+        unitTests.isReturnDefaultValues = true
     }
 }
 

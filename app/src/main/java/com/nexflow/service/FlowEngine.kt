@@ -15,7 +15,10 @@
  */
 package com.nexflow.service
 
+import android.content.Context
 import android.util.Log
+import android.widget.Toast
+import com.nexflow.R
 import com.nexflow.core.automation.executor.ActionExecutor
 import com.nexflow.core.automation.interpreter.FlowInterpreter
 import com.nexflow.core.automation.interpreter.InterpreterResult
@@ -25,8 +28,12 @@ import com.nexflow.core.automation.model.Flow as AutomationFlow
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.automation.repository.FlowRepository
 import com.nexflow.core.automation.trigger.TriggerHandler
+import com.nexflow.prefs.ExecutionFeedbackPrefs
 import com.nexflow.trigger.TimeTriggerScheduler
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
@@ -48,6 +55,7 @@ class FlowEngine @Inject constructor(
     private val triggerHandlerSet: Set<@JvmSuppressWildcards TriggerHandler>,
     private val actionExecutorSet: Set<@JvmSuppressWildcards ActionExecutor>,
     private val timeTriggerScheduler: TimeTriggerScheduler,
+    @param:ApplicationContext private val context: Context,
 ) {
     private companion object {
         const val TAG = "FlowEngine"
@@ -144,6 +152,17 @@ class FlowEngine @Inject constructor(
         // overlapping runs of the same flow.
         if (!runningFlows.add(flow.id)) return
         try {
+            // Background triggers firing silently confused users — announce every run
+            // (opt-out in Settings).
+            if (ExecutionFeedbackPrefs.isToastEnabled(context)) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.toast_flow_running, flow.name),
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                }
+            }
             val startMs = System.currentTimeMillis()
             val result = try {
                 interpreter.execute(flow, onActionStart)

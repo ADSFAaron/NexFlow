@@ -33,5 +33,8 @@ object FlavorFeatures {
         ActionType.CALL_PHONE,
         // Needs WRITE_SECURE_SETTINGS, which the play flavor does not declare.
         ActionType.AIRPLANE_TOGGLE,
+        // dispatchGesture ("performs actions on the user's behalf") would widen the Play
+        // accessibility-usage declaration beyond screenshots/app-detection — github only.
+        ActionType.SIMULATE_TAP,
     )
 }

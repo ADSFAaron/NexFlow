@@ -39,16 +39,19 @@ class NexFlowAccessibilityService : AccessibilityService() {
     @InstallIn(SingletonComponent::class)
     interface ScreenshotEntryPoint {
         fun screenshotCoordinator(): ScreenshotCoordinator
+        fun gestureCoordinator(): GestureCoordinator
     }
 
     private val scope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
     private lateinit var coordinator: ScreenshotCoordinator
+    private lateinit var gestures: GestureCoordinator
 
     override fun onCreate() {
         super.onCreate()
-        coordinator = EntryPointAccessors
+        val entryPoint = EntryPointAccessors
             .fromApplication(applicationContext, ScreenshotEntryPoint::class.java)
-            .screenshotCoordinator()
+        coordinator = entryPoint.screenshotCoordinator()
+        gestures = entryPoint.gestureCoordinator()
     }
 
     override fun onServiceConnected() {
@@ -57,6 +60,34 @@ class NexFlowAccessibilityService : AccessibilityService() {
                 captureAndSave(deferred)
             }
         }
+        scope.launch {
+            for (request in gestures.channel) {
+                dispatchTap(request)
+            }
+        }
+    }
+
+    private fun dispatchTap(request: GestureCoordinator.TapRequest) {
+        val path = android.graphics.Path().apply { moveTo(request.x, request.y) }
+        val gesture = android.accessibilityservice.GestureDescription.Builder()
+            .addStroke(
+                android.accessibilityservice.GestureDescription.StrokeDescription(path, 0, TAP_DURATION_MS),
+            )
+            .build()
+        val dispatched = dispatchGesture(
+            gesture,
+            object : GestureResultCallback() {
+                override fun onCompleted(gestureDescription: android.accessibilityservice.GestureDescription?) {
+                    request.result.complete(true)
+                }
+
+                override fun onCancelled(gestureDescription: android.accessibilityservice.GestureDescription?) {
+                    request.result.complete(false)
+                }
+            },
+            null,
+        )
+        if (!dispatched) request.result.complete(false)
     }
 
     private fun captureAndSave(deferred: CompletableDeferred<Boolean>) {
@@ -110,6 +141,10 @@ class NexFlowAccessibilityService : AccessibilityService() {
     }
 
     override fun onInterrupt() {}
+
+    private companion object {
+        const val TAP_DURATION_MS = 50L
+    }
 
     override fun onDestroy() {
         scope.cancel()
