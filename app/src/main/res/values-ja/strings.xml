@@ -45,6 +45,8 @@
     <!-- Flow detail -->
     <string name="fd_change_icon">アイコンを変更</string>
     <string name="fd_edit_flow">フローを編集</string>
+    <string name="fd_pin_shortcut">ホーム画面に追加</string>
+    <string name="fd_pin_shortcut_unsupported">このランチャーはショートカットの固定に対応していません</string>
     <string name="fd_flow_started">フローを開始しました</string>
     <string name="fd_flow_stopped">フローを停止しました</string>
     <string name="fd_export_flow">フローをエクスポート</string>
@@ -246,6 +248,7 @@
     <string name="about_legal">法的情報</string>
     <string name="about_terms">利用規約</string>
     <string name="about_privacy">プライバシーポリシー</string>
+    <string name="about_report_issue">問題を報告</string>
 
     <!-- Common dialogs -->
     <string name="icon_selected_color">選択中の色</string>

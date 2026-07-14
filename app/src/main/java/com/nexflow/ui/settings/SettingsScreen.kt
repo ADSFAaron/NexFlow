@@ -93,6 +93,7 @@ import com.nexflow.prefs.LogRetentionPrefs
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -236,6 +237,7 @@ fun SettingsScreen(
     if (showLogRetentionDialog) {
         ModalBottomSheet(
             onDismissRequest = { showLogRetentionDialog = false },
+            scrimColor = Color.Transparent,
         ) {
             Text(
                 text = stringResource(R.string.settings_log_retention),
@@ -278,7 +280,7 @@ fun SettingsScreen(
     }
 
     if (showLanguageDialog) {
-        ModalBottomSheet(onDismissRequest = { showLanguageDialog = false }) {
+        ModalBottomSheet(onDismissRequest = { showLanguageDialog = false }, scrimColor = Color.Transparent) {
             Text(
                 text = stringResource(R.string.settings_language),
                 style = MaterialTheme.typography.titleLarge,
@@ -369,6 +371,7 @@ fun SettingsScreen(
                 showModelSheet = false
                 aiVm.resetModels()
             },
+            scrimColor = Color.Transparent,
         ) {
             Text(
                 text = stringResource(R.string.settings_ai_model),

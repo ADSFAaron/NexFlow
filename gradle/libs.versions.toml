@@ -21,6 +21,7 @@ glance = "1.1.1"
 reorderable = "3.1.0"
 playServicesLocation = "21.3.0"
 imageCropper = "4.7.0"
+coil = "3.3.0"
 # Test
 junit = "4.13.2"
 junitVersion = "1.2.1"
@@ -86,6 +87,8 @@ androidx-compose-material-icons-extended = { group = "androidx.compose.material"
 reorderable = { group = "sh.calvin.reorderable", name = "reorderable", version.ref = "reorderable" }
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
 android-image-cropper = { group = "com.vanniktech", name = "android-image-cropper", version.ref = "imageCropper" }
+coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }
+coil-network-ktor3 = { group = "io.coil-kt.coil3", name = "coil-network-ktor3", version.ref = "coil" }
 
 # Test – JVM / Unit
 junit = { group = "junit", name = "junit", version.ref = "junit" }

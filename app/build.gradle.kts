@@ -169,6 +169,10 @@ dependencies {
     // Image cropper (wallpaper action — aspect-locked crop UI)
     implementation(libs.android.image.cropper)
 
+    // Coil (contributor avatar images on the About screen)
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.ktor3)
+
     // Test
     testImplementation(libs.junit)
     testImplementation(libs.junit5.api)

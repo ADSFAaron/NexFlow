@@ -46,6 +46,8 @@
     <!-- Flow detail -->
     <string name="fd_change_icon">Change icon</string>
     <string name="fd_edit_flow">Edit flow</string>
+    <string name="fd_pin_shortcut">Add to home screen</string>
+    <string name="fd_pin_shortcut_unsupported">This launcher does not support pinned shortcuts</string>
     <string name="fd_flow_started">Flow started</string>
     <string name="fd_flow_stopped">Flow stopped</string>
     <string name="fd_export_flow">Export flow</string>
@@ -247,6 +249,7 @@
     <string name="about_legal">Legal</string>
     <string name="about_terms">Terms of Service</string>
     <string name="about_privacy">Privacy Policy</string>
+    <string name="about_report_issue">Report Issue</string>
 
     <!-- Common dialogs -->
     <string name="icon_selected_color">Selected color</string>

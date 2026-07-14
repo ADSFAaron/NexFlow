@@ -38,6 +38,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.nexflow.ui.theme.NexFlowTheme
 import kotlinx.coroutines.launch
@@ -104,6 +105,7 @@ private fun MenuPickerSheet(
                 onDismiss()
             },
             sheetState = sheetState,
+            scrimColor = Color.Transparent,
         ) {
             if (title.isNotBlank()) {
                 Text(

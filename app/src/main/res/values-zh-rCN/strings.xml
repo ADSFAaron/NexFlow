@@ -45,6 +45,8 @@
     <!-- Flow detail -->
     <string name="fd_change_icon">更改图标</string>
     <string name="fd_edit_flow">编辑流程</string>
+    <string name="fd_pin_shortcut">添加到主屏幕</string>
+    <string name="fd_pin_shortcut_unsupported">此启动器不支持固定快捷方式</string>
     <string name="fd_flow_started">流程已启动</string>
     <string name="fd_flow_stopped">流程已停止</string>
     <string name="fd_export_flow">导出流程</string>
@@ -246,6 +248,7 @@
     <string name="about_legal">法律条款</string>
     <string name="about_terms">服务条款</string>
     <string name="about_privacy">隐私政策</string>
+    <string name="about_report_issue">反馈问题</string>
 
     <!-- Common dialogs -->
     <string name="icon_selected_color">已选颜色</string>

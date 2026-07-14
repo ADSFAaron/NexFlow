@@ -73,6 +73,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.AddToHomeScreen
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Close
@@ -153,22 +154,38 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Canvas
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import com.nexflow.R
+import com.nexflow.shortcut.PinShortcutHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -261,6 +278,20 @@ private fun FlowDetailContent(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+
+    // Rasterised once per icon/color change; pinning only needs it at click time.
+    val flowIconPainter = rememberVectorPainter(FlowIcons.vector(f.icon))
+    val flowIconColor = FlowIcons.color(f.iconColor) ?: MaterialTheme.colorScheme.primary
+    val density = LocalDensity.current
+    val pinUnsupportedMessage = stringResource(R.string.fd_pin_shortcut_unsupported)
+    val onPinShortcut: () -> Unit = {
+        if (PinShortcutHelper.isSupported(context)) {
+            val bitmap = renderShortcutIcon(flowIconPainter, flowIconColor, density)
+            PinShortcutHelper.pin(context, f, bitmap)
+        } else {
+            scope.launch { snackbarHostState.showSnackbar(pinUnsupportedMessage) }
+        }
+    }
 
     // Deleting a trigger/action/variable is one tap with no confirmation, so every delete
     // must be recoverable: show a snackbar whose Undo action re-inserts the captured item.
@@ -386,6 +417,12 @@ private fun FlowDetailContent(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onPinShortcut) {
+                        Icon(
+                            Icons.AutoMirrored.Outlined.AddToHomeScreen,
+                            contentDescription = stringResource(R.string.fd_pin_shortcut),
+                        )
+                    }
                     IconButton(onClick = { showRenameDialog = true }) {
                         Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.fd_edit_flow))
                     }
@@ -793,6 +830,33 @@ private fun FlowDetailContent(
     }
 }
 
+/**
+ * Rasterises the flow's colored circle + white glyph as one bitmap for a pinned
+ * shortcut icon — unlike the widget (which lets Glance/RemoteViews draw the circle),
+ * the launcher needs a single flattened image. Canvas size follows the adaptive icon
+ * convention (108dp canvas, ~66dp safe zone) so launchers that apply a shape mask
+ * don't clip the circle.
+ */
+private fun renderShortcutIcon(painter: Painter, backgroundColor: Color, density: Density): Bitmap {
+    val sizePx = with(density) { 108.dp.roundToPx() }
+    val circleRadiusPx = with(density) { 33.dp.roundToPx() }.toFloat()
+    val glyphSizePx = with(density) { 40.dp.roundToPx() }.toFloat()
+    val imageBitmap = ImageBitmap(sizePx, sizePx)
+    CanvasDrawScope().draw(
+        density,
+        LayoutDirection.Ltr,
+        Canvas(imageBitmap),
+        Size(sizePx.toFloat(), sizePx.toFloat()),
+    ) {
+        val center = Offset(sizePx / 2f, sizePx / 2f)
+        drawCircle(color = backgroundColor, radius = circleRadiusPx, center = center)
+        translate(left = center.x - glyphSizePx / 2f, top = center.y - glyphSizePx / 2f) {
+            with(painter) { draw(Size(glyphSizePx, glyphSizePx), colorFilter = ColorFilter.tint(Color.White)) }
+        }
+    }
+    return imageBitmap.asAndroidBitmap()
+}
+
 @Composable
 private fun FlowControlsBar(
     enabled: Boolean,
@@ -904,7 +968,16 @@ private fun FlowEnabledCapsule(
             Spacer(Modifier.width(6.dp))
             Text(
                 text = if (enabled) stringResource(R.string.fd_enabled) else stringResource(R.string.fd_disabled),
-                style = MaterialTheme.typography.labelMedium,
+                // includeFontPadding's default top/bottom padding is asymmetric, so the
+                // glyphs sit visibly low within the line box even though the Row already
+                // centers the Text's own bounds against the Icon.
+                style = MaterialTheme.typography.labelMedium.copy(
+                    lineHeightStyle = LineHeightStyle(
+                        alignment = LineHeightStyle.Alignment.Center,
+                        trim = LineHeightStyle.Trim.Both,
+                    ),
+                    platformStyle = PlatformTextStyle(includeFontPadding = false),
+                ),
             )
         }
     }
@@ -1222,7 +1295,7 @@ private fun <T : Any> SearchPickerSheet(
         entries.sortedBy { it.categoryOrder }.groupBy { it.categoryLabel }.toList()
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, scrimColor = Color.Transparent) {
         Column(
             modifier = Modifier
                 .fillMaxHeight(0.92f)

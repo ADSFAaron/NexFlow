@@ -58,7 +58,8 @@ import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.FileOpen
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingActionButtonMenu
@@ -110,7 +111,9 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -565,7 +568,16 @@ private fun ServiceCapsule(
                 Spacer(Modifier.width(6.dp))
                 Text(
                     text = if (notification) stringResource(R.string.flows_service_started) else stringResource(R.string.flows_service_stopped),
-                    style = MaterialTheme.typography.labelMedium,
+                    // includeFontPadding's default top/bottom padding is asymmetric, so the
+                    // glyphs sit visibly low within the line box even though the Row already
+                    // centers the Text's own bounds against the Icon.
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        lineHeightStyle = LineHeightStyle(
+                            alignment = LineHeightStyle.Alignment.Center,
+                            trim = LineHeightStyle.Trim.Both,
+                        ),
+                        platformStyle = PlatformTextStyle(includeFontPadding = false),
+                    ),
                 )
             }
         }
@@ -666,7 +678,11 @@ private fun FlowCard(
         }
     }
 
-    ElevatedCard(modifier = modifier.fillMaxWidth(), onClick = onClick) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+        modifier = modifier.fillMaxWidth(),
+        onClick = onClick,
+    ) {
         Column(
             modifier = Modifier.padding(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),

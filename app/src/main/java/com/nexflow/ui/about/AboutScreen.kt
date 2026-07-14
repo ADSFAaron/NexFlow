@@ -20,46 +20,64 @@ import android.net.Uri
 import android.os.Build
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.Code
-import androidx.compose.material3.ButtonGroup
-import androidx.compose.material3.ButtonGroupDefaults
-import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
+import coil3.compose.AsyncImagePainter
+import coil3.compose.SubcomposeAsyncImage
+import coil3.compose.SubcomposeAsyncImageContent
 import com.nexflow.R
+
+/** Contributor avatars are keyed by GitHub user ID so they survive username changes. */
+private const val DEVELOPER_AVATAR_URL = "https://avatars.githubusercontent.com/u/48749140"
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -132,18 +150,18 @@ fun AboutScreen(onBack: () -> Unit) {
                 }
             }
 
-            // Action buttons — M3 Expressive ButtonGroup
+            // Action buttons — icon + label pairs, Material Expressive style
             item {
-                ButtonGroup(
-                    overflowIndicator = { menuState ->
-                        ButtonGroupDefaults.OverflowIndicator(menuState = menuState)
-                    },
+                Row(
+                    horizontalArrangement = Arrangement.SpaceEvenly,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp, vertical = 8.dp)
                         .padding(bottom = 16.dp),
                 ) {
-                    clickableItem(
+                    AboutActionButton(
+                        icon = Icons.Outlined.Code,
+                        label = "GitHub",
                         onClick = {
                             context.startActivity(
                                 Intent(
@@ -152,12 +170,16 @@ fun AboutScreen(onBack: () -> Unit) {
                                 ),
                             )
                         },
-                        label = "GitHub",
-                        icon = {
-                            Icon(
-                                Icons.Outlined.Code,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
+                    )
+                    AboutActionButton(
+                        icon = Icons.Outlined.BugReport,
+                        label = stringResource(R.string.about_report_issue),
+                        onClick = {
+                            context.startActivity(
+                                Intent(
+                                    Intent.ACTION_VIEW,
+                                    Uri.parse("https://github.com/ADSFAaron/NexFlow/issues"),
+                                ),
                             )
                         },
                     )
@@ -167,28 +189,22 @@ fun AboutScreen(onBack: () -> Unit) {
             // Developer section
             item { AboutSectionHeader(stringResource(R.string.about_developer)) }
             item {
-                ElevatedCard(
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 4.dp),
                 ) {
                     ListItem(
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                         headlineContent = { Text("ADSFAaron") },
                         supportingContent = { Text(stringResource(R.string.about_dev_role)) },
                         leadingContent = {
-                            Surface(
-                                modifier = Modifier.size(40.dp),
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text(
-                                        text = "A",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    )
-                                }
-                            }
+                            ContributorAvatar(
+                                avatarUrl = DEVELOPER_AVATAR_URL,
+                                initials = "A",
+                                size = 40.dp,
+                            )
                         },
                     )
                 }
@@ -197,13 +213,15 @@ fun AboutScreen(onBack: () -> Unit) {
             // Legal section
             item { AboutSectionHeader(stringResource(R.string.about_legal)) }
             item {
-                ElevatedCard(
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 4.dp)
                         .padding(bottom = 16.dp),
                 ) {
                     ListItem(
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                         headlineContent = { Text(stringResource(R.string.about_terms)) },
                         trailingContent = {
                             Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = null)
@@ -219,6 +237,7 @@ fun AboutScreen(onBack: () -> Unit) {
                     )
                     HorizontalDivider()
                     ListItem(
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                         headlineContent = { Text(stringResource(R.string.about_privacy)) },
                         trailingContent = {
                             Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = null)
@@ -234,6 +253,60 @@ fun AboutScreen(onBack: () -> Unit) {
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun AboutActionButton(icon: ImageVector, label: String, onClick: () -> Unit) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.width(72.dp),
+    ) {
+        FilledTonalIconButton(onClick = onClick, modifier = Modifier.size(56.dp)) {
+            Icon(icon, contentDescription = label)
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/** Circular contributor avatar; falls back to [initials] while loading or on failure. */
+@Composable
+private fun ContributorAvatar(avatarUrl: String, initials: String, size: Dp) {
+    SubcomposeAsyncImage(
+        model = avatarUrl,
+        contentDescription = null,
+        contentScale = ContentScale.Crop,
+        modifier = Modifier.size(size).clip(CircleShape),
+    ) {
+        val state by painter.state.collectAsState()
+        if (state is AsyncImagePainter.State.Success) {
+            SubcomposeAsyncImageContent()
+        } else {
+            InitialsAvatar(initials, size)
+        }
+    }
+}
+
+@Composable
+private fun InitialsAvatar(initials: String, size: Dp) {
+    Surface(
+        modifier = Modifier.size(size),
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.primaryContainer,
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = initials,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
         }
     }
 }

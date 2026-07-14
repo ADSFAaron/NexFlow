@@ -84,6 +84,7 @@ object AiCatalog {
         is ConfigField.Slider -> "${field.key}:int[${field.min}..${field.max}]"
         is ConfigField.TimePicker -> "${field.key}:time\"HH:mm\""
         is ConfigField.AppPicker -> "${field.key}:package (resolve via search_installed_apps)"
+        is ConfigField.ShortcutPicker -> "${field.key}: leave empty (user picks the shortcut in the editor)"
         is ConfigField.DayPicker -> buildString {
             append("${field.key}:days\"MON,TUE,WED,THU,FRI,SAT,SUN\" comma-separated")
             if (field.showWhenKey != null) append(" (only when ${field.showWhenKey}=${field.showWhenValue})")
