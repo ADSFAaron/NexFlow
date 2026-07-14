@@ -17,6 +17,7 @@ package com.nexflow.core.automation.model
 
 enum class ActionType {
     OPEN_APP,
+    LAUNCH_SHORTCUT,
     SEND_SMS,
     CALL_PHONE,
     WIFI_TOGGLE,

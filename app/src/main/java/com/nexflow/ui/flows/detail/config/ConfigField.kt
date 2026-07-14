@@ -53,6 +53,19 @@ sealed class ConfigField {
     ) : ConfigField()
 
     /**
+     * Two-level picker for another app's shortcuts (manifest shortcuts parsed from
+     * shortcuts.xml plus ACTION_CREATE_SHORTCUT configuration activities).
+     * [key] stores the launch intent as an intent: URI; [labelKey] the display label;
+     * [packageKey] the source app's package name.
+     */
+    data class ShortcutPicker(
+        override val key: String,
+        override val label: String,
+        val labelKey: String,
+        val packageKey: String,
+    ) : ConfigField()
+
+    /**
      * Multi-select day-of-week chips.
      * Stored as comma-separated IDs: "MON,WED,FRI".
      * Only rendered when [showWhenKey] equals [showWhenValue] (both null = always shown).

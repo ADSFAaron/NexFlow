@@ -28,6 +28,11 @@ fun sampleConfig(fields: List<ConfigField>): Map<String, String> {
             is ConfigField.Slider -> values[field.key] = field.min.toString()
             is ConfigField.TimePicker -> values[field.key] = "08:30"
             is ConfigField.AppPicker -> values[field.key] = "com.example.app"
+            is ConfigField.ShortcutPicker -> {
+                values[field.key] = "intent:#Intent;action=android.intent.action.VIEW;package=com.example.app;end"
+                values[field.labelKey] = "Sample shortcut"
+                values[field.packageKey] = "com.example.app"
+            }
             is ConfigField.DayPicker -> values[field.key] = "MON,FRI"
             is ConfigField.WifiSsidInput -> values[field.key] = "HomeWifi"
             is ConfigField.NfcTagScan -> values[field.key] = "04A1B2C3"

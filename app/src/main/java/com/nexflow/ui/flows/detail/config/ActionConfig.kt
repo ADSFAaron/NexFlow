@@ -19,6 +19,7 @@ import android.content.Context
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AirplanemodeActive
+import androidx.compose.material.icons.outlined.AppShortcut
 import androidx.compose.material.icons.outlined.Bluetooth
 import androidx.compose.material.icons.outlined.Brightness6
 import androidx.compose.material.icons.outlined.Call
@@ -92,7 +93,7 @@ val ActionType.category: ActionCategory
         ActionType.HTTP_REQUEST, ActionType.OPEN_URL,
         -> ActionCategory.WEB
 
-        ActionType.OPEN_APP, ActionType.MEDIA_PLAY_PAUSE, ActionType.SHARE,
+        ActionType.OPEN_APP, ActionType.LAUNCH_SHORTCUT, ActionType.MEDIA_PLAY_PAUSE, ActionType.SHARE,
         -> ActionCategory.APPS_MEDIA
 
         ActionType.WRITE_FILE, ActionType.CLIPBOARD_COPY,
@@ -169,6 +170,22 @@ fun ActionType.info(context: Context): ActionInfo = when (this) {
     ActionType.OPEN_APP -> ActionInfo(
         context.getString(R.string.act_open_app_label), Icons.Outlined.TravelExplore, context.getString(R.string.act_open_app_desc),
         listOf(ConfigField.AppPicker("package_name", context.getString(R.string.cfg_app))),
+    )
+    ActionType.LAUNCH_SHORTCUT -> ActionInfo(
+        context.getString(R.string.act_launch_shortcut_label), Icons.Outlined.AppShortcut, context.getString(R.string.act_launch_shortcut_desc),
+        listOf(
+            ConfigField.ShortcutPicker(
+                key = "intent_uri",
+                label = context.getString(R.string.cfg_shortcut),
+                labelKey = "label",
+                packageKey = "package_name",
+            ),
+            ConfigField.InfoText(
+                "_shortcut_info",
+                context.getString(R.string.cfg_info_note_label),
+                context.getString(R.string.cfg_info_shortcut_body),
+            ),
+        ),
     )
     ActionType.OPEN_URL -> ActionInfo(
         context.getString(R.string.act_open_url_label), Icons.Outlined.OpenInBrowser, context.getString(R.string.act_open_url_desc),
@@ -355,6 +372,7 @@ fun ActionType.configSummary(context: Context, config: Map<String, String>): Str
         context.getString(R.string.sum_stream_level, s, config["level"] ?: "?")
     }
     ActionType.OPEN_APP -> config["package_name"]?.takeIf { it.isNotBlank() } ?: context.getString(R.string.sum_not_set)
+    ActionType.LAUNCH_SHORTCUT -> config["label"]?.takeIf { it.isNotBlank() } ?: context.getString(R.string.sum_not_set)
     ActionType.OPEN_URL -> config["url"]?.take(40) ?: context.getString(R.string.sum_no_url)
     ActionType.TTS -> config["text"]?.take(40) ?: context.getString(R.string.sum_no_text)
     ActionType.CLIPBOARD_COPY -> config["text"]?.take(40) ?: context.getString(R.string.sum_no_text)

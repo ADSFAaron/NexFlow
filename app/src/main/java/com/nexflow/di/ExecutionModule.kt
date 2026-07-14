@@ -27,6 +27,7 @@ import com.nexflow.executor.HttpActionExecutor
 import com.nexflow.executor.MediaActionExecutor
 import com.nexflow.executor.MenuActionExecutor
 import com.nexflow.executor.NotificationActionExecutor
+import com.nexflow.executor.LaunchShortcutActionExecutor
 import com.nexflow.executor.OpenAppActionExecutor
 import com.nexflow.executor.OpenUrlActionExecutor
 import com.nexflow.executor.ScreenshotActionExecutor
@@ -128,6 +129,9 @@ abstract class ExecutionModule {
 
     @Binds @IntoSet
     abstract fun bindOpenApp(impl: OpenAppActionExecutor): ActionExecutor
+
+    @Binds @IntoSet
+    abstract fun bindLaunchShortcut(impl: LaunchShortcutActionExecutor): ActionExecutor
 
     @Binds @IntoSet
     abstract fun bindVolume(impl: VolumeActionExecutor): ActionExecutor

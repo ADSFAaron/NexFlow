@@ -184,6 +184,7 @@ import com.nexflow.ui.common.AppPickerDialog
 import com.nexflow.ui.common.FlowIconPickerDialog
 import com.nexflow.ui.common.FlowIcons
 import com.nexflow.ui.common.PermissionSetupDialogs
+import com.nexflow.ui.common.ShortcutPickerDialog
 import com.nexflow.core.automation.model.Variable
 import com.nexflow.core.automation.model.VariableType
 import androidx.compose.ui.graphics.Color
@@ -1392,6 +1393,20 @@ internal fun ConfigDialog(
         )
     }
 
+    var shortcutPickerField by remember { mutableStateOf<ConfigField.ShortcutPicker?>(null) }
+
+    shortcutPickerField?.let { field ->
+        ShortcutPickerDialog(
+            onSelect = { selection ->
+                values[field.key] = selection.intentUri
+                values[field.labelKey] = selection.label
+                values[field.packageKey] = selection.packageName
+                shortcutPickerField = null
+            },
+            onDismiss = { shortcutPickerField = null },
+        )
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
@@ -1539,6 +1554,25 @@ internal fun ConfigDialog(
                                         if (appLabel != null) "$appLabel  ($pkg)"
                                         else if (pkg.isNotBlank()) pkg
                                         else stringResource(R.string.fd_choose_app),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                            }
+
+                            is ConfigField.ShortcutPicker -> {
+                                val storedLabel = values[field.labelKey]?.takeIf { it.isNotBlank() }
+                                val pkg = values[field.packageKey]?.takeIf { it.isNotBlank() }
+                                OutlinedButton(
+                                    onClick = { shortcutPickerField = field },
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text(
+                                        when {
+                                            storedLabel != null && pkg != null -> "$storedLabel  ($pkg)"
+                                            storedLabel != null -> storedLabel
+                                            else -> stringResource(R.string.fd_choose_shortcut)
+                                        },
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
                                     )

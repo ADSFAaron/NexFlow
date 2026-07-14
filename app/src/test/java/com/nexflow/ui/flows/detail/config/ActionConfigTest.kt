@@ -97,6 +97,15 @@ class ActionConfigTest {
     }
 
     @Test
+    fun `launch shortcut exposes the keys read by its executor`() {
+        val picker = ActionType.LAUNCH_SHORTCUT.info(context).fields
+            .filterIsInstance<ConfigField.ShortcutPicker>()
+            .single()
+        assertEquals("intent_uri", picker.key, "executor reads the intent from 'intent_uri'")
+        assertEquals("label", picker.labelKey, "executor and summary read the label from 'label'")
+    }
+
+    @Test
     fun `block markers need no configuration`() {
         listOf(ActionType.ELSE_BLOCK, ActionType.END_IF, ActionType.END_REPEAT).forEach { type ->
             assertTrue(
