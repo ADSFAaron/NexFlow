@@ -41,7 +41,9 @@ import androidx.compose.material.icons.outlined.SaveAlt
 import androidx.compose.material.icons.outlined.Screenshot
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Sms
+import androidx.compose.material.icons.outlined.SpeakerPhone
 import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.TravelExplore
 import androidx.compose.material.icons.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.Wallpaper
@@ -82,6 +84,7 @@ val ActionType.category: ActionCategory
 
         ActionType.VOLUME_ADJUST, ActionType.BRIGHTNESS_ADJUST,
         ActionType.DND_TOGGLE, ActionType.SCREENSHOT, ActionType.SET_WALLPAPER,
+        ActionType.SIMULATE_TAP, ActionType.SPEAKERPHONE,
         -> ActionCategory.DEVICE
 
         ActionType.SEND_SMS, ActionType.CALL_PHONE,
@@ -289,6 +292,29 @@ fun ActionType.info(context: Context): ActionInfo = when (this) {
             ),
         ),
     )
+    ActionType.SIMULATE_TAP -> ActionInfo(
+        context.getString(R.string.act_tap_label), Icons.Outlined.TouchApp, context.getString(R.string.act_tap_desc),
+        listOf(
+            ConfigField.TextInput("x", context.getString(R.string.cfg_tap_x), hint = "540"),
+            ConfigField.TextInput("y", context.getString(R.string.cfg_tap_y), hint = "1200"),
+            ConfigField.InfoText(
+                "_tap_info",
+                context.getString(R.string.cfg_info_requirement_label),
+                context.getString(R.string.cfg_info_tap_body),
+            ),
+        ),
+    )
+    ActionType.SPEAKERPHONE -> ActionInfo(
+        context.getString(R.string.act_speaker_label), Icons.Outlined.SpeakerPhone, context.getString(R.string.act_speaker_desc),
+        listOf(
+            ConfigField.Dropdown(
+                "state", context.getString(R.string.cfg_action), listOf(
+                    "ON" to context.getString(R.string.opt_on),
+                    "OFF" to context.getString(R.string.opt_off),
+                ),
+            ),
+        ),
+    )
     ActionType.SET_WALLPAPER -> ActionInfo(
         context.getString(R.string.act_set_wallpaper_label), Icons.Outlined.Wallpaper, context.getString(R.string.act_set_wallpaper_desc),
         listOf(
@@ -397,6 +423,10 @@ fun ActionType.configSummary(context: Context, config: Map<String, String>): Str
     ActionType.WRITE_FILE -> config["path"]?.take(40) ?: context.getString(R.string.sum_no_path)
     ActionType.SHARE -> config["text"]?.take(40) ?: context.getString(R.string.sum_no_text)
     ActionType.SCREENSHOT -> context.getString(R.string.sum_take_screenshot)
+    ActionType.SIMULATE_TAP -> "(${config["x"] ?: "?"}, ${config["y"] ?: "?"})"
+    ActionType.SPEAKERPHONE -> context.getString(
+        if (config["state"]?.uppercase() == "OFF") R.string.opt_off else R.string.opt_on,
+    )
     ActionType.SET_WALLPAPER -> context.getString(
         when (config["target"]) {
             "HOME" -> R.string.opt_wallpaper_home

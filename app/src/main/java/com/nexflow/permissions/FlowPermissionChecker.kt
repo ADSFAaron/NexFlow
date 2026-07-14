@@ -63,6 +63,11 @@ data class MissingPermission(
     val label: String,
     val runtimePermissions: List<String> = emptyList(),
     val special: SpecialAccess? = null,
+    /**
+     * Set when the flow references an app that is not installed (shared/imported flows, or
+     * the app was uninstalled later) — the wizard's action becomes "open its Play page".
+     */
+    val packageToInstall: String? = null,
 )
 
 /**
@@ -87,14 +92,25 @@ class FlowPermissionChecker @Inject constructor(
             missing.getOrPut(label) { MissingPermission(label, special = special) }
         }
 
+        fun requireApp(packageName: String?) {
+            val pkg = packageName?.trim().orEmpty()
+            if (pkg.isEmpty() || appInstalled(pkg)) return
+            val label = context.getString(R.string.perm_app_missing, pkg)
+            missing.getOrPut(label) { MissingPermission(label, packageToInstall = pkg) }
+        }
+
         flow.triggers.forEach { trigger ->
             when (trigger.type) {
-                TriggerType.APP_LAUNCH ->
+                TriggerType.APP_LAUNCH -> {
                     if (!accessibilityEnabled()) addSpecial(R.string.perm_accessibility, SpecialAccess.ACCESSIBILITY)
-                TriggerType.NOTIFICATION_RECEIVED ->
+                    requireApp(trigger.config["package_name"])
+                }
+                TriggerType.NOTIFICATION_RECEIVED -> {
                     if (!notificationListenerEnabled()) {
                         addSpecial(R.string.perm_notification_access, SpecialAccess.NOTIFICATION_LISTENER)
                     }
+                    requireApp(trigger.config["package_name"])
+                }
                 TriggerType.SMS_RECEIVED ->
                     if (!granted(Manifest.permission.RECEIVE_SMS)) {
                         add(R.string.perm_receive_sms, Manifest.permission.RECEIVE_SMS)
@@ -127,6 +143,7 @@ class FlowPermissionChecker @Inject constructor(
 
         flow.actions.filter { it.enabled }.forEach { action ->
             when (action.type) {
+                ActionType.OPEN_APP -> requireApp(action.config["package_name"])
                 ActionType.SEND_SMS ->
                     if (!granted(Manifest.permission.SEND_SMS)) {
                         add(R.string.perm_send_sms, Manifest.permission.SEND_SMS)
@@ -149,6 +166,8 @@ class FlowPermissionChecker @Inject constructor(
                     }
                 ActionType.SCREENSHOT ->
                     if (!accessibilityEnabled()) addSpecial(R.string.perm_accessibility, SpecialAccess.ACCESSIBILITY)
+                ActionType.SIMULATE_TAP ->
+                    if (!accessibilityEnabled()) addSpecial(R.string.perm_accessibility, SpecialAccess.ACCESSIBILITY)
                 ActionType.BLUETOOTH_TOGGLE ->
                     if (!bluetoothGranted()) {
                         add(R.string.perm_bluetooth, Manifest.permission.BLUETOOTH_CONNECT)
@@ -168,6 +187,9 @@ class FlowPermissionChecker @Inject constructor(
 
     private fun granted(permission: String): Boolean =
         ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+
+    private fun appInstalled(packageName: String): Boolean =
+        runCatching { context.packageManager.getApplicationInfo(packageName, 0) }.isSuccess
 
     private fun bluetoothGranted(): Boolean =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||

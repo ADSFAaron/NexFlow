@@ -49,6 +49,13 @@
     <!-- Set wallpaper action (normal/install-time permission, auto-granted) -->
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
 
+    <!-- Speakerphone action (normal/install-time permission, auto-granted) -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+
+    <!-- Voice input for the AI assistant (SpeechRecognizer) -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+
     <!-- NFC tag scanning -->
     <uses-permission android:name="android.permission.NFC" />
     <uses-feature android:name="android.hardware.nfc" android:required="false" />
@@ -73,6 +80,11 @@
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <!-- SpeechRecognizer service discovery on Android 11+; without this
+             isRecognitionAvailable() returns false even when a recognizer exists. -->
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
         </intent>
     </queries>
 

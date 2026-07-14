@@ -36,23 +36,31 @@ import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Autorenew
+import androidx.compose.material.icons.outlined.Campaign
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -61,6 +69,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -72,6 +81,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -87,11 +98,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.nexflow.R
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.nexflow.prefs.AiPrefs
 import com.nexflow.prefs.AutoStartPrefs
+import com.nexflow.prefs.ExecutionFeedbackPrefs
 import com.nexflow.ui.common.PermissionStatusIcon
 import com.nexflow.ui.flowimport.ImportViewModel
 
@@ -100,12 +115,18 @@ import com.nexflow.ui.flowimport.ImportViewModel
 fun SettingsScreen(
     onAboutClick: () -> Unit = {},
     importVm: ImportViewModel = hiltViewModel(),
+    aiVm: AiSettingsViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     var autoStart by remember { mutableStateOf(AutoStartPrefs.get(context)) }
+    var executionToast by remember { mutableStateOf(ExecutionFeedbackPrefs.isToastEnabled(context)) }
     var logRetention by remember { mutableStateOf(LogRetentionPrefs.get(context)) }
     var showLogRetentionDialog by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
+    var aiApiKey by remember { mutableStateOf(AiPrefs.getApiKey(context)) }
+    var aiModel by remember { mutableStateOf(AiPrefs.getModel(context)) }
+    var showApiKeyDialog by remember { mutableStateOf(false) }
+    var showModelSheet by remember { mutableStateOf(false) }
     // Google Play accessibility policy requires a prominent disclosure of what the service
     // does (and consent) before sending the user to enable it.
     var showAccessibilityDisclosure by remember { mutableStateOf(false) }
@@ -288,6 +309,128 @@ fun SettingsScreen(
         }
     }
 
+    if (showApiKeyDialog) {
+        var keyInput by remember { mutableStateOf(aiApiKey ?: "") }
+        var keyVisible by remember { mutableStateOf(false) }
+        AlertDialog(
+            onDismissRequest = { showApiKeyDialog = false },
+            title = { Text(stringResource(R.string.settings_ai_api_key)) },
+            text = {
+                Column {
+                    Text(
+                        text = stringResource(R.string.settings_ai_api_key_desc),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = keyInput,
+                        onValueChange = { keyInput = it },
+                        singleLine = true,
+                        placeholder = { Text(stringResource(R.string.settings_ai_api_key_hint)) },
+                        visualTransformation = if (keyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { keyVisible = !keyVisible }) {
+                                Icon(
+                                    if (keyVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                                    contentDescription = stringResource(
+                                        if (keyVisible) R.string.settings_ai_api_key_hide else R.string.settings_ai_api_key_show,
+                                    ),
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    AiPrefs.setApiKey(context, keyInput)
+                    aiApiKey = AiPrefs.getApiKey(context)
+                    // Model availability depends on the key; force a refetch next time.
+                    aiVm.resetModels()
+                    showApiKeyDialog = false
+                }) { Text(stringResource(R.string.action_save)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showApiKeyDialog = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
+
+    if (showModelSheet) {
+        val modelsState by aiVm.modelsState.collectAsState()
+        val apiKey = aiApiKey
+        LaunchedEffect(apiKey) { apiKey?.let { aiVm.loadModels(it) } }
+        ModalBottomSheet(
+            onDismissRequest = {
+                showModelSheet = false
+                aiVm.resetModels()
+            },
+        ) {
+            Text(
+                text = stringResource(R.string.settings_ai_model),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 8.dp),
+            )
+            when (val state = modelsState) {
+                AiSettingsViewModel.ModelsState.Idle,
+                AiSettingsViewModel.ModelsState.Loading,
+                -> Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 32.dp),
+                    horizontalArrangement = Arrangement.Center,
+                ) { CircularProgressIndicator() }
+
+                is AiSettingsViewModel.ModelsState.Error -> Column(
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.settings_ai_model_load_failed) +
+                            (state.message?.let { "\n$it" } ?: ""),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedButton(onClick = { apiKey?.let { aiVm.loadModels(it) } }) {
+                        Text(stringResource(R.string.action_retry))
+                    }
+                }
+
+                is AiSettingsViewModel.ModelsState.Loaded -> LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 480.dp),
+                ) {
+                    items(state.models.size) { index ->
+                        val model = state.models[index]
+                        ListItem(
+                            headlineContent = { Text(model.displayName ?: model.modelId) },
+                            supportingContent = { Text(model.modelId) },
+                            leadingContent = {
+                                RadioButton(selected = aiModel == model.modelId, onClick = null)
+                            },
+                            modifier = Modifier.selectable(
+                                selected = aiModel == model.modelId,
+                                role = Role.RadioButton,
+                                onClick = {
+                                    aiModel = model.modelId
+                                    AiPrefs.setModel(context, model.modelId)
+                                    showModelSheet = false
+                                    aiVm.resetModels()
+                                },
+                            ),
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+        }
+    }
+
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = { TopAppBar(title = { Text(stringResource(R.string.settings_title)) }, scrollBehavior = scrollBehavior) },
@@ -310,6 +453,37 @@ fun SettingsScreen(
                         Icon(Icons.Outlined.Language, contentDescription = null)
                     },
                     modifier = Modifier.clickable { showLanguageDialog = true },
+                )
+            }
+
+            item { HorizontalDivider() }
+
+            // ----- AI assistant -----
+            item { SectionHeader(stringResource(R.string.settings_section_ai)) }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.settings_ai_api_key)) },
+                    supportingContent = {
+                        Text(
+                            if (aiApiKey != null) stringResource(R.string.settings_ai_api_key_set)
+                            else stringResource(R.string.settings_ai_api_key_unset),
+                        )
+                    },
+                    leadingContent = { Icon(Icons.Outlined.Key, contentDescription = null) },
+                    modifier = Modifier.clickable { showApiKeyDialog = true },
+                )
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.settings_ai_model)) },
+                    supportingContent = {
+                        Text(
+                            if (aiApiKey != null) aiModel
+                            else stringResource(R.string.settings_ai_model_need_key),
+                        )
+                    },
+                    leadingContent = { Icon(Icons.Outlined.AutoAwesome, contentDescription = null) },
+                    modifier = Modifier.clickable(enabled = aiApiKey != null) { showModelSheet = true },
                 )
             }
 
@@ -551,6 +725,26 @@ fun SettingsScreen(
                         onValueChange = { value ->
                             autoStart = value
                             AutoStartPrefs.set(context, value)
+                        },
+                    ),
+                )
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.settings_execution_toast)) },
+                    supportingContent = { Text(stringResource(R.string.settings_execution_toast_desc)) },
+                    leadingContent = {
+                        Icon(Icons.Outlined.Campaign, contentDescription = null)
+                    },
+                    trailingContent = {
+                        Switch(checked = executionToast, onCheckedChange = null)
+                    },
+                    modifier = Modifier.toggleable(
+                        value = executionToast,
+                        role = Role.Switch,
+                        onValueChange = { value ->
+                            executionToast = value
+                            ExecutionFeedbackPrefs.setToastEnabled(context, value)
                         },
                     ),
                 )

@@ -33,11 +33,14 @@ import com.nexflow.executor.OpenUrlActionExecutor
 import com.nexflow.executor.ScreenshotActionExecutor
 import com.nexflow.executor.SetWallpaperActionExecutor
 import com.nexflow.executor.ShareActionExecutor
+import com.nexflow.executor.SimulateTapActionExecutor
+import com.nexflow.executor.SpeakerphoneActionExecutor
 import com.nexflow.executor.ToastActionExecutor
 import com.nexflow.executor.TtsActionExecutor
 import com.nexflow.executor.VolumeActionExecutor
 import com.nexflow.executor.WifiActionExecutor
 import com.nexflow.executor.WriteFileActionExecutor
+import com.nexflow.trigger.AmbientLightTriggerHandler
 import com.nexflow.trigger.AppLaunchTriggerHandler
 import com.nexflow.trigger.BatteryTriggerHandler
 import com.nexflow.trigger.BluetoothTriggerHandler
@@ -48,6 +51,7 @@ import com.nexflow.trigger.ManualTriggerHandler
 import com.nexflow.trigger.NfcTagTriggerHandler
 import com.nexflow.trigger.NotificationTriggerHandler
 import com.nexflow.trigger.ScreenTriggerHandler
+import com.nexflow.trigger.ShakeTriggerHandler
 import com.nexflow.trigger.TimeTriggerHandler
 import com.nexflow.trigger.WifiTriggerHandler
 import dagger.Binds
@@ -92,6 +96,12 @@ abstract class ExecutionModule {
 
     @Binds @IntoSet
     abstract fun bindAppLaunchTrigger(impl: AppLaunchTriggerHandler): TriggerHandler
+
+    @Binds @IntoSet
+    abstract fun bindShakeTrigger(impl: ShakeTriggerHandler): TriggerHandler
+
+    @Binds @IntoSet
+    abstract fun bindAmbientLightTrigger(impl: AmbientLightTriggerHandler): TriggerHandler
 
     // IncomingCall + SmsReceived trigger bindings live in the `github` flavor (TelephonyModule).
 
@@ -159,6 +169,12 @@ abstract class ExecutionModule {
 
     @Binds @IntoSet
     abstract fun bindScreenshot(impl: ScreenshotActionExecutor): ActionExecutor
+
+    @Binds @IntoSet
+    abstract fun bindSimulateTap(impl: SimulateTapActionExecutor): ActionExecutor
+
+    @Binds @IntoSet
+    abstract fun bindSpeakerphone(impl: SpeakerphoneActionExecutor): ActionExecutor
 
     @Binds @IntoSet
     abstract fun bindSetWallpaper(impl: SetWallpaperActionExecutor): ActionExecutor

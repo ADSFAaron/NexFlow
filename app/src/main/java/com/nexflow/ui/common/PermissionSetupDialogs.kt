@@ -16,6 +16,8 @@
 package com.nexflow.ui.common
 
 import android.app.Activity
+import android.content.Intent
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -181,6 +183,24 @@ fun PermissionSetupDialogs(
                                 val intent = PermissionIntents.forSpecial(context, step.special)
                                 if (intent != null) settingsLauncher.launch(intent) else onSkip()
                             }
+                            step.packageToInstall != null -> {
+                                // Missing app (shared/imported flow, or uninstalled later):
+                                // send the user to its Play Store page; returning re-checks.
+                                val market = Intent(
+                                    Intent.ACTION_VIEW,
+                                    Uri.parse("market://details?id=${step.packageToInstall}"),
+                                )
+                                runCatching { settingsLauncher.launch(market) }.recoverCatching {
+                                    settingsLauncher.launch(
+                                        Intent(
+                                            Intent.ACTION_VIEW,
+                                            Uri.parse(
+                                                "https://play.google.com/store/apps/details?id=${step.packageToInstall}",
+                                            ),
+                                        ),
+                                    )
+                                }.getOrElse { onSkip() }
+                            }
                             else -> onSkip()
                         }
                     },
@@ -189,6 +209,7 @@ fun PermissionSetupDialogs(
                         when {
                             permanentlyDenied -> stringResource(R.string.flows_open_settings)
                             isRuntime -> stringResource(R.string.action_grant)
+                            step.packageToInstall != null -> stringResource(R.string.action_install)
                             else -> stringResource(R.string.action_enable)
                         },
                     )

@@ -44,6 +44,8 @@ enum class ActionType {
     SHARE,
     SCREENSHOT,
     SET_WALLPAPER,
+    SIMULATE_TAP,
+    SPEAKERPHONE,
     SHOW_MENU,
     MENU_CASE,
     END_MENU,

@@ -8,4 +8,7 @@
     <exclude domain="database" path="nexflow.db" />
     <exclude domain="database" path="nexflow.db-wal" />
     <exclude domain="database" path="nexflow.db-shm" />
+    <!-- Gemini API key — must stay off cloud backups on API 30 too (mirrors
+         data_extraction_rules.xml; the Settings UI promises this exclusion). -->
+    <exclude domain="sharedpref" path="nexflow_ai.xml" />
 </full-backup-content>
