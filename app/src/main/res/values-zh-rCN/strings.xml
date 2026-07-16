@@ -1,5 +1,5 @@
 <resources>
-    <string name="accessibility_service_description">NexFlow 使用无障碍服务提供两项自动化功能：在流程的截图动作执行时截取屏幕画面，以及检测当前切换到前台的 App，以便触发您的“App 启动”条件。本服务仅读取前台 App 的包名，不会读取屏幕内容、文字或密码。</string>
+    <string name="accessibility_service_description">NexFlow 使用无障碍服务提供三项自动化功能：在流程的截图动作执行时截取屏幕画面、在流程执行模拟点击动作时于您指定的座标执行点击手势，以及检测当前切换到前台的 App，以便触发您的“App 启动”条件。本服务仅读取前台 App 的包名，不会读取屏幕内容、文字或密码，也不会将任何数据传送到服务器。本服务仅在您手动开启后才会运行。</string>
 
     <!-- Widgets -->
     <string name="widget_overview_description">显示近期流程以便快速启动</string>

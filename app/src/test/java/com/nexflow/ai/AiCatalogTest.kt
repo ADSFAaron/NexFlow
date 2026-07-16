@@ -16,6 +16,7 @@
 package com.nexflow.ai
 
 import android.content.Context
+import com.nexflow.FlavorFeatures
 import com.nexflow.core.automation.model.ActionType
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.ui.flows.detail.config.ConfigField
@@ -23,6 +24,7 @@ import com.nexflow.ui.flows.detail.config.info
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.DynamicTest
@@ -41,12 +43,29 @@ class AiCatalogTest {
     }
 
     @TestFactory
-    fun `system instruction lists every trigger and action type`(): List<DynamicTest> {
+    fun `system instruction lists every visible trigger and action type`(): List<DynamicTest> {
         val instruction = AiCatalog.systemInstruction(context)
-        val allTypes = TriggerType.entries.map { it.name } + ActionType.entries.map { it.name }
-        return allTypes.map { name ->
+        val visible =
+            TriggerType.entries.filter { it !in FlavorFeatures.hiddenTriggerTypes }.map { it.name } +
+                ActionType.entries.filter { it !in FlavorFeatures.hiddenActionTypes }.map { it.name }
+        return visible.map { name ->
             DynamicTest.dynamicTest(name) {
                 assertTrue("- $name:" in instruction, "$name missing from system instruction")
+            }
+        }
+    }
+
+    // Flavor-hidden types (e.g. SMS on play) must not be described to Gemini, or it could
+    // build flows the picker itself refuses to show.
+    @TestFactory
+    fun `system instruction omits flavor-hidden types`(): List<DynamicTest> {
+        val instruction = AiCatalog.systemInstruction(context)
+        val hidden =
+            FlavorFeatures.hiddenTriggerTypes.map { it.name } +
+                FlavorFeatures.hiddenActionTypes.map { it.name }
+        return hidden.map { name ->
+            DynamicTest.dynamicTest(name) {
+                assertFalse("- $name:" in instruction, "$name is flavor-hidden but appears in the instruction")
             }
         }
     }

@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">NexFlow</string>
-    <string name="accessibility_service_description">NexFlow uses the Accessibility Service for two automation features: capturing a screenshot when a flow\'s screenshot action runs, and detecting which app is brought to the foreground so your \"App Launched\" triggers can fire. It only reads the package name of the app in front; it does not read screen content, text, or passwords.</string>
+    <string name="accessibility_service_description">NexFlow uses the Accessibility Service for three automation features: capturing a screenshot when a flow\'s screenshot action runs, performing a tap gesture at coordinates you specify when a flow runs a simulated-tap action, and detecting which app is brought to the foreground so your \"App Launched\" triggers can fire. It only reads the package name of the app in front; it does not read screen content, text, or passwords, and it does not send any data to a server. It runs only after you manually enable it.</string>
 
     <!-- Widgets -->
     <string name="widget_overview_description">Show recent flows for quick launch</string>
