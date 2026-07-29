@@ -17,6 +17,7 @@ package com.nexflow.ai
 
 import android.content.Context
 import com.nexflow.FlavorFeatures
+import com.nexflow.core.automation.interpreter.FlowInterpreter
 import com.nexflow.core.automation.model.ActionType
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.flowschema.ActionJson
@@ -48,7 +49,12 @@ object FlowDraftMapper {
         val isValid: Boolean get() = flow != null && errors.isEmpty()
     }
 
-    fun fromArgs(args: JsonObject, context: Context): DraftResult {
+    /**
+     * @param knownGlobals names of the global variables that exist on this device. A generated
+     *   SET_VARIABLE writing any other `g:` name is an error, not a new global — the engine
+     *   refuses to run it, so it has to go back to Gemini for repair instead of shipping.
+     */
+    fun fromArgs(args: JsonObject, context: Context, knownGlobals: Set<String> = emptySet()): DraftResult {
         val errors = mutableListOf<String>()
 
         val name = args.stringValue("name")?.trim().orEmpty()
@@ -66,6 +72,7 @@ object FlowDraftMapper {
         if (actions.isEmpty()) errors += "actions: at least one action is required"
 
         errors += validateMenuMarkers(actions)
+        errors += validateGlobalWrites(actions, knownGlobals)
 
         if (errors.isNotEmpty()) return DraftResult(flow = null, errors = errors)
 
@@ -219,6 +226,23 @@ object FlowDraftMapper {
         if (menuDepth > 0) errors += "actions: unclosed SHOW_MENU (missing END_MENU)"
         return errors
     }
+
+    /** SET_VARIABLE may create a local variable on the fly, but never a global. */
+    private fun validateGlobalWrites(actions: List<ActionJson>, knownGlobals: Set<String>): List<String> =
+        actions.withIndex()
+            .filter { (_, a) -> a.type == "SET_VARIABLE" }
+            .mapNotNull { (i, a) ->
+                val target = (a.config["variable_name"] as? JsonPrimitive)?.contentOrNull?.trim()
+                    ?: return@mapNotNull null
+                val prefix = FlowInterpreter.GLOBAL_PREFIX
+                if (!target.startsWith(prefix)) return@mapNotNull null
+                val bare = target.removePrefix(prefix)
+                if (bare in knownGlobals) return@mapNotNull null
+                "actions[$i].config.variable_name: global variable \"$target\" does not exist. " +
+                    "Existing globals: ${
+                        knownGlobals.joinToString(", ") { "$prefix$it" }.ifEmpty { "(none)" }
+                    }. Use a local variable name (no \"$prefix\" prefix) instead."
+            }
 
     private fun JsonObject.stringValue(key: String): String? =
         (this[key] as? JsonPrimitive)?.contentOrNull

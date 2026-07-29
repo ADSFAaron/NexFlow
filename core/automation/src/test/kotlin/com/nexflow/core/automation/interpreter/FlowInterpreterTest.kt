@@ -156,4 +156,84 @@ class FlowInterpreterTest {
         assertTrue(result is InterpreterResult.Success)
         assertEquals(listOf("tick", "tick", "tick"), executor.messages)
     }
+
+    // ----- global variables -----
+
+    @Test
+    fun `global variable is readable via g-prefixed reference`() = runTest {
+        val executor = RecordingExecutor()
+        val result = interpreter(executor).execute(
+            flow(
+                listOf(action(ActionType.TOAST, 0, mapOf("message" to "count is {{g:counter}}"))),
+            ),
+            globalVariables = mapOf("counter" to "7"),
+        )
+        assertTrue(result is InterpreterResult.Success)
+        assertEquals(listOf("count is 7"), executor.messages)
+    }
+
+    @Test
+    fun `setting a g-prefixed variable reports the persisted global`() = runTest {
+        val persisted = mutableMapOf<String, String>()
+        val result = interpreter().execute(
+            flow(
+                listOf(
+                    action(ActionType.SET_VARIABLE, 0, mapOf("variable_name" to "g:counter", "value" to "{{g:counter}}!")),
+                ),
+            ),
+            globalVariables = mapOf("counter" to "hi"),
+            onGlobalVariableSet = { name, value -> persisted[name] = value },
+        )
+        assertTrue(result is InterpreterResult.Success)
+        // Callback receives the un-prefixed name and the interpolated new value.
+        assertEquals(mapOf("counter" to "hi!"), persisted)
+    }
+
+    @Test
+    fun `setting a local variable does not report a global`() = runTest {
+        val persisted = mutableMapOf<String, String>()
+        interpreter().execute(
+            flow(
+                listOf(action(ActionType.SET_VARIABLE, 0, mapOf("variable_name" to "local", "value" to "x"))),
+            ),
+            onGlobalVariableSet = { name, value -> persisted[name] = value },
+        )
+        assertTrue(persisted.isEmpty())
+    }
+
+    @Test
+    fun `writing an undeclared global fails the run instead of creating it`() = runTest {
+        val executor = RecordingExecutor()
+        val persisted = mutableMapOf<String, String>()
+        val result = interpreter(executor).execute(
+            flow(
+                listOf(
+                    action(ActionType.SET_VARIABLE, 0, mapOf("variable_name" to "g:countr", "value" to "1")),
+                    action(ActionType.TOAST, 1, mapOf("message" to "after")),
+                ),
+            ),
+            globalVariables = mapOf("counter" to "0"),
+            onGlobalVariableSet = { name, value -> persisted[name] = value },
+        )
+        assertTrue(result is InterpreterResult.Failure)
+        assertTrue("g:countr" in (result as InterpreterResult.Failure).message)
+        assertTrue(persisted.isEmpty())
+        // The run stops at the bad write; nothing after it executes.
+        assertTrue(executor.messages.isEmpty())
+    }
+
+    @Test
+    fun `an undeclared global is never readable in the same run`() = runTest {
+        val executor = RecordingExecutor()
+        val result = interpreter(executor).execute(
+            flow(
+                listOf(
+                    action(ActionType.SET_VARIABLE, 0, mapOf("variable_name" to "g:typo", "value" to "written")),
+                    action(ActionType.TOAST, 1, mapOf("message" to "{{g:typo}}")),
+                ),
+            ),
+        )
+        assertTrue(result is InterpreterResult.Failure)
+        assertTrue(executor.messages.isEmpty())
+    }
 }

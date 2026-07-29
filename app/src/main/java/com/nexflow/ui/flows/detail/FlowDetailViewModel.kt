@@ -21,10 +21,13 @@ import androidx.lifecycle.viewModelScope
 import com.nexflow.core.automation.model.Action
 import com.nexflow.core.automation.model.ActionType
 import com.nexflow.core.automation.model.Flow
+import com.nexflow.core.automation.model.GlobalVariable
 import com.nexflow.core.automation.model.Trigger
 import com.nexflow.core.automation.model.TriggerLogic
 import com.nexflow.core.automation.model.Variable
+import com.nexflow.core.automation.interpreter.FlowInterpreter
 import com.nexflow.core.automation.repository.FlowRepository
+import com.nexflow.core.automation.repository.GlobalVariableRepository
 import com.nexflow.permissions.FlowPermissionChecker
 import com.nexflow.permissions.PermissionReminder
 import com.nexflow.permissions.PermissionSetup
@@ -33,6 +36,7 @@ import com.nexflow.permissions.PermissionSetupResult
 import com.nexflow.core.flowschema.ActionJson
 import com.nexflow.core.flowschema.ConditionJson
 import com.nexflow.core.flowschema.FlowJson
+import com.nexflow.core.flowschema.GlobalVariableJson
 import com.nexflow.core.flowschema.TriggerJson
 import com.nexflow.core.flowschema.VariableJson
 import com.nexflow.service.FlowEngine
@@ -59,6 +63,7 @@ import javax.inject.Inject
 class FlowDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: FlowRepository,
+    private val globalVariableRepository: GlobalVariableRepository,
     private val flowEngine: FlowEngine,
     private val permissionChecker: FlowPermissionChecker,
 ) : ViewModel() {
@@ -68,6 +73,14 @@ class FlowDetailViewModel @Inject constructor(
     val flow: StateFlow<Flow?> = repository.observeAll()
         .map { flows -> flows.find { it.id == flowId } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    private val globalVariables: StateFlow<List<GlobalVariable>> = globalVariableRepository.observeAll()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Global variable reference tokens (e.g. "g:counter") offered by the insert-variable menu. */
+    val globalVariableRefs: StateFlow<List<String>> = globalVariables
+        .map { list -> list.map { "${FlowInterpreter.GLOBAL_PREFIX}${it.name}" } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     // Same permission gate as the Flows list: enabling a flow that is missing permissions
     // must be blocked and walked through the guided setup, never written silently.
@@ -320,13 +333,35 @@ class FlowDetailViewModel @Inject constructor(
             variables = f.variables.map { v ->
                 VariableJson(v.name, v.type.name, JsonPrimitive(v.defaultValue))
             },
+            // Declare the globals this flow uses so it still runs after import elsewhere;
+            // only the declaration travels, never this device's live value.
+            globalVariables = referencedGlobals(f).map { g ->
+                GlobalVariableJson(g.name, g.type.name, g.defaultValue)
+            },
         )
         return json.encodeToString(flowJson)
+    }
+
+    /** Globals named by a `{{g:x}}` reference or a `g:x` SET_VARIABLE target anywhere in [f]. */
+    private fun referencedGlobals(f: Flow): List<GlobalVariable> {
+        val text = (f.actions.flatMap { it.config.values } + f.triggers.flatMap { it.config.values })
+            .joinToString("\n")
+        val referenced = GLOBAL_REF_REGEX.findAll(text).map { it.groupValues[1].trim() }.toMutableSet()
+        f.actions.filter { it.type == ActionType.SET_VARIABLE }
+            .mapNotNull { it.config["variable_name"] ?: it.config["name"] }
+            .filter { it.startsWith(FlowInterpreter.GLOBAL_PREFIX) }
+            .forEach { referenced += it.removePrefix(FlowInterpreter.GLOBAL_PREFIX) }
+        return globalVariables.value.filter { it.name in referenced }
     }
 
     private fun edit(transform: Flow.() -> Flow) {
         val current = flow.value ?: return
         val updated = current.transform().copy(updatedAt = System.currentTimeMillis())
         viewModelScope.launch { repository.save(updated) }
+    }
+
+    private companion object {
+        // Both braces are escaped explicitly — an unescaped `}}` trips some Android regex engines.
+        val GLOBAL_REF_REGEX = Regex("""\{\{${FlowInterpreter.GLOBAL_PREFIX}([^}]+)\}\}""")
     }
 }

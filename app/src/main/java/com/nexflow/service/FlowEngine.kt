@@ -27,6 +27,7 @@ import com.nexflow.core.automation.model.ExecutionStatus
 import com.nexflow.core.automation.model.Flow as AutomationFlow
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.automation.repository.FlowRepository
+import com.nexflow.core.automation.repository.GlobalVariableRepository
 import com.nexflow.core.automation.trigger.TriggerHandler
 import com.nexflow.prefs.ExecutionFeedbackPrefs
 import com.nexflow.trigger.TimeTriggerScheduler
@@ -52,6 +53,7 @@ import javax.inject.Singleton
 @Singleton
 class FlowEngine @Inject constructor(
     private val repository: FlowRepository,
+    private val globalVariableRepository: GlobalVariableRepository,
     private val triggerHandlerSet: Set<@JvmSuppressWildcards TriggerHandler>,
     private val actionExecutorSet: Set<@JvmSuppressWildcards ActionExecutor>,
     private val timeTriggerScheduler: TimeTriggerScheduler,
@@ -164,8 +166,17 @@ class FlowEngine @Inject constructor(
                 }
             }
             val startMs = System.currentTimeMillis()
+            val globals = globalVariableRepository.currentValues()
             val result = try {
-                interpreter.execute(flow, onActionStart)
+                interpreter.execute(
+                    flow = flow,
+                    globalVariables = globals,
+                    onActionStart = onActionStart,
+                    // Only declared globals reach this callback — the interpreter fails the run on a
+                    // write to an unknown g: name, so a typo lands in the execution log instead of
+                    // silently creating a global nobody declared.
+                    onGlobalVariableSet = globalVariableRepository::updateValue,
+                )
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

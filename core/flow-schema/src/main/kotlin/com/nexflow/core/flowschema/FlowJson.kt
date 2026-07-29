@@ -38,6 +38,24 @@ data class FlowJson(
     val conditions: List<ConditionJson>,
     val actions: List<ActionJson>,
     val variables: List<VariableJson>,
+    /**
+     * Global variables this flow references as `{{g:name}}`. Declared here so an exported flow
+     * stays runnable on another device — the importer creates any that are missing. Optional:
+     * files written before global variables existed simply omit it.
+     */
+    @SerialName("global_variables") val globalVariables: List<GlobalVariableJson> = emptyList(),
+)
+
+/**
+ * A global variable *declaration* carried by an exported flow. Only the default value travels —
+ * the live value is device state (a counter mid-count means nothing on another phone), so an
+ * imported global starts at its default.
+ */
+@Serializable
+data class GlobalVariableJson(
+    val name: String,
+    val type: String,
+    @SerialName("default_value") val defaultValue: String,
 )
 
 @Serializable

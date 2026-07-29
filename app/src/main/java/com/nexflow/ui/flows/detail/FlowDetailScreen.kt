@@ -82,13 +82,17 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.ArrowDropDown
 import androidx.compose.material.icons.outlined.Code
+import androidx.compose.material.icons.outlined.DataObject
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.outlined.Nfc
+import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material.icons.outlined.Warning
@@ -99,6 +103,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.DropdownMenuItem
@@ -118,6 +123,7 @@ import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -142,6 +148,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -179,8 +186,10 @@ import kotlinx.coroutines.delay
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
@@ -192,6 +201,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.nexflow.core.automation.model.Action
 import com.nexflow.core.automation.model.Flow
 import com.nexflow.FlavorFeatures
+import com.nexflow.core.automation.interpreter.FlowInterpreter
 import com.nexflow.core.automation.model.ActionType
 import com.nexflow.core.automation.model.Trigger
 import com.nexflow.core.automation.model.TriggerLogic
@@ -207,6 +217,8 @@ import com.nexflow.core.automation.model.VariableType
 import androidx.compose.ui.graphics.Color
 import com.nexflow.ui.flows.detail.config.ActionInfo
 import com.nexflow.ui.flows.detail.config.ConfigField
+import com.nexflow.ui.flows.detail.config.CoordinatePickerDialog
+import com.nexflow.ui.flows.detail.config.pointFrom
 import com.nexflow.ui.flows.detail.config.TriggerInfo
 import com.nexflow.ui.flows.detail.config.category
 import com.nexflow.ui.flows.detail.config.configSummary
@@ -335,11 +347,14 @@ private fun FlowDetailContent(
         onCancel = vm::cancelPermissionSetup,
     )
 
-    val flowVariables = remember(f.actions, f.variables) {
+    val globalVariableRefs by vm.globalVariableRefs.collectAsState()
+    val flowVariables = remember(f.actions, f.variables, globalVariableRefs) {
         (
             f.variables.map { it.name } +
                 f.actions.filter { it.type == ActionType.SET_VARIABLE }
-                    .mapNotNull { it.config["variable_name"]?.takeIf { n -> n.isNotBlank() } }
+                    .mapNotNull { it.config["variable_name"]?.takeIf { n -> n.isNotBlank() } } +
+                // Global (cross-flow) variables, referenced as {{g:name}}.
+                globalVariableRefs
             ).distinct()
     }
 
@@ -1440,7 +1455,13 @@ internal fun ConfigDialog(
     val timePickerInputModes = remember { mutableStateMapOf<String, Boolean>() }
 
     val firstTextInputKey = remember(fields) {
-        fields.filterIsInstance<ConfigField.TextInput>().firstOrNull()?.key
+        fields.firstNotNullOfOrNull { field ->
+            when (field) {
+                is ConfigField.TextInput -> field.key
+                is ConfigField.VariableNameInput -> field.key
+                else -> null
+            }
+        }
     }
     val firstFieldFocusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -1453,6 +1474,31 @@ internal fun ConfigDialog(
             keyboardController?.show()
         }
     }
+
+    // Variable safety net, shared by the in-dialog banners and the Save gate. Two kinds of typo
+    // are caught: a {{ref}} no known variable matches, and a `g:` SET_VARIABLE target no global
+    // declares (that one has no braces, so the {{ref}} scan can't see it). Both fail silently or
+    // noisily at run time, so Save stays disabled until they're fixed.
+    val unknownRefs by remember(availableVariables) {
+        derivedStateOf {
+            val known = availableVariables.toSet()
+            VARIABLE_REF_REGEX.findAll(values.values.joinToString("\n"))
+                .map { it.groupValues[1].trim() }
+                .filter { it.isNotEmpty() && it !in known }
+                .distinct()
+                .toList()
+        }
+    }
+    val undeclaredGlobals by remember(availableVariables, fields) {
+        derivedStateOf {
+            val known = availableVariables.toSet()
+            fields.filterIsInstance<ConfigField.VariableNameInput>()
+                .mapNotNull { values[it.key]?.trim() }
+                .filter { isGlobalVariable(it) && it !in known }
+                .distinct()
+        }
+    }
+    val hasVariableError = unknownRefs.isNotEmpty() || undeclaredGlobals.isNotEmpty()
 
     var appPickerKey by remember { mutableStateOf<String?>(null) }
 
@@ -1491,54 +1537,43 @@ internal fun ConfigDialog(
                     modifier = Modifier.verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
+                    if (unknownRefs.isNotEmpty()) {
+                        UnknownVariableWarning(unknownRefs)
+                    }
+                    if (undeclaredGlobals.isNotEmpty()) {
+                        UndeclaredGlobalWarning(undeclaredGlobals)
+                    }
                     fields.forEach { field ->
                         when (field) {
                             is ConfigField.TextInput -> {
-                                OutlinedTextField(
+                                VariableInsertField(
                                     value = values[field.key] ?: "",
                                     onValueChange = { values[field.key] = it },
-                                    label = { Text(field.label) },
-                                    placeholder = if (field.hint.isNotBlank()) {
-                                        { Text(field.hint, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                                    } else null,
-                                    keyboardOptions = KeyboardOptions(
-                                        imeAction = if (field.multiline) ImeAction.Default else ImeAction.Next,
-                                    ),
-                                    modifier = Modifier.fillMaxWidth().let {
-                                        if (field.key == firstTextInputKey) it.focusRequester(firstFieldFocusRequester) else it
-                                    },
-                                    minLines = if (field.multiline) 3 else 1,
-                                    maxLines = if (field.multiline) 5 else 1,
+                                    label = field.label,
+                                    availableVariables = availableVariables,
+                                    hint = field.hint,
+                                    multiline = field.multiline,
+                                    imeNext = !field.multiline,
+                                    focusRequester = if (field.key == firstTextInputKey) firstFieldFocusRequester else null,
                                 )
-                                if (availableVariables.isNotEmpty()) {
-                                    Row(
-                                        modifier = Modifier.horizontalScroll(rememberScrollState()),
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        Icon(
-                                            Icons.Outlined.Code,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(14.dp),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                        availableVariables.forEach { varName ->
-                                            AssistChip(
-                                                onClick = {
-                                                    val cur = values[field.key] ?: ""
-                                                    values[field.key] = cur + "{{$varName}}"
-                                                },
-                                                label = {
-                                                    Text(
-                                                        varName,
-                                                        style = MaterialTheme.typography.labelSmall,
-                                                    )
-                                                },
-                                            )
-                                        }
-                                    }
-                                }
                             }
+
+                            is ConfigField.VariableNameInput -> VariableNameField(
+                                value = values[field.key] ?: "",
+                                onValueChange = { values[field.key] = it },
+                                label = field.label,
+                                hint = field.hint,
+                                knownVariables = availableVariables,
+                                isUndeclaredGlobal = (values[field.key] ?: "").trim() in undeclaredGlobals,
+                                focusRequester = if (field.key == firstTextInputKey) firstFieldFocusRequester else null,
+                            )
+
+                            is ConfigField.ConditionInput -> ConditionBuilderField(
+                                label = field.label,
+                                expression = values[field.key] ?: "",
+                                onExpressionChange = { values[field.key] = it },
+                                availableVariables = availableVariables,
+                            )
 
                             is ConfigField.Dropdown -> DropdownConfigField(
                                 field = field,
@@ -1962,6 +1997,41 @@ internal fun ConfigDialog(
                                 }
                             }
 
+                            is ConfigField.ScreenCoordinatePicker -> {
+                                val endXKey = field.endXKey
+                                val endYKey = field.endYKey
+                                val swipeMode = endXKey != null && endYKey != null
+                                var showPicker by remember { mutableStateOf(false) }
+
+                                if (showPicker) {
+                                    CoordinatePickerDialog(
+                                        swipeMode = swipeMode,
+                                        initialStart = pointFrom(values[field.xKey], values[field.yKey]),
+                                        initialEnd = if (swipeMode) {
+                                            pointFrom(values[endXKey], values[endYKey])
+                                        } else null,
+                                        onDismiss = { showPicker = false },
+                                        onConfirm = { pickedStart, pickedEnd ->
+                                            values[field.xKey] = pickedStart.x.toInt().toString()
+                                            values[field.yKey] = pickedStart.y.toInt().toString()
+                                            if (endXKey != null && endYKey != null && pickedEnd != null) {
+                                                values[endXKey] = pickedEnd.x.toInt().toString()
+                                                values[endYKey] = pickedEnd.y.toInt().toString()
+                                            }
+                                            showPicker = false
+                                        },
+                                    )
+                                }
+                                OutlinedButton(
+                                    onClick = { showPicker = true },
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Icon(Icons.Outlined.TouchApp, contentDescription = null)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(field.label)
+                                }
+                            }
+
                             is ConfigField.InfoText -> {
                                 Surface(
                                     color = if (field.isWarning) MaterialTheme.colorScheme.errorContainer
@@ -2149,12 +2219,16 @@ internal fun ConfigDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = {
-                timePickerStates.forEach { (key, state) ->
-                    values[key] = "${state.hour.toString().padStart(2, '0')}:${state.minute.toString().padStart(2, '0')}"
-                }
-                onConfirm(values.toMap())
-            }) { Text(stringResource(R.string.action_save)) }
+            TextButton(
+                onClick = {
+                    timePickerStates.forEach { (key, state) ->
+                        values[key] = "${state.hour.toString().padStart(2, '0')}:${state.minute.toString().padStart(2, '0')}"
+                    }
+                    onConfirm(values.toMap())
+                },
+                // A typo'd variable name never does what the user meant, so don't let it be saved.
+                enabled = !hasVariableError,
+            ) { Text(stringResource(R.string.action_save)) }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
@@ -2212,6 +2286,353 @@ private fun DropdownConfigField(
                     },
                 )
             }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Variable-aware inputs: insert menu + structured condition builder
+// ---------------------------------------------------------------------------
+
+/** Matches {{name}} references. Explicit \}\} escape per the known Android regex quirk. */
+private val VARIABLE_REF_REGEX = Regex("""\{\{([^}]+)\}\}""")
+
+/** Comparison operators the interpreter understands, two-char first so parsing is unambiguous. */
+private val CONDITION_OPERATORS = listOf("==", "!=", "<=", ">=", "<", ">")
+
+private fun operatorLabel(op: String, context: Context): String = when (op) {
+    "==" -> context.getString(R.string.op_equals)
+    "!=" -> context.getString(R.string.op_not_equals)
+    "<" -> context.getString(R.string.op_less)
+    "<=" -> context.getString(R.string.op_less_equal)
+    ">" -> context.getString(R.string.op_greater)
+    ">=" -> context.getString(R.string.op_greater_equal)
+    else -> op
+}
+
+/**
+ * Splits an expression into (left, operator, right). Mirrors [FlowInterpreter]'s parser:
+ * two-char operators win over their single-char prefixes, and an operator at index 0 is
+ * ignored. No operator found -> the whole string is the left operand (a truthy check).
+ */
+internal fun parseCondition(expression: String): Triple<String, String, String> {
+    val trimmed = expression.trim()
+    for (op in CONDITION_OPERATORS) {
+        val idx = trimmed.indexOf(op)
+        if (idx > 0) {
+            return Triple(
+                trimmed.substring(0, idx).trim(),
+                op,
+                trimmed.substring(idx + op.length).trim(),
+            )
+        }
+    }
+    return Triple(trimmed, "==", "")
+}
+
+/** Rebuilds the interpreter expression. An empty right operand stores just the left. */
+internal fun serializeCondition(left: String, op: String, right: String): String {
+    val l = left.trim()
+    val r = right.trim()
+    return when {
+        l.isEmpty() && r.isEmpty() -> ""
+        r.isEmpty() -> l
+        else -> "$l $op $r"
+    }
+}
+
+/**
+ * Outlined text field with a trailing "insert variable" menu. Selecting a variable drops
+ * `{{name}}` at the caret (not blindly at the end), so the user never hand-types a name and
+ * can't introduce a typo. The parent's [value] String stays the source of truth.
+ */
+@Composable
+private fun VariableInsertField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    availableVariables: List<String>,
+    modifier: Modifier = Modifier,
+    hint: String = "",
+    multiline: Boolean = false,
+    imeNext: Boolean = true,
+    focusRequester: FocusRequester? = null,
+) {
+    var tfv by remember { mutableStateOf(TextFieldValue(value, TextRange(value.length))) }
+    // Resync if the value is rewritten from outside (e.g. the condition builder re-parses).
+    if (tfv.text != value) {
+        tfv = TextFieldValue(value, TextRange(value.length))
+    }
+    var menuOpen by remember { mutableStateOf(false) }
+
+    OutlinedTextField(
+        value = tfv,
+        onValueChange = {
+            tfv = it
+            onValueChange(it.text)
+        },
+        label = { Text(label) },
+        placeholder = if (hint.isNotBlank()) {
+            { Text(hint, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        } else null,
+        keyboardOptions = KeyboardOptions(
+            imeAction = if (imeNext) ImeAction.Next else ImeAction.Default,
+        ),
+        trailingIcon = if (availableVariables.isNotEmpty()) {
+            {
+                Box {
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(
+                            Icons.Outlined.DataObject,
+                            contentDescription = stringResource(R.string.cfg_insert_variable),
+                        )
+                    }
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        availableVariables.forEach { varName ->
+                            DropdownMenuItem(
+                                text = { VariableMenuLabel("{{$varName}}", isGlobalVariable(varName)) },
+                                onClick = {
+                                    val start = tfv.selection.min
+                                    val end = tfv.selection.max
+                                    val insert = "{{$varName}}"
+                                    val newText = tfv.text.replaceRange(start, end, insert)
+                                    tfv = TextFieldValue(newText, TextRange(start + insert.length))
+                                    onValueChange(newText)
+                                    menuOpen = false
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+        } else null,
+        minLines = if (multiline) 3 else 1,
+        maxLines = if (multiline) 5 else 1,
+        modifier = modifier
+            .fillMaxWidth()
+            .let { if (focusRequester != null) it.focusRequester(focusRequester) else it },
+    )
+}
+
+/** Global variables are namespaced `g:name`; used to colour-code them apart from local ones. */
+private fun isGlobalVariable(name: String): Boolean = name.startsWith(FlowInterpreter.GLOBAL_PREFIX)
+
+/**
+ * One dropdown row for a variable, colour-coded: global variables (`g:name`) use the tertiary
+ * colour + a globe icon, local ones the default text + a code icon.
+ */
+@Composable
+private fun VariableMenuLabel(display: String, isGlobal: Boolean) {
+    val color = if (isGlobal) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurface
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Icon(
+            if (isGlobal) Icons.Outlined.Public else Icons.Outlined.Code,
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            tint = color,
+        )
+        Text(display, color = color)
+        if (isGlobal) {
+            Text(
+                stringResource(R.string.cfg_variable_global_tag),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.tertiary,
+            )
+        }
+    }
+}
+
+/**
+ * Free-text field for a variable *name* with a dropdown of existing local/global variables.
+ * Picking one stores the bare name (`counter` or `g:shared`); typing a new *local* name is allowed
+ * too, so SET_VARIABLE can still create one. A `g:` name must already exist — [isUndeclaredGlobal]
+ * marks the typo case, which the engine refuses to run. Globals are colour-coded via
+ * [VariableMenuLabel].
+ */
+@Composable
+private fun VariableNameField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    hint: String,
+    knownVariables: List<String>,
+    isUndeclaredGlobal: Boolean,
+    focusRequester: FocusRequester?,
+) {
+    var menuOpen by remember { mutableStateOf(false) }
+    val isGlobal = isGlobalVariable(value)
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        placeholder = if (hint.isNotBlank()) {
+            { Text(hint, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        } else null,
+        isError = isUndeclaredGlobal,
+        supportingText = if (isUndeclaredGlobal) {
+            { Text(stringResource(R.string.cfg_undeclared_global_field_error)) }
+        } else null,
+        singleLine = true,
+        // Tint the entered name too, so the field itself reflects local vs global — except when
+        // it's an unknown global, where the error styling has to win.
+        colors = if (isGlobal && !isUndeclaredGlobal) {
+            OutlinedTextFieldDefaults.colors(focusedTextColor = MaterialTheme.colorScheme.tertiary, unfocusedTextColor = MaterialTheme.colorScheme.tertiary)
+        } else {
+            OutlinedTextFieldDefaults.colors()
+        },
+        trailingIcon = if (knownVariables.isNotEmpty()) {
+            {
+                Box {
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(
+                            Icons.Outlined.ArrowDropDown,
+                            contentDescription = stringResource(R.string.cfg_pick_variable),
+                        )
+                    }
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        knownVariables.forEach { name ->
+                            DropdownMenuItem(
+                                text = { VariableMenuLabel(name, isGlobalVariable(name)) },
+                                onClick = {
+                                    onValueChange(name)
+                                    menuOpen = false
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+        } else null,
+        modifier = Modifier
+            .fillMaxWidth()
+            .let { if (focusRequester != null) it.focusRequester(focusRequester) else it },
+    )
+}
+
+/**
+ * Structured editor for an IF condition: `value A` [operator] `value B`. Both operands use
+ * [VariableInsertField], and the operator is a dropdown — so the whole expression is built by
+ * tapping, never by typing raw `{{x}} < y` strings. Serialized back to the interpreter format.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ConditionBuilderField(
+    label: String,
+    expression: String,
+    onExpressionChange: (String) -> Unit,
+    availableVariables: List<String>,
+) {
+    val parsed = remember { parseCondition(expression) }
+    var left by remember { mutableStateOf(parsed.first) }
+    var op by remember { mutableStateOf(parsed.second) }
+    var right by remember { mutableStateOf(parsed.third) }
+
+    fun push() = onExpressionChange(serializeCondition(left, op, right))
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(label, style = MaterialTheme.typography.labelLarge)
+        VariableInsertField(
+            value = left,
+            onValueChange = { left = it; push() },
+            label = stringResource(R.string.cfg_condition_value_a),
+            availableVariables = availableVariables,
+            imeNext = true,
+        )
+        OperatorDropdown(selected = op, onSelected = { op = it; push() })
+        VariableInsertField(
+            value = right,
+            onValueChange = { right = it; push() },
+            label = stringResource(R.string.cfg_condition_value_b),
+            availableVariables = availableVariables,
+            imeNext = false,
+        )
+        Text(
+            stringResource(R.string.cfg_condition_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun OperatorDropdown(
+    selected: String,
+    onSelected: (String) -> Unit,
+) {
+    val context = LocalContext.current
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+        OutlinedTextField(
+            value = "$selected    ${operatorLabel(selected, context)}",
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(stringResource(R.string.cfg_condition_operator)) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            CONDITION_OPERATORS.forEach { opt ->
+                DropdownMenuItem(
+                    text = { Text("$opt    ${operatorLabel(opt, context)}") },
+                    onClick = {
+                        onSelected(opt)
+                        expanded = false
+                    },
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Banner for a `g:` variable name that no global declares — a write to it fails the run, so this
+ * (like [UnknownVariableWarning]) also disables Save.
+ */
+@Composable
+private fun UndeclaredGlobalWarning(names: List<String>) {
+    WarningBanner(stringResource(R.string.cfg_undeclared_global_warning, names.joinToString("、")))
+}
+
+/** Banner listing {{variable}} references that don't match a known variable; blocks Save. */
+@Composable
+private fun UnknownVariableWarning(unknownRefs: List<String>) {
+    WarningBanner(
+        stringResource(
+            R.string.cfg_unknown_variable_warning,
+            unknownRefs.joinToString("、") { "{{$it}}" },
+        ),
+    )
+}
+
+@Composable
+private fun WarningBanner(message: String) {
+    Surface(
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.errorContainer,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.Top,
+        ) {
+            Icon(
+                Icons.Outlined.Warning,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.size(20.dp),
+            )
+            Text(
+                message,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
         }
     }
 }

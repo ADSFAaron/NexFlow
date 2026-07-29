@@ -30,6 +30,7 @@ A `.flow` file is a UTF-8 encoded JSON document describing a single automation f
 | `conditions` | `Condition[]` | ✅ | Zero or more conditions evaluated before actions run. May be empty array `[]`. |
 | `actions` | `Action[]` | ✅ | Ordered list of actions to execute. Must contain at least 1 item. |
 | `variables` | `Variable[]` | ✅ | Flow-scoped variables. May be empty array `[]`. |
+| `global_variables` | `GlobalVariable[]` | ❌ | Declarations of the global variables this flow references as `{{g:name}}`. Omitted when the flow uses none, and absent from files written before globals existed. |
 
 ---
 
@@ -142,6 +143,24 @@ Variables are referenced using double-brace syntax in any string `config` value:
 ```
 
 The runtime substitutes the current value before executing the action. Nested or compound expressions (e.g. `{{count}} + 1`) are evaluated by the ActionExecutor interpreter.
+
+---
+
+## GlobalVariable Object
+
+Global variables live outside any flow (Settings → Global variables) and are referenced as `{{g:name}}`. A flow exports the ones it uses so it stays runnable after import on another device.
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | `string` | ✅ | Name **without** the `g:` prefix. Referenced as `{{g:name}}`. |
+| `type` | `"STRING" \| "INTEGER" \| "BOOLEAN" \| "DECIMAL"` | ✅ | Runtime type. Unknown values fall back to `STRING` on import. |
+| `default_value` | `string` | ✅ | Initial value. The live value is **not** exported — an imported global starts at its default. |
+
+Import rules:
+
+- A declared global that doesn't exist yet is created; one that already exists is left untouched (another flow may depend on its current value).
+- A `{{g:name}}` reference or `g:name` SET_VARIABLE target that no declaration or existing global covers produces an import warning.
+- `SET_VARIABLE` never creates a global implicitly: writing to an undeclared `g:` name fails the run so a typo can't silently produce a zombie variable.
 
 ---
 

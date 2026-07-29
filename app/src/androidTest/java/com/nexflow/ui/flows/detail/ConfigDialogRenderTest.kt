@@ -30,6 +30,7 @@ import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.ui.flows.detail.config.ConfigField
 import com.nexflow.ui.flows.detail.config.info
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -115,17 +116,68 @@ class ConfigDialogRenderTest {
                 title = context.getString(com.nexflow.R.string.act_if_label),
                 fields = ActionType.IF_BLOCK.info(context).fields,
                 initialValues = emptyMap(),
-                availableVariables = emptyList(),
+                // Must contain "battery": Save is disabled while any {{ref}} is unknown.
+                availableVariables = listOf("battery"),
                 onConfirm = { saved = it },
                 onDismiss = {},
             )
         }
 
-        rule.onAllNodesWithText(context.getString(com.nexflow.R.string.cfg_condition))[0]
-            .performTextInput("{{battery}} < 20")
+        // IF_BLOCK now uses the structured condition builder: value A, an operator
+        // dropdown (default ==), and value B. Filling A and B with the default operator
+        // must serialize back to the interpreter's expression string.
+        rule.onNodeWithText(context.getString(com.nexflow.R.string.cfg_condition_value_a))
+            .performTextInput("{{battery}}")
+        rule.onNodeWithText(context.getString(com.nexflow.R.string.cfg_condition_value_b))
+            .performTextInput("20")
         rule.onNodeWithText(context.getString(com.nexflow.R.string.action_save)).performClick()
         rule.waitForIdle()
 
-        assertEquals("{{battery}} < 20", saved?.get("expression"))
+        assertEquals("{{battery}} == 20", saved?.get("expression"))
+    }
+
+    @Test
+    fun saveIsBlockedWhileAVariableReferenceIsUnknown() {
+        var saved: Map<String, String>? = null
+        rule.setContent {
+            ConfigDialog(
+                title = context.getString(com.nexflow.R.string.act_if_label),
+                fields = ActionType.IF_BLOCK.info(context).fields,
+                initialValues = emptyMap(),
+                availableVariables = listOf("battery"),
+                onConfirm = { saved = it },
+                onDismiss = {},
+            )
+        }
+
+        rule.onNodeWithText(context.getString(com.nexflow.R.string.cfg_condition_value_a))
+            .performTextInput("{{batery}}")
+        rule.onNodeWithText(context.getString(com.nexflow.R.string.action_save)).performClick()
+        rule.waitForIdle()
+
+        assertNull("a typo'd {{ref}} must not be saveable", saved)
+    }
+
+    @Test
+    fun saveIsBlockedWhileAGlobalVariableNameIsUndeclared() {
+        var saved: Map<String, String>? = null
+        rule.setContent {
+            ConfigDialog(
+                title = context.getString(com.nexflow.R.string.act_set_variable_label),
+                fields = ActionType.SET_VARIABLE.info(context).fields,
+                initialValues = emptyMap(),
+                availableVariables = listOf("g:counter"),
+                onConfirm = { saved = it },
+                onDismiss = {},
+            )
+        }
+
+        // Bare name, no {{ }} — only the undeclared-global check can catch this one.
+        rule.onNodeWithText(context.getString(com.nexflow.R.string.cfg_variable_name))
+            .performTextInput("g:countr")
+        rule.onNodeWithText(context.getString(com.nexflow.R.string.action_save)).performClick()
+        rule.waitForIdle()
+
+        assertNull("a g: name no global declares must not be saveable", saved)
     }
 }

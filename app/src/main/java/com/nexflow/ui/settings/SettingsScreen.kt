@@ -57,6 +57,7 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.AlertDialog
@@ -115,6 +116,7 @@ import com.nexflow.ui.flowimport.ImportViewModel
 @Composable
 fun SettingsScreen(
     onAboutClick: () -> Unit = {},
+    onGlobalVariablesClick: () -> Unit = {},
     importVm: ImportViewModel = hiltViewModel(),
     aiVm: AiSettingsViewModel = hiltViewModel(),
 ) {
@@ -710,6 +712,16 @@ fun SettingsScreen(
 
             // ----- Automation -----
             item { SectionHeader(stringResource(R.string.settings_section_automation)) }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.settings_global_variables)) },
+                    supportingContent = { Text(stringResource(R.string.settings_global_variables_desc)) },
+                    leadingContent = {
+                        Icon(Icons.Outlined.Public, contentDescription = null)
+                    },
+                    modifier = Modifier.clickable { onGlobalVariablesClick() },
+                )
+            }
             item {
                 ListItem(
                     headlineContent = { Text(stringResource(R.string.settings_autostart)) },

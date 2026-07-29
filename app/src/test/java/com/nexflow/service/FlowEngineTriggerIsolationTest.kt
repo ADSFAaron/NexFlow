@@ -80,6 +80,8 @@ class FlowEngineTriggerIsolationTest {
         coEvery { repository.getById("bad") } returns badFlow
 
         val scheduler = mockk<TimeTriggerScheduler>(relaxed = true)
+        val globalVariableRepository =
+            mockk<com.nexflow.core.automation.repository.GlobalVariableRepository>(relaxed = true)
 
         // GEOFENCE handler explodes the moment it's observed — mimics a failed geofence registration.
         val explodingHandler = handler(TriggerType.GEOFENCE) {
@@ -99,6 +101,7 @@ class FlowEngineTriggerIsolationTest {
         }
         val engine = FlowEngine(
             repository = repository,
+            globalVariableRepository = globalVariableRepository,
             triggerHandlerSet = setOf(explodingHandler, firingHandler),
             actionExecutorSet = emptySet(),
             timeTriggerScheduler = scheduler,

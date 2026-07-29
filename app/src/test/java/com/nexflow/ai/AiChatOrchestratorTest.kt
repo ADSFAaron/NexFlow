@@ -18,6 +18,7 @@ package com.nexflow.ai
 import android.content.Context
 import android.content.SharedPreferences
 import com.nexflow.ai.AiChatOrchestrator.TurnResult
+import com.nexflow.core.automation.repository.GlobalVariableRepository
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -47,8 +48,11 @@ class AiChatOrchestratorTest {
     }
     private val client = mockk<GeminiClient>()
     private val installedApps = mockk<InstalledAppsSource>()
+    private val globals = mockk<GlobalVariableRepository> {
+        coEvery { currentValues() } returns emptyMap()
+    }
 
-    private fun orchestrator() = AiChatOrchestrator(client, installedApps, context)
+    private fun orchestrator() = AiChatOrchestrator(client, installedApps, globals, context)
 
     private fun textResponse(text: String) = GenerateContentResponse(
         candidates = listOf(
@@ -181,7 +185,7 @@ class AiChatOrchestratorTest {
             every { getSharedPreferences(any(), any()) } returns emptyPrefs
         }
 
-        val result = AiChatOrchestrator(client, installedApps, keylessContext)
+        val result = AiChatOrchestrator(client, installedApps, globals, keylessContext)
             .sendUserMessage("hello")
 
         val failure = assertInstanceOf(TurnResult.Failure::class.java, result)

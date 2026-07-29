@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- accessibilityEventTypes is what the APP_LAUNCH trigger lives on: without
      typeWindowStateChanged the service gets NO events and onAccessibilityEvent never runs
-     (the screenshot action alone needs none). -->
+     (the screenshot action alone needs none).
+     canPerformGestures is mandatory for dispatchGesture() — without it the call just
+     returns false and SIMULATE_TAP / SIMULATE_SWIPE silently do nothing. -->
 <accessibility-service
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:accessibilityEventTypes="typeWindowStateChanged"
     android:accessibilityFeedbackType="feedbackGeneric"
     android:accessibilityFlags="flagDefault"
+    android:canPerformGestures="true"
     android:canTakeScreenshot="true"
     android:description="@string/accessibility_service_description"
     android:notificationTimeout="100" />

@@ -45,11 +45,16 @@ core/macrodroid-compat/     # MacroDroid .mdr 格式解析
 | `HorizontalFloatingToolbar(expanded=...)` | M3 Expressive alpha，`expanded` 改變時收合會蓋掉子 view | 改用 `Column` + `FloatingActionButton` |
 | `sh.calvin.reorderable` v3.x `draggableHandle` | v3 改成 `ReorderableItemScope` member，不能 top-level import | 在 `ReorderableItem { }` lambda 內直接用，不 import |
 | `Regex("""\{\{([^}]+)}}""")` | 某些 Android regex engine 對 `))}}` 報 syntax error | 改為 `\}\}` 明確 escape |
+| `AccessibilityService.dispatchGesture()` | 沒在 accessibility-service XML 宣告 `android:canPerformGestures="true"` 就只會回 `false`，不丟例外、不寫 log，模擬點擊／滑動整個靜默失效 | `nexflow_accessibility_config.xml` 一定要有 `android:canPerformGestures="true"` |
+| `GestureDescription.StrokeDescription` | 座標超出螢幕範圍會丟 `IllegalArgumentException`；座標來自使用者手打的設定，在 service 的 coroutine 裡丟出去會拖垮整個無障礙服務 | 建 `StrokeDescription` 要包 `runCatching`，失敗就回報 action 失敗。單點 `moveTo`（不 `lineTo`）是合法的「不移動的觸碰」，可直接當點擊用 |
 
 ### 3. 測試
 
-- JVM 單元測試：`./gradlew :core:automation:test :app:testDebugUnitTest`
-- 裝置 instrumented 測試：`./gradlew :app:connectedDebugAndroidTest`
+- JVM 單元測試：`./gradlew test :app:testGithubDebugUnitTest`
+  - `:app` 有 product flavor，`:app:testDebugUnitTest` 會因為名稱有歧義而失敗（候選為 `testGithubDebugUnitTest` / `testPlayDebugUnitTest`）
+  - 新增 JVM 測試模組時，`testRuntimeOnly(libs.junit5.platform.launcher)` 不能漏，否則 Gradle 9 會報 `Failed to load JUnit Platform`
+- 裝置 instrumented 測試：`./gradlew :app:connectedGithubDebugAndroidTest`
+  - 同樣因為 flavor，`connectedDebugAndroidTest` 這個任務根本不存在（只有 `connectedGithubDebugAndroidTest` / `connectedPlayDebugAndroidTest`）
   - **執行前必須關閉系統動畫**，否則 Compose 文字輸入測試會因 Espresso 等不到 idle 而逾時：
 
     ```bash

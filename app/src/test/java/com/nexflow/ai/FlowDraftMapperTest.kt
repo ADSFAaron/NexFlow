@@ -120,6 +120,37 @@ class FlowDraftMapperTest {
     }
 
     @Test
+    fun `writing an undeclared global is an error, a declared one and a local are fine`() {
+        val setGlobal = listOf(
+            "SET_VARIABLE" to buildJsonObject { put("variable_name", "g:counter"); put("value", "1") },
+        )
+
+        val undeclared = FlowDraftMapper.fromArgs(validArgs(actions = setGlobal), context)
+        assertFalse(undeclared.isValid)
+        assertTrue(
+            undeclared.errors.any { "g:counter" in it && "does not exist" in it },
+            "error must name the global so Gemini can repair it, got: ${undeclared.errors}",
+        )
+
+        val declared = FlowDraftMapper.fromArgs(
+            validArgs(actions = setGlobal),
+            context,
+            knownGlobals = setOf("counter"),
+        )
+        assertTrue(declared.isValid, "expected valid draft, got: ${declared.errors}")
+
+        val local = FlowDraftMapper.fromArgs(
+            validArgs(
+                actions = listOf(
+                    "SET_VARIABLE" to buildJsonObject { put("variable_name", "counter"); put("value", "1") },
+                ),
+            ),
+            context,
+        )
+        assertTrue(local.isValid, "a local variable may be created on the fly, got: ${local.errors}")
+    }
+
+    @Test
     fun `unknown config key is an error naming the allowed keys`() {
         val result = FlowDraftMapper.fromArgs(
             validArgs(actions = listOf("TOAST" to buildJsonObject { put("msg", "hi") })),

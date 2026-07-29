@@ -36,5 +36,6 @@ object FlavorFeatures {
         // dispatchGesture ("performs actions on the user's behalf") would widen the Play
         // accessibility-usage declaration beyond screenshots/app-detection — github only.
         ActionType.SIMULATE_TAP,
+        ActionType.SIMULATE_SWIPE,
     )
 }

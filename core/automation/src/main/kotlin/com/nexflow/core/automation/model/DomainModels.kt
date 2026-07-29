@@ -69,6 +69,18 @@ data class Variable(
     val defaultValue: String,
 )
 
+/**
+ * A global (cross-flow) variable, referenced in any flow as `{{g:name}}`.
+ * Unlike [Variable] it is not owned by a flow and its [currentValue] persists between runs,
+ * so one flow can write it and another can read the updated value.
+ */
+data class GlobalVariable(
+    val name: String,
+    val type: VariableType,
+    val defaultValue: String,
+    val currentValue: String,
+)
+
 data class ExecutionLog(
     val id: String,
     val flowId: String,

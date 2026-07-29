@@ -16,20 +16,22 @@
 package com.nexflow.executor
 
 import android.content.Context
-import android.provider.Settings
+import android.graphics.PointF
 import com.nexflow.core.automation.executor.ActionExecutor
 import com.nexflow.core.automation.executor.ActionResult
 import com.nexflow.core.automation.model.Action
 import com.nexflow.core.automation.model.ActionType
+import com.nexflow.executor.GestureActionSupport.DEFAULT_TAP_DURATION_MS
+import com.nexflow.executor.GestureActionSupport.coordinate
+import com.nexflow.executor.GestureActionSupport.durationMs
 import com.nexflow.service.GestureCoordinator
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
-import kotlinx.coroutines.CompletableDeferred
 
 /**
  * Taps the screen at the configured pixel coordinates via the accessibility service's
- * dispatchGesture. Coordinates are device-specific — flows using this are not portable
- * across screen sizes.
+ * dispatchGesture. A longer `duration` turns the tap into a long press. Coordinates are
+ * device-specific — flows using this are not portable across screen sizes.
  */
 class SimulateTapActionExecutor @Inject constructor(
     @param:ApplicationContext private val context: Context,
@@ -39,29 +41,20 @@ class SimulateTapActionExecutor @Inject constructor(
     override val supportedType = ActionType.SIMULATE_TAP
 
     override suspend fun execute(action: Action, variables: MutableMap<String, String>): ActionResult {
-        val x = action.config["x"]?.trim()?.toFloatOrNull()
-        val y = action.config["y"]?.trim()?.toFloatOrNull()
-        if (x == null || y == null || x < 0 || y < 0) {
+        val x = action.coordinate("x")
+        val y = action.coordinate("y")
+        if (x == null || y == null) {
             return ActionResult.Failure("Simulate tap needs numeric x and y screen coordinates")
         }
-        if (!isAccessibilityEnabled()) {
-            return ActionResult.Failure(
-                "Simulate tap requires NexFlow Accessibility Service — " +
-                    "enable it in Settings > Accessibility > Installed apps > NexFlow",
-            )
+        if (!GestureActionSupport.accessibilityEnabled(context)) {
+            return GestureActionSupport.accessibilityFailure("Simulate tap")
         }
-        val deferred = CompletableDeferred<Boolean>()
-        coordinator.channel.send(GestureCoordinator.TapRequest(x, y, deferred))
-        return if (deferred.await()) ActionResult.Success
+        val dispatched = GestureActionSupport.dispatch(
+            coordinator,
+            listOf(PointF(x, y)),
+            action.durationMs("duration", DEFAULT_TAP_DURATION_MS),
+        )
+        return if (dispatched) ActionResult.Success
         else ActionResult.Failure("Tap gesture was not dispatched")
-    }
-
-    private fun isAccessibilityEnabled(): Boolean {
-        val flat = Settings.Secure.getString(
-            context.contentResolver,
-            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
-        ) ?: return false
-        val target = "${context.packageName}/com.nexflow.service.NexFlowAccessibilityService"
-        return flat.split(':').any { it.equals(target, ignoreCase = true) }
     }
 }

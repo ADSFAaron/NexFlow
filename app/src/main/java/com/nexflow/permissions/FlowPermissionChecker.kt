@@ -166,7 +166,7 @@ class FlowPermissionChecker @Inject constructor(
                     }
                 ActionType.SCREENSHOT ->
                     if (!accessibilityEnabled()) addSpecial(R.string.perm_accessibility, SpecialAccess.ACCESSIBILITY)
-                ActionType.SIMULATE_TAP ->
+                ActionType.SIMULATE_TAP, ActionType.SIMULATE_SWIPE ->
                     if (!accessibilityEnabled()) addSpecial(R.string.perm_accessibility, SpecialAccess.ACCESSIBILITY)
                 ActionType.BLUETOOTH_TOGGLE ->
                     if (!bluetoothGranted()) {

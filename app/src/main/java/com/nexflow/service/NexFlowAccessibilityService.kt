@@ -62,18 +62,40 @@ class NexFlowAccessibilityService : AccessibilityService() {
         }
         scope.launch {
             for (request in gestures.channel) {
-                dispatchTap(request)
+                dispatchStroke(request)
             }
         }
     }
 
-    private fun dispatchTap(request: GestureCoordinator.TapRequest) {
-        val path = android.graphics.Path().apply { moveTo(request.x, request.y) }
-        val gesture = android.accessibilityservice.GestureDescription.Builder()
-            .addStroke(
-                android.accessibilityservice.GestureDescription.StrokeDescription(path, 0, TAP_DURATION_MS),
-            )
-            .build()
+    private fun dispatchStroke(request: GestureCoordinator.GestureRequest) {
+        // Consecutive duplicates make a zero-length segment, which StrokeDescription rejects.
+        val points = request.points.filterIndexed { i, p ->
+            i == 0 || p.x != request.points[i - 1].x || p.y != request.points[i - 1].y
+        }
+        if (points.isEmpty()) {
+            request.result.complete(false)
+            return
+        }
+        val path = android.graphics.Path().apply {
+            moveTo(points.first().x, points.first().y)
+            points.drop(1).forEach { lineTo(it.x, it.y) }
+        }
+        val duration = request.durationMs.coerceIn(
+            1L,
+            android.accessibilityservice.GestureDescription.getMaxGestureDuration(),
+        )
+        // StrokeDescription throws on coordinates outside the display, and these come straight
+        // from user-typed config — a throw here would take the whole service down.
+        val gesture = runCatching {
+            android.accessibilityservice.GestureDescription.Builder()
+                .addStroke(
+                    android.accessibilityservice.GestureDescription.StrokeDescription(path, 0, duration),
+                )
+                .build()
+        }.getOrElse {
+            request.result.complete(false)
+            return
+        }
         val dispatched = dispatchGesture(
             gesture,
             object : GestureResultCallback() {
@@ -141,10 +163,6 @@ class NexFlowAccessibilityService : AccessibilityService() {
     }
 
     override fun onInterrupt() {}
-
-    private companion object {
-        const val TAP_DURATION_MS = 50L
-    }
 
     override fun onDestroy() {
         scope.cancel()

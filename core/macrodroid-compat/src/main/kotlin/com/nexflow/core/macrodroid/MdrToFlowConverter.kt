@@ -43,6 +43,13 @@ object MdrToFlowConverter {
 
         val triggers = macro.triggerList.mapIndexed { i, t -> convertTrigger(t, i, warnings) }
         val conditions = macro.constraintList.mapIndexed { i, c -> convertCondition(c, i, warnings) }
+        if (conditions.isNotEmpty()) {
+            // Flow-level conditions are stored and round-trip through import/export, but the
+            // engine does not evaluate them yet — without this the macro would run
+            // unconditionally after import, with no hint that a constraint was dropped.
+            warnings += "Conditions: ${conditions.size} constraint(s) imported but NOT evaluated " +
+                "at runtime yet — this flow will run even when they don't hold"
+        }
         val actions = macro.actionList.mapIndexed { i, a -> convertAction(a, i, warnings) }
 
         val flowJson = FlowJson(

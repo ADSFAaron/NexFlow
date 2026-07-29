@@ -15,13 +15,13 @@
  */
 package com.nexflow.ui.navigation
 
+import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.History
@@ -55,6 +55,7 @@ import com.nexflow.ui.about.AboutScreen
 import com.nexflow.ui.ai.AiChatScreen
 import com.nexflow.ui.flows.FlowsScreen
 import com.nexflow.ui.flows.detail.FlowDetailScreen
+import com.nexflow.ui.globalvars.GlobalVariablesScreen
 import com.nexflow.ui.logs.LogsScreen
 import com.nexflow.ui.settings.SettingsScreen
 
@@ -71,6 +72,8 @@ sealed class Screen(
 
 val bottomNavScreens = listOf(Screen.Flows, Screen.Logs, Screen.Settings)
 
+private const val AI_CHAT_ROUTE = "ai_chat"
+
 private data class NavItem(val screen: Screen, val selected: Boolean, val label: String)
 
 @Composable
@@ -79,9 +82,6 @@ fun NexFlowNavHost(navController: NavHostController, modifier: Modifier = Modifi
     // slides are spatial motion, fades are effects — same physics as component motion.
     val slideSpec = MaterialTheme.motionScheme.defaultSpatialSpec<IntOffset>()
     val fadeSpec = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
-    // Slow token: the default spatial spring settles in ~200 ms, which made the AI-chat
-    // scale entrance imperceptible.
-    val scaleSpec = MaterialTheme.motionScheme.slowSpatialSpec<Float>()
     NavHost(
         navController = navController,
         startDestination = Screen.Flows.route,
@@ -96,23 +96,36 @@ fun NexFlowNavHost(navController: NavHostController, modifier: Modifier = Modifi
             ) + fadeIn(animationSpec = fadeSpec)
         },
         exitTransition = {
-            val fromIdx = bottomNavScreens.indexOfFirst { it.route == initialState.destination.route }
-            val toIdx = bottomNavScreens.indexOfFirst { it.route == targetState.destination.route }
-            val isLeftward = fromIdx >= 0 && toIdx >= 0 && toIdx < fromIdx
-            slideOutHorizontally(
-                targetOffsetX = { if (isLeftward) it / 4 else -it / 4 },
-                animationSpec = slideSpec,
-            ) + fadeOut(animationSpec = fadeSpec)
+            // Going to the AI chat: hold the underlying screen still and just fade it a touch,
+            // so it doesn't slide sideways while the chat rises up over it.
+            if (targetState.destination.route == AI_CHAT_ROUTE) {
+                fadeOut(animationSpec = fadeSpec)
+            } else {
+                val fromIdx = bottomNavScreens.indexOfFirst { it.route == initialState.destination.route }
+                val toIdx = bottomNavScreens.indexOfFirst { it.route == targetState.destination.route }
+                val isLeftward = fromIdx >= 0 && toIdx >= 0 && toIdx < fromIdx
+                slideOutHorizontally(
+                    targetOffsetX = { if (isLeftward) it / 4 else -it / 4 },
+                    animationSpec = slideSpec,
+                ) + fadeOut(animationSpec = fadeSpec)
+            }
         },
         popEnterTransition = {
-            val fromIdx = bottomNavScreens.indexOfFirst { it.route == initialState.destination.route }
-            val toIdx = bottomNavScreens.indexOfFirst { it.route == targetState.destination.route }
-            val isBottomNav = fromIdx >= 0 && toIdx >= 0
-            val isLeftward = isBottomNav && toIdx < fromIdx
-            slideInHorizontally(
-                initialOffsetX = { if (isBottomNav && !isLeftward) it / 4 else -it / 4 },
-                animationSpec = slideSpec,
-            ) + fadeIn(animationSpec = fadeSpec)
+            // Returning from the AI chat: the chat is a sheet sliding off the bottom, so the
+            // screen underneath should just be revealed — hold it still (no fade/slide of its own)
+            // so nothing crossfades against the sliding chat and reads as a "cut".
+            if (initialState.destination.route == AI_CHAT_ROUTE) {
+                EnterTransition.None
+            } else {
+                val fromIdx = bottomNavScreens.indexOfFirst { it.route == initialState.destination.route }
+                val toIdx = bottomNavScreens.indexOfFirst { it.route == targetState.destination.route }
+                val isBottomNav = fromIdx >= 0 && toIdx >= 0
+                val isLeftward = isBottomNav && toIdx < fromIdx
+                slideInHorizontally(
+                    initialOffsetX = { if (isBottomNav && !isLeftward) it / 4 else -it / 4 },
+                    animationSpec = slideSpec,
+                ) + fadeIn(animationSpec = fadeSpec)
+            }
         },
         popExitTransition = {
             val fromIdx = bottomNavScreens.indexOfFirst { it.route == initialState.destination.route }
@@ -133,7 +146,10 @@ fun NexFlowNavHost(navController: NavHostController, modifier: Modifier = Modifi
         }
         composable(Screen.Logs.route) { LogsScreen() }
         composable(Screen.Settings.route) {
-            SettingsScreen(onAboutClick = { navController.navigate("about") })
+            SettingsScreen(
+                onAboutClick = { navController.navigate("about") },
+                onGlobalVariablesClick = { navController.navigate("global_variables") },
+            )
         }
         composable("flows/{flowId}") {
             FlowDetailScreen(onBack = { navController.popBackStack() })
@@ -141,23 +157,28 @@ fun NexFlowNavHost(navController: NavHostController, modifier: Modifier = Modifi
         composable("about") {
             AboutScreen(onBack = { navController.popBackStack() })
         }
+        composable("global_variables") {
+            GlobalVariablesScreen(onBack = { navController.popBackStack() })
+        }
         composable(
-            "ai_chat",
-            // AI reveal, not a lateral page slide: the chat grows out of the tapped sparkle
-            // in the top-right corner (Gemini design language: AI features "expand into view").
+            AI_CHAT_ROUTE,
+            // AI reveal, not a lateral page slide: the chat rises up from the bottom while fading
+            // in — a single, smooth spatial+effects pairing that reads as "a new surface appears".
             enterTransition = {
-                scaleIn(
-                    initialScale = 0.8f,
-                    animationSpec = scaleSpec,
-                    transformOrigin = TransformOrigin(0.9f, 0f),
+                slideInVertically(
+                    initialOffsetY = { it / 3 },
+                    animationSpec = slideSpec,
                 ) + fadeIn(animationSpec = fadeSpec)
             },
+            // Leaving is a sheet dismiss: the chat slides ALL the way off the bottom in one
+            // motion. No fadeOut — a fade that finishes before the slide is what made the chat
+            // vanish mid-screen and read as a "cut". The screen underneath is held static
+            // (popEnterTransition = None), so this reads as one continuous downward glide.
             popExitTransition = {
-                scaleOut(
-                    targetScale = 0.85f,
-                    animationSpec = scaleSpec,
-                    transformOrigin = TransformOrigin(0.9f, 0f),
-                ) + fadeOut(animationSpec = fadeSpec)
+                slideOutVertically(
+                    targetOffsetY = { it },
+                    animationSpec = slideSpec,
+                )
             },
         ) {
             AiChatScreen(

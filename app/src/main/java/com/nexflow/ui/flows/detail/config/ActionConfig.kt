@@ -41,6 +41,7 @@ import androidx.compose.material.icons.outlined.SaveAlt
 import androidx.compose.material.icons.outlined.Screenshot
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Sms
+import androidx.compose.material.icons.outlined.Swipe
 import androidx.compose.material.icons.outlined.SpeakerPhone
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.TouchApp
@@ -84,7 +85,7 @@ val ActionType.category: ActionCategory
 
         ActionType.VOLUME_ADJUST, ActionType.BRIGHTNESS_ADJUST,
         ActionType.DND_TOGGLE, ActionType.SCREENSHOT, ActionType.SET_WALLPAPER,
-        ActionType.SIMULATE_TAP, ActionType.SPEAKERPHONE,
+        ActionType.SIMULATE_TAP, ActionType.SIMULATE_SWIPE, ActionType.SPEAKERPHONE,
         -> ActionCategory.DEVICE
 
         ActionType.SEND_SMS, ActionType.CALL_PHONE,
@@ -266,8 +267,13 @@ fun ActionType.info(context: Context): ActionInfo = when (this) {
     ActionType.SET_VARIABLE -> ActionInfo(
         context.getString(R.string.act_set_variable_label), Icons.Outlined.Code, context.getString(R.string.act_set_variable_desc),
         listOf(
-            ConfigField.TextInput("variable_name", context.getString(R.string.cfg_variable_name)),
+            ConfigField.VariableNameInput("variable_name", context.getString(R.string.cfg_variable_name), hint = "counter / g:global_name"),
             ConfigField.TextInput("value", context.getString(R.string.cfg_value)),
+            ConfigField.InfoText(
+                "_setvar_global_info",
+                context.getString(R.string.cfg_info_note_label),
+                context.getString(R.string.cfg_info_set_global_body),
+            ),
         ),
     )
     ActionType.WRITE_FILE -> ActionInfo(
@@ -295,12 +301,36 @@ fun ActionType.info(context: Context): ActionInfo = when (this) {
     ActionType.SIMULATE_TAP -> ActionInfo(
         context.getString(R.string.act_tap_label), Icons.Outlined.TouchApp, context.getString(R.string.act_tap_desc),
         listOf(
+            ConfigField.ScreenCoordinatePicker(
+                "_tap_picker", context.getString(R.string.cfg_pick_coordinate), xKey = "x", yKey = "y",
+            ),
             ConfigField.TextInput("x", context.getString(R.string.cfg_tap_x), hint = "540"),
             ConfigField.TextInput("y", context.getString(R.string.cfg_tap_y), hint = "1200"),
+            ConfigField.TextInput("duration", context.getString(R.string.cfg_tap_duration), hint = "50"),
             ConfigField.InfoText(
                 "_tap_info",
                 context.getString(R.string.cfg_info_requirement_label),
                 context.getString(R.string.cfg_info_tap_body),
+            ),
+        ),
+    )
+    ActionType.SIMULATE_SWIPE -> ActionInfo(
+        context.getString(R.string.act_swipe_label), Icons.Outlined.Swipe,
+        context.getString(R.string.act_swipe_desc),
+        listOf(
+            ConfigField.ScreenCoordinatePicker(
+                "_swipe_picker", context.getString(R.string.cfg_pick_swipe_path),
+                xKey = "x1", yKey = "y1", endXKey = "x2", endYKey = "y2",
+            ),
+            ConfigField.TextInput("x1", context.getString(R.string.cfg_swipe_x1), hint = "540"),
+            ConfigField.TextInput("y1", context.getString(R.string.cfg_swipe_y1), hint = "1600"),
+            ConfigField.TextInput("x2", context.getString(R.string.cfg_swipe_x2), hint = "540"),
+            ConfigField.TextInput("y2", context.getString(R.string.cfg_swipe_y2), hint = "600"),
+            ConfigField.TextInput("duration", context.getString(R.string.cfg_swipe_duration), hint = "300"),
+            ConfigField.InfoText(
+                "_swipe_info",
+                context.getString(R.string.cfg_info_requirement_label),
+                context.getString(R.string.cfg_info_swipe_body),
             ),
         ),
     )
@@ -335,7 +365,7 @@ fun ActionType.info(context: Context): ActionInfo = when (this) {
                 context.getString(R.string.cfg_info_condition_label),
                 context.getString(R.string.cfg_info_condition_body),
             ),
-            ConfigField.TextInput("expression", context.getString(R.string.cfg_condition), hint = "{{battery}} < 20"),
+            ConfigField.ConditionInput("expression", context.getString(R.string.cfg_condition)),
         ),
     )
     ActionType.ELSE_BLOCK -> ActionInfo(
@@ -424,6 +454,8 @@ fun ActionType.configSummary(context: Context, config: Map<String, String>): Str
     ActionType.SHARE -> config["text"]?.take(40) ?: context.getString(R.string.sum_no_text)
     ActionType.SCREENSHOT -> context.getString(R.string.sum_take_screenshot)
     ActionType.SIMULATE_TAP -> "(${config["x"] ?: "?"}, ${config["y"] ?: "?"})"
+    ActionType.SIMULATE_SWIPE ->
+        "(${config["x1"] ?: "?"}, ${config["y1"] ?: "?"}) → (${config["x2"] ?: "?"}, ${config["y2"] ?: "?"})"
     ActionType.SPEAKERPHONE -> context.getString(
         if (config["state"]?.uppercase() == "OFF") R.string.opt_off else R.string.opt_on,
     )

@@ -20,6 +20,8 @@ import com.nexflow.core.automation.model.TriggerLogic
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.flowschema.ActionJson
 import com.nexflow.core.flowschema.FlowJson
+import com.nexflow.core.flowschema.FlowSerializer
+import com.nexflow.core.flowschema.GlobalVariableJson
 import com.nexflow.core.flowschema.TriggerJson
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -111,5 +113,27 @@ class FlowJsonMapperTest {
         ).toDomain()
         // Editor stores menu options as a JSON array string; the mapper must match
         assertEquals("""["A","B"]""", domain.actions.single().config["options"])
+    }
+
+    // ----- global_variables (optional field, added after the first releases) -----
+
+    @Test
+    fun `global variable declarations round-trip through the file format`() {
+        val encoded = FlowSerializer.encode(
+            flowJson().copy(
+                globalVariables = listOf(GlobalVariableJson("counter", "INTEGER", "0")),
+            ),
+        )
+        val decoded = FlowSerializer.decode(encoded).getOrThrow()
+        assertEquals("counter", decoded.globalVariables.single().name)
+        assertEquals("0", decoded.globalVariables.single().defaultValue)
+    }
+
+    @Test
+    fun `a file written before global variables existed still decodes`() {
+        val legacy = FlowSerializer.encode(flowJson())
+            .replace(Regex(""",?\s*"global_variables"\s*:\s*\[]"""), "")
+        assertFalse("global_variables" in legacy, "fixture must not contain the field")
+        assertTrue(FlowSerializer.decode(legacy).getOrThrow().globalVariables.isEmpty())
     }
 }

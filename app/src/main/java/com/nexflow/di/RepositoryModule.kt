@@ -16,7 +16,9 @@
 package com.nexflow.di
 
 import com.nexflow.core.automation.repository.FlowRepository
+import com.nexflow.core.automation.repository.GlobalVariableRepository
 import com.nexflow.data.repository.FlowRepositoryImpl
+import com.nexflow.data.repository.GlobalVariableRepositoryImpl
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -30,4 +32,8 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindFlowRepository(impl: FlowRepositoryImpl): FlowRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindGlobalVariableRepository(impl: GlobalVariableRepositoryImpl): GlobalVariableRepository
 }

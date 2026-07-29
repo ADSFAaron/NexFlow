@@ -17,6 +17,7 @@ package com.nexflow.ai
 
 import android.content.Context
 import android.util.Log
+import com.nexflow.core.automation.repository.GlobalVariableRepository
 import com.nexflow.core.flowschema.FlowJson
 import com.nexflow.prefs.AiPrefs
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -40,6 +41,7 @@ import kotlinx.serialization.json.putJsonArray
 class AiChatOrchestrator @Inject constructor(
     private val client: GeminiClient,
     private val installedApps: InstalledAppsSource,
+    private val globalVariableRepository: GlobalVariableRepository,
     @param:ApplicationContext private val context: Context,
 ) {
     sealed interface TurnResult {
@@ -127,7 +129,11 @@ class AiChatOrchestrator @Inject constructor(
 
                     AiTools.CREATE_FLOW -> {
                         onProgress(Progress.BuildingFlow)
-                        val draft = FlowDraftMapper.fromArgs(call.args, context)
+                        val draft = FlowDraftMapper.fromArgs(
+                            call.args,
+                            context,
+                            knownGlobals = globalVariableRepository.currentValues().keys,
+                        )
                         if (draft.isValid) {
                             Log.d(TAG, "create_flow validated: \"${draft.flow?.name}\"")
                             pendingFlow = draft.flow

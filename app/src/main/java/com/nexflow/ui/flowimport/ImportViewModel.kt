@@ -17,7 +17,12 @@ package com.nexflow.ui.flowimport
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nexflow.core.automation.interpreter.FlowInterpreter
+import com.nexflow.core.automation.model.GlobalVariable
+import com.nexflow.core.automation.model.VariableType
 import com.nexflow.core.automation.repository.FlowRepository
+import com.nexflow.core.automation.repository.GlobalVariableRepository
+import com.nexflow.core.flowschema.FlowJson
 import com.nexflow.core.flowschema.FlowSchemaValidator
 import com.nexflow.core.flowschema.FlowSerializer
 import com.nexflow.core.macrodroid.MdrToFlowConverter
@@ -40,6 +45,7 @@ data class ImportResult(
 @HiltViewModel
 class ImportViewModel @Inject constructor(
     private val repository: FlowRepository,
+    private val globalVariableRepository: GlobalVariableRepository,
 ) : ViewModel() {
 
     private val _result = MutableStateFlow<ImportResult?>(null)
@@ -75,10 +81,62 @@ class ImportViewModel @Inject constructor(
 
             val errors = FlowSchemaValidator.validate(flowJson)
             val warnings = errors.map { "${it.field}: ${it.message}" }.toMutableList()
+            warnings += reconcileGlobals(flowJson)
+            if (flowJson.conditions.isNotEmpty()) {
+                warnings += "Conditions: ${flowJson.conditions.size} flow-level condition(s) are " +
+                    "stored but NOT evaluated at runtime yet — this flow will run even when they don't hold"
+            }
 
             repository.save(flowJson.toDomain())
             _result.update { ImportResult(imported = 1, warnings = warnings) }
         }
+    }
+
+    /**
+     * Creates the globals an imported flow declares but this device doesn't have yet, and reports
+     * any `g:` name the flow uses without declaring — those would otherwise fail at run time.
+     * An existing global is never overwritten: another flow may already be using its value.
+     */
+    private suspend fun reconcileGlobals(flowJson: FlowJson): List<String> {
+        val warnings = mutableListOf<String>()
+        val existing = globalVariableRepository.currentValues().keys.toMutableSet()
+
+        flowJson.globalVariables.forEach { g ->
+            if (g.name in existing) return@forEach
+            globalVariableRepository.save(
+                GlobalVariable(
+                    name = g.name,
+                    type = runCatching { VariableType.valueOf(g.type) }.getOrDefault(VariableType.STRING),
+                    defaultValue = g.defaultValue,
+                    // Live values are device state and don't travel: start at the default.
+                    currentValue = g.defaultValue,
+                ),
+            )
+            existing += g.name
+            warnings += "Global variable '${FlowInterpreter.GLOBAL_PREFIX}${g.name}' created from the imported flow"
+        }
+
+        val undeclared = referencedGlobalNames(flowJson) - existing
+        undeclared.sorted().forEach {
+            warnings += "Global variable '${FlowInterpreter.GLOBAL_PREFIX}$it' is used but not declared — " +
+                "create it in Settings → Global Variables, or the flow will fail when it writes to it"
+        }
+        return warnings
+    }
+
+    /** Every `{{g:x}}` reference and `g:x` SET_VARIABLE target in the file, un-prefixed. */
+    private fun referencedGlobalNames(flowJson: FlowJson): Set<String> {
+        val text = (flowJson.actions.map { it.config.toString() } + flowJson.triggers.map { it.config.toString() })
+            .joinToString("\n")
+        val names = GLOBAL_REF_REGEX.findAll(text).map { it.groupValues[1].trim() }.toMutableSet()
+        flowJson.actions.filter { it.type == "SET_VARIABLE" }.forEach { a ->
+            val target = (a.config["variable_name"] ?: a.config["name"])
+                ?.toString()?.trim('"')?.trim().orEmpty()
+            if (target.startsWith(FlowInterpreter.GLOBAL_PREFIX)) {
+                names += target.removePrefix(FlowInterpreter.GLOBAL_PREFIX)
+            }
+        }
+        return names
     }
 
     fun importAuto(content: String) {
@@ -90,4 +148,9 @@ class ImportViewModel @Inject constructor(
     }
 
     fun clearResult() = _result.update { null }
+
+    private companion object {
+        // Both braces escaped explicitly — an unescaped `}}` trips some Android regex engines.
+        val GLOBAL_REF_REGEX = Regex("""\{\{${FlowInterpreter.GLOBAL_PREFIX}([^}]+)\}\}""")
+    }
 }

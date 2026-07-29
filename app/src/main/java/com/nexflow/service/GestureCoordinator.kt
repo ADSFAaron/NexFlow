@@ -15,23 +15,32 @@
  */
 package com.nexflow.service
 
+import android.graphics.PointF
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.channels.Channel
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Bridges [com.nexflow.executor.SimulateTapActionExecutor] (runs in FlowExecutionService)
- * with [NexFlowAccessibilityService] via a buffered Channel — same pattern as
+ * Bridges the gesture executors (they run in FlowExecutionService) with
+ * [NexFlowAccessibilityService] via a buffered Channel — same pattern as
  * [ScreenshotCoordinator].
  */
 @Singleton
 class GestureCoordinator @Inject constructor() {
-    data class TapRequest(
-        val x: Float,
-        val y: Float,
+    /**
+     * One continuous stroke, dispatched as a single finger travelling through [points]
+     * over [durationMs].
+     *
+     * - tap: one point, short duration
+     * - long press: one point, long duration
+     * - swipe: two or more points
+     */
+    data class GestureRequest(
+        val points: List<PointF>,
+        val durationMs: Long,
         val result: CompletableDeferred<Boolean>,
     )
 
-    val channel = Channel<TapRequest>(Channel.BUFFERED)
+    val channel = Channel<GestureRequest>(Channel.BUFFERED)
 }

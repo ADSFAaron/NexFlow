@@ -80,6 +80,9 @@ object AiCatalog {
     /** Compact one-fragment spec for a field, or null for display-only fields. */
     fun fieldSpec(field: ConfigField): String? = when (field) {
         is ConfigField.TextInput -> "${field.key}:text"
+        is ConfigField.VariableNameInput -> "${field.key}:variable-name (bare name; prefix g: for a global)"
+        is ConfigField.ConditionInput ->
+            "${field.key}:condition\"{{var}} < 20\" (operators ==,!=,<,<=,>,>=; empty right side = truthy check)"
         is ConfigField.Dropdown -> "${field.key}:enum[${field.options.joinToString("|") { it.first }}]"
         is ConfigField.Slider -> "${field.key}:int[${field.min}..${field.max}]"
         is ConfigField.TimePicker -> "${field.key}:time\"HH:mm\""
@@ -97,14 +100,18 @@ object AiCatalog {
         is ConfigField.UnitSlider ->
             "${field.key}:int + ${field.unitKey}:enum[" +
                 field.units.joinToString("|") { "${it.id}(${it.min}..${it.max})" } + "]"
-        is ConfigField.CurrentLocationButton, is ConfigField.InfoText -> null
+        is ConfigField.CurrentLocationButton, is ConfigField.InfoText,
+        is ConfigField.ScreenCoordinatePicker,
+        -> null
     }
 
     /** Config keys Gemini is allowed to set for this field list. */
     fun capturableKeys(fields: List<ConfigField>): Set<String> = buildSet {
         fields.forEach { field ->
             when (field) {
-                is ConfigField.CurrentLocationButton, is ConfigField.InfoText -> Unit
+                is ConfigField.CurrentLocationButton, is ConfigField.InfoText,
+                is ConfigField.ScreenCoordinatePicker,
+                -> Unit
                 is ConfigField.UnitSlider -> {
                     add(field.key)
                     add(field.unitKey)

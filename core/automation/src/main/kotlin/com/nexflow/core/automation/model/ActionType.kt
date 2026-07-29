@@ -49,4 +49,5 @@ enum class ActionType {
     SHOW_MENU,
     MENU_CASE,
     END_MENU,
+    SIMULATE_SWIPE,
 }

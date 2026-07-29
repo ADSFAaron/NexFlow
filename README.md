@@ -22,7 +22,7 @@
 | 我的流程 | 流程編輯（WHEN → THEN） | 動作選擇 |
 |:---:|:---:|:---:|
 | <img src="docs/screenshots/home.png" width="230" alt="我的流程畫面" /> | <img src="docs/screenshots/builder.png" width="230" alt="流程編輯畫面" /> | <img src="docs/screenshots/picker.png" width="230" alt="動作選擇畫面" /> |
-| 一覽所有流程，一鍵開關／執行 | 組合觸發條件與動作 | 16 種觸發 × 27 種動作，分類搜尋 |
+| 一覽所有流程，一鍵開關／執行 | 組合觸發條件與動作 | 16 種觸發 × 34 種動作，分類搜尋 |
 
 | 執行記錄 | 權限引導 |
 |:---:|:---:|
@@ -42,6 +42,43 @@
 
 ---
 
+## 📥 下載與安裝
+
+NexFlow **主要以 GitHub Release 發佈**（`github` 版），功能完整、且是可直接安裝的 APK。
+
+> ℹ️ 本專案有 GitHub（完整）與 Google Play（依政策閹割）兩個版本。**若 Play 版未能上架，GitHub 版就是完整且唯一的官方發佈管道** — 一般使用者請直接用它。
+
+**安裝步驟：**
+
+1. 到本專案的 [**Releases**](https://github.com/ADSFAaron/NexFlow/releases) 頁面，下載最新版的 `app-github-release.apk`
+2. **先驗證檔案**（見下方「安全性驗證」），確認雜湊值一致再安裝
+3. 用檔案管理器點開 APK；Android 會提示「允許來自此來源安裝」→ 開啟該權限後即可安裝
+4. 首次啟動後，依 App 內「設定」分頁的指引，逐項開啟各功能所需權限
+
+### 🔐 安全性驗證（強烈建議）
+
+Sideload 的 APK 不經商店掃描，**請務必核對官方公佈的 SHA-256 雜湊值**，確認下載到的檔案沒有被竄改或掉包。每個 Release 說明都會附上雜湊值。
+
+```bash
+# macOS / Linux
+shasum -a 256 app-github-release.apk
+
+# Windows (PowerShell)
+Get-FileHash app-github-release.apk -Algorithm SHA256
+```
+
+把輸出的雜湊值與 Release 頁面公佈的比對，**完全一致**才安裝。
+
+進一步（選用）：核對 APK 的**簽章憑證指紋**，確認是本專案的金鑰所簽，而非他人重打包：
+
+```bash
+apksigner verify --print-certs app-github-release.apk | grep -i "SHA-256"
+```
+
+該指紋應與 Release 說明公佈的憑證指紋相符。
+
+---
+
 ## 功能總覽
 
 ### 觸發條件（Trigger，16 種）
@@ -54,19 +91,33 @@
 | 通訊 | 來電（可指定聯絡人）、收到簡訊（可指定發信人）、收到通知（可指定 App） |
 | 其他 | App 啟動、NFC 標籤掃描、地理圍欄（進入／離開）、手動執行 |
 
-### 動作（Action，27 種）
+### 動作（Action，34 種）
 
 | 類別 | 動作 |
 |------|------|
 | 通知與提示 | Toast、系統通知、TTS 朗讀 |
-| 裝置控制 | Wi-Fi、藍牙、勿擾模式、飛航模式、音量、亮度、媒體播放控制、截圖、更換桌布、**模擬點擊**、**擴音** |
+| 裝置控制 | Wi-Fi、藍牙、勿擾模式、飛航模式、音量、亮度、媒體播放控制、截圖、更換桌布、**模擬點擊／長按**、**模擬滑動**、**擴音** |
 | 通訊 | 撥打電話、傳送簡訊 |
 | 網路與資料 | HTTP 請求、開啟網址、剪貼簿、寫入檔案、分享 |
-| App | 開啟 App |
-| 流程控制 | 延遲、If／Else／End If、Repeat／End Repeat、設定變數、Show Menu |
+| App | 開啟 App、**啟動 App 捷徑**（其他 App 的 manifest 捷徑／建立捷徑活動） |
+| 流程控制 | 延遲、If／Else／End If、Repeat／End Repeat、設定變數、Show Menu／選項／End Menu |
 
 > 🔋 **搖晃**觸發會在流程啟用期間持續監聽加速度感應器，耗電略增（環境光線觸發為事件式，幾乎不耗電）。
-> 🖐️ **模擬點擊**需無障礙服務且僅在 `github` 版提供（依平台政策，`play` 版移除）。**擴音**為盡力而為，通話中的音訊路由最終由裝置廠商決定。
+> 🖐️ **模擬點擊／滑動**需無障礙服務且僅在 `github` 版提供（依平台政策，`play` 版移除）。**擴音**為盡力而為，通話中的音訊路由最終由裝置廠商決定。
+> 📌 流程可從詳細頁「新增到主畫面」**釘選成桌面捷徑**，點一下就手動執行（需啟動器支援釘選捷徑）。
+
+#### 🖐️ 模擬點擊／滑動：不用自己查座標
+
+模擬觸控要填的是**螢幕像素座標**，對一般使用者太不友善。所以這兩個動作的設定畫面都有「**從截圖選取座標**」：
+
+1. 用系統截圖（電源鍵＋音量下鍵）拍下目標畫面
+2. 在 NexFlow 裡選那張截圖
+3. **直接點圖上的位置**就填好座標；滑動則點兩下（起點、終點），畫面會即時畫出路徑
+
+點擊位置是以**佔圖片的比例**換算成實體座標，所以截圖存檔解析度和螢幕不同也不會跑掉；選到被裁切過的圖（長寬比對不上）會直接跳警告，而不是給你一組看起來合理但錯的座標。
+
+> ℹ️ Android 沒有開放任何 API 讓第三方 App 記錄使用者在**其他 App** 上的觸控（`ACTION_OUTSIDE` 的座標自 Android 12 起已被歸零），所以無法做「錄影自動轉成座標」；截圖選點是不需 root、不需 ADB 的最佳做法。
+> 點擊的「按住時間」拉長就是**長按**；滑動的「滑動時間」就是 App 感受到的速度（短＝快速滑動，長＝緩慢拖曳，例如拖進度條）。
 
 ### 🤖 AI 助手（Gemini）
 
@@ -82,15 +133,55 @@
 
 ### 變數與條件式
 
-- Flow 可宣告變數（含預設值），在任何欄位用 `{{變數名}}` 引用
-- `SET_VARIABLE` 動作可在執行中改變變數值
-- `IF_BLOCK` 條件式支援 `==`、`!=`、`<`、`>`、`<=`、`>=`（兩側皆為數字時做數值比較，否則不分大小寫字串比較），例如 `{{battery}} < 20`
+Flow 可宣告變數（含預設值），在任何欄位用 `{{變數名}}` 引用；`SET_VARIABLE` 動作可在執行中改變其值。
+
+還支援 **全域變數（跨 Flow 共用）**：在「設定 → 全域變數」建立，任何流程都能以 `{{g:名稱}}` 引用；用名為 `g:名稱` 的 `SET_VARIABLE` 寫入後，值會**持久保存**並被其他流程讀到（例如跨流程的計數器、狀態旗標）。變數選單會**用顏色與圖示區分**全域（🌐 `全域` 標籤）與區域變數。
+
+<div align="center">
+
+| 全域變數管理 | 設定變數（可挑區域／全域） |
+|:---:|:---:|
+| <img src="docs/screenshots/global_variables.png" width="230" alt="全域變數管理頁，以 {{g:名稱}} 引用" /> | <img src="docs/screenshots/set_var_picker.png" width="230" alt="設定變數的名稱下拉，區域與全域變數以顏色區分" /> |
+| 「設定 → 全域變數」建立、跨流程共用 | 下拉挑現有變數，全域以 🌐 標色 |
+
+</div>
+
+**不必手打變數名稱** — 為了避免打錯字造成流程靜默失效，變數的引用與條件式都改成「用點選的」：
+
+| 改善項目 | 說明 |
+|----------|------|
+| 🔘 **插入變數選單** | 每個文字欄位右側有一個 `{ }` 按鈕，點開就列出目前流程所有變數，選了直接插入游標處（不再是接在字尾），完全不用手打名字 |
+| 🧩 **條件式產生器** | `IF_BLOCK` 不再是一格自由文字，而是「**值 A → 運算子 → 值 B**」三格：值可從變數選單挑、運算子用下拉選（`==`／`!=`／`<`／`<=`／`>`／`>=`），存檔時自動組回運算式 |
+| ⚠️ **未知變數警示** | 設定框只要偵測到 `{{名字}}` 不在此流程的變數清單中（打錯字、改名、舊匯入殘留），就會即時跳出紅色提示，並且**停用「儲存」鍵**，打錯的名字根本存不進流程 |
+| 🌐 **未建立的全域變數** | `SET_VARIABLE` 的名稱欄位填了不存在的 `g:名稱` 時同樣標紅、擋下儲存（這種名字沒有 `{{ }}`，上面那條掃不到）；真的漏進來（匯入的舊檔）則執行時直接失敗，並在執行記錄寫出是哪個名字 |
+
+<div align="center">
+
+| 條件式產生器 | 插入變數選單 | 未知變數警示 |
+|:---:|:---:|:---:|
+| <img src="docs/screenshots/condition_builder.png" width="230" alt="條件式產生器：值 A／運算子／值 B 三格" /> | <img src="docs/screenshots/variable_insert.png" width="230" alt="文字欄位的插入變數下拉選單" /> | <img src="docs/screenshots/unknown_var_warning.png" width="230" alt="未知變數紅色提示" /> |
+| 三格點選、免手打運算式 | `{ }` 按鈕列出流程變數 | 偵測到打錯的 `{{name}}` 即時警示 |
+
+</div>
+
+條件式產生器把使用者輸入組成 interpreter 看得懂的運算式，過程零手打：
+
+```mermaid
+flowchart LR
+    A["值 A<br/>（變數選單）<br/><b>{{battery}}</b>"] --> OP{"運算子<br/>下拉選<br/><b>&lt;</b>"}
+    OP --> B["值 B<br/>（可打字或選變數）<br/><b>20</b>"]
+    B --> R["存檔序列化<br/><b>{{battery}} &lt; 20</b>"]
+    R --> E["執行時代入變數值<br/>電量 15 → <b>true</b>"]
+```
+
+> 數值兩側皆為數字時做數值比較，否則不分大小寫字串比較。**值 B 留空**則直接判斷「值 A 是否為 true」。運算式格式與儲存不變，舊流程開啟後仍能正確解析與往返（round-trip）。
 
 ### 匯入／匯出
 
 - 自有格式：`.flow`（JSON），規格見 [docs/FLOW_SCHEMA.md](docs/FLOW_SCHEMA.md)
 - MacroDroid 相容：可解析並轉換 `.mdr` 匯出檔（`core/macrodroid-compat`）
 - 支援檔案選擇器匯入、系統分享（Share）匯入、Flow 詳細頁直接匯出分享
+- 🌐 匯出的 `.flow` 會一併帶上該流程用到的**全域變數宣告**（名稱／型別／預設值），匯入時自動補建缺少的變數 —— 換裝置後 `{{g:名稱}}` 仍可用。只帶宣告不帶當下的值（計數器跑到一半的值換台手機沒有意義），已存在的同名變數不會被覆寫
 - 🔒 匯入的流程一律以**停用**狀態加入，外部分享的檔案會先跳確認框，避免惡意檔案自動執行
 
 ---
@@ -132,19 +223,70 @@ cd StudioProject
 
 專案有兩個 **product flavor**：
 
-| Flavor | 用途 | 簡訊／撥號 |
-|--------|------|:---:|
-| `github` | sideload / GitHub Release，功能完整 | ✅ |
-| `play` | 上架 Google Play（依政策移除簡訊／撥號權限與程式碼） | ❌ |
+| Flavor | 用途 | 簡訊／撥號 | 模擬點擊／滑動 | 產物 |
+|--------|------|:---:|:---:|------|
+| **`github`** | sideload / GitHub Release，**功能完整** | ✅ | ✅ | APK（可直接安裝） |
+| `play` | 上架 Google Play（依政策移除簡訊／撥號權限與程式碼；模擬點擊／滑動也一併移除） | ❌ | ❌ | AAB（上架用） |
+
+> 👉 **一般使用者請下載 `github` 版**：功能最完整、且是可直接安裝的 APK。Play 版是為了符合商店政策而閹割的版本，若未能上架，`github` 版就是唯一且完整的發佈管道。
 
 ```bash
-./gradlew :app:assembleGithubDebug    # 完整版 debug APK
-./gradlew :app:assemblePlayDebug      # Play 版 debug APK
-./gradlew :app:bundleGithubRelease    # 完整版 release AAB
-./gradlew :app:bundlePlayRelease      # Play 版 release AAB（上架用）
+./gradlew :app:assembleGithubDebug     # 完整版 debug APK（開發用，debug 簽章）
+./gradlew :app:assembleGithubRelease   # 完整版 release APK（發佈給使用者 sideload）★
+./gradlew :app:bundleGithubRelease     # 完整版 release AAB
+./gradlew :app:bundlePlayRelease       # Play 版 release AAB（上架用）
 ```
 
+產物路徑：
+
+| 指令 | 輸出檔 |
+|------|--------|
+| `assembleGithubRelease` | `app/build/outputs/apk/github/release/app-github-release.apk` |
+| `bundleGithubRelease` | `app/build/outputs/bundle/githubRelease/app-github-release.aab` |
+
+> 💡 **APK vs AAB**：發佈到 GitHub Release 給使用者直接安裝請用 **APK**（`assembleGithubRelease`）。AAB 無法直接安裝，是給 Google Play 拆分下載用的格式（本機要裝 AAB 得再透過 `bundletool`）。
+
 需求：JDK 17+（Gradle toolchain 會自動處理 module 的 JVM 11 目標）、Android SDK Platform 37。
+
+### Release 簽章
+
+Release 版需要一份**上簽章金鑰（keystore）**，設定放在 `app/keystore.properties`（已被 `.gitignore` 排除，不進 repo）：
+
+```properties
+storeFile=/absolute/path/to/upload-keystore.jks
+storePassword=********
+keyAlias=upload
+keyPassword=********
+```
+
+沒有這個檔案時，release 任務仍可 configure，但會產出**未簽章**的 APK（無法安裝）。第一次要先產生金鑰：
+
+```bash
+keytool -genkey -v -keystore upload-keystore.jks \
+  -alias upload -keyalg RSA -keysize 2048 -validity 10000
+```
+
+> ⚠️ **金鑰要離線保管、不可外流也不可弄丟**：同一 App（`com.adsf.nexflow`）未來的更新必須用**同一把金鑰**簽章，否則使用者無法直接覆蓋升級。
+
+### 發佈與檔案校驗（SHA-256）
+
+為了讓使用者能確認下載到的 APK 沒有被竄改，**每次發佈都應附上校驗值**，並寫進 GitHub Release 說明：
+
+```bash
+APK=app/build/outputs/apk/github/release/app-github-release.apk
+
+# 1) 檔案雜湊（SHA-256）— 貼進 Release 說明
+shasum -a 256 "$APK"
+
+# 2) 簽章憑證指紋 — 證明「這顆 APK 是本專案金鑰簽的」
+apksigner verify --print-certs "$APK" | grep -i "SHA-256"
+```
+
+建議在每個 Release 附上一個 `SHA256SUMS.txt`：
+
+```bash
+shasum -a 256 "$APK" > SHA256SUMS.txt
+```
 
 ## 測試
 
@@ -160,7 +302,7 @@ cd StudioProject
 涵蓋內容：
 
 - `FlowInterpreterTest` — 條件式求值（比較運算子、數值/字串）、IF/ELSE 分支、REPEAT 次數、SET_VARIABLE 新舊 key 相容
-- `TriggerConfigTest` / `ActionConfigTest` — **每一種** TriggerType（14）與 ActionType（25）的 picker 資訊、欄位 key 唯一性、空設定與填滿設定的摘要產生，以及與 interpreter 的 key 契約（IF 的 `expression`、REPEAT 的 `count`、SET_VARIABLE 的 `variable_name`/`value`）
+- `TriggerConfigTest` / `ActionConfigTest` — **每一種** TriggerType（16）與 ActionType（34）的 picker 資訊、欄位 key 唯一性、空設定與填滿設定的摘要產生，以及與 interpreter 的 key 契約（IF 的 `expression`、REPEAT 的 `count`、SET_VARIABLE 的 `variable_name`/`value`）
 
 ### 裝置 instrumented 測試（需要實機或模擬器）
 
@@ -199,7 +341,7 @@ adb shell settings put global animator_duration_scale 1.0
 
 | 功能 | 需要的權限 |
 |------|-----------|
-| App 啟動觸發、截圖動作 | 無障礙服務（Accessibility Service） |
+| App 啟動觸發、截圖動作、模擬點擊／滑動 | 無障礙服務（Accessibility Service） |
 | 通知觸發 | 通知存取權限（Notification Listener） |
 | 地理圍欄 | 精確定位 + 背景定位 |
 | 亮度調整 | 修改系統設定（WRITE_SETTINGS） |
@@ -209,8 +351,8 @@ adb shell settings put global animator_duration_scale 1.0
 
 ## 已知限制（規劃中）
 
-- Flow 層級的 `conditions`（執行前置條件）已有資料模型與 .mdr 匯入，但引擎尚未評估、也沒有編輯 UI
-- 全域變數（跨 Flow 共用）的資料表已預留，功能尚未實作
+- Flow 層級的 `conditions`（執行前置條件）已有資料模型、.mdr 匯入與 JSON 往返，但**引擎尚未評估、也沒有編輯 UI**。含約束的 `.mdr` 或 `.flow` 匯入時會列出警告，明確告知該流程仍會無條件執行，不會靜默失效
+- 全域變數需先在「設定 → 全域變數」建立才能寫入：`SET_VARIABLE` 不會用打錯的 `g:名稱` 自動建立新變數（避免 typo 悄悄產生殭屍變數）。設定框會擋下不存在的 `g:` 名稱、無法儲存；萬一仍寫入（例如匯入的舊檔），執行會**失敗並在執行記錄寫出該名稱**，而不是靜默跳過
 
 ## 授權
 

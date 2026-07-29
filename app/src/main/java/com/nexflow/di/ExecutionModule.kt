@@ -33,6 +33,7 @@ import com.nexflow.executor.OpenUrlActionExecutor
 import com.nexflow.executor.ScreenshotActionExecutor
 import com.nexflow.executor.SetWallpaperActionExecutor
 import com.nexflow.executor.ShareActionExecutor
+import com.nexflow.executor.SimulateSwipeActionExecutor
 import com.nexflow.executor.SimulateTapActionExecutor
 import com.nexflow.executor.SpeakerphoneActionExecutor
 import com.nexflow.executor.ToastActionExecutor
@@ -172,6 +173,9 @@ abstract class ExecutionModule {
 
     @Binds @IntoSet
     abstract fun bindSimulateTap(impl: SimulateTapActionExecutor): ActionExecutor
+
+    @Binds @IntoSet
+    abstract fun bindSimulateSwipe(impl: SimulateSwipeActionExecutor): ActionExecutor
 
     @Binds @IntoSet
     abstract fun bindSpeakerphone(impl: SpeakerphoneActionExecutor): ActionExecutor

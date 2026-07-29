@@ -24,6 +24,8 @@ fun sampleConfig(fields: List<ConfigField>): Map<String, String> {
     fields.forEach { field ->
         when (field) {
             is ConfigField.TextInput -> values[field.key] = "sample"
+            is ConfigField.VariableNameInput -> values[field.key] = "counter"
+            is ConfigField.ConditionInput -> values[field.key] = "{{battery}} < 20"
             is ConfigField.Dropdown -> values[field.key] = field.options.first().first
             is ConfigField.Slider -> values[field.key] = field.min.toString()
             is ConfigField.TimePicker -> values[field.key] = "08:30"
@@ -41,6 +43,12 @@ fun sampleConfig(fields: List<ConfigField>): Map<String, String> {
             is ConfigField.CurrentLocationButton -> {
                 values[field.latKey] = "25.033964"
                 values[field.lngKey] = "121.564468"
+            }
+            is ConfigField.ScreenCoordinatePicker -> {
+                values[field.xKey] = "540"
+                values[field.yKey] = "1600"
+                field.endXKey?.let { values[it] = "540" }
+                field.endYKey?.let { values[it] = "600" }
             }
             is ConfigField.InfoText -> Unit // display-only
             is ConfigField.Toggle -> values[field.key] = "true"

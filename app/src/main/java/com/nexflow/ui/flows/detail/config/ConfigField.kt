@@ -33,6 +33,31 @@ sealed class ConfigField {
         val options: List<Pair<String, String>>,
     ) : ConfigField()
 
+    /**
+     * Structured boolean-condition editor: `value A` [operator] `value B`.
+     * Serialized back to the interpreter's expression string (e.g. `{{battery}} < 20`).
+     * Leaving `value B` empty stores just `value A`, which the interpreter treats as
+     * a truthy check. Both operands accept variable references via the insert menu, so
+     * the user never has to hand-type `{{name}}` or the comparison operator.
+     */
+    data class ConditionInput(
+        override val key: String,
+        override val label: String,
+    ) : ConfigField()
+
+    /**
+     * Free-text input for a variable *name* (as written, e.g. `counter` or `g:shared`) with a
+     * dropdown to pick an existing local or global variable. Unlike the reference insert menu it
+     * stores the bare name, not a `{{...}}` token — used by SET_VARIABLE, which can create a new
+     * *local* variable by typing a name that doesn't exist yet. A `g:` name must already exist as
+     * a global: the dialog blocks saving an unknown one, and the engine fails the run on it.
+     */
+    data class VariableNameInput(
+        override val key: String,
+        override val label: String,
+        val hint: String = "",
+    ) : ConfigField()
+
     data class Slider(
         override val key: String,
         override val label: String,
@@ -103,6 +128,24 @@ sealed class ConfigField {
         override val label: String = "Use current location",
         val latKey: String,
         val lngKey: String,
+    ) : ConfigField()
+
+    /**
+     * Picks raw screen coordinates by tapping a screenshot instead of making the user read
+     * numbers off "Pointer location" in Developer options. The user shoots a normal system
+     * screenshot of the target screen, picks it here, and taps the spot they mean; the tap's
+     * position *as a fraction of the image* is scaled to the device's display size.
+     *
+     * Writes into [xKey]/[yKey] (and [endXKey]/[endYKey] when set, which also switches the
+     * picker to two-point swipe mode) — [key] itself stores nothing.
+     */
+    data class ScreenCoordinatePicker(
+        override val key: String,
+        override val label: String,
+        val xKey: String,
+        val yKey: String,
+        val endXKey: String? = null,
+        val endYKey: String? = null,
     ) : ConfigField()
 
     /** Display-only informational text — captures no input. */

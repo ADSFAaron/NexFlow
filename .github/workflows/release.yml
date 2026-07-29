@@ -1,0 +1,155 @@
+name: Release APK
+
+# 每次 push 到 master 都會跑單元測試；
+# 只有當 app/build.gradle.kts 的 versionName 變成一個「還沒有對應 tag」的新版本時，
+# 才會簽章打包 github flavor 的 release APK，建立 tag 並發佈 GitHub Release。
+on:
+  push:
+    branches: [master]
+  workflow_dispatch: # 也可以在 Actions 頁面手動觸發
+
+permissions:
+  contents: write # 建立 tag / Release 需要
+
+concurrency:
+  group: release-master
+  cancel-in-progress: false # 發佈流程不中斷，避免 tag 建到一半被砍
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # 需要完整 tag 清單來判斷版本是否已發佈
+
+      - name: 讀取 versionName 並判斷是否需要發佈
+        id: ver
+        run: |
+          set -euo pipefail
+          VERSION=$(sed -n 's/^[[:space:]]*versionName = "\(.*\)"[[:space:]]*$/\1/p' app/build.gradle.kts | head -1)
+          if [ -z "$VERSION" ]; then
+            echo "::error::無法從 app/build.gradle.kts 解析 versionName"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
+            echo "tag v$VERSION 已存在 → 只跑測試，不發佈"
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "偵測到新版本 $VERSION → 測試通過後發佈"
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "### versionName: \`$VERSION\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platforms;android-37'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: 單元測試
+        run: >
+          ./gradlew
+          :app:testGithubDebugUnitTest
+          :core:automation:test
+          :core:flow-schema:test
+          :core:macrodroid-compat:test
+
+      - name: 上傳測試報告（失敗時）
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: '**/build/reports/tests/**'
+          retention-days: 7
+
+      # ---- 以下只在偵測到新版本時執行 ----
+
+      - name: 還原簽章金鑰
+        if: steps.ver.outputs.release == 'true'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "${KEYSTORE_BASE64:-}" ]; then
+            echo "::error::缺少 KEYSTORE_BASE64 secret，無法簽章 release APK"
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          # app/build.gradle.kts 會讀這個檔（已被 .gitignore 排除）
+          cat > app/keystore.properties <<EOF
+          storeFile=$RUNNER_TEMP/release.jks
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+
+      - name: 打包 release APK（github flavor）
+        if: steps.ver.outputs.release == 'true'
+        run: ./gradlew :app:assembleGithubRelease
+
+      - name: 整理產物與 Release 內容
+        if: steps.ver.outputs.release == 'true'
+        id: package
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          set -euo pipefail
+          APK=$(find app/build/outputs/apk/github/release -name '*.apk' | head -1)
+          if [ -z "$APK" ]; then
+            echo "::error::找不到打包好的 APK"
+            exit 1
+          fi
+          mkdir -p dist
+          cp "$APK" "dist/NexFlow-v$VERSION.apk"
+          ( cd dist && sha256sum "NexFlow-v$VERSION.apk" > "NexFlow-v$VERSION.apk.sha256" )
+
+          # 從 CHANGELOG.md 取出這個版本的段落，之後會擺在自動產生的 commit 清單前面
+          awk -v ver="$VERSION" '
+            $0 ~ "^## \\[" ver "\\]" { found = 1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md > dist/notes.md
+          if [ -s dist/notes.md ]; then
+            echo "has_notes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_notes=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 建立 GitHub Release
+        if: steps.ver.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.ver.outputs.version }}
+          HAS_NOTES: ${{ steps.package.outputs.has_notes }}
+        run: |
+          set -euo pipefail
+          # --generate-notes 會列出「上一個 Release 之後的 commit / PR」與完整比較連結。
+          # 若 CHANGELOG 有對應段落，用 --notes 一起帶上，GitHub 會把它放在自動產生的清單前面。
+          NOTES_ARGS=(--generate-notes)
+          if [ "$HAS_NOTES" = "true" ]; then
+            NOTES_ARGS+=(--notes "$(cat dist/notes.md)")
+          fi
+          gh release create "v$VERSION" \
+            --target "$GITHUB_SHA" \
+            --title "NexFlow v$VERSION" \
+            "${NOTES_ARGS[@]}" \
+            "dist/NexFlow-v$VERSION.apk" \
+            "dist/NexFlow-v$VERSION.apk.sha256"
+
+      - name: 清除簽章金鑰
+        if: always()
+        run: rm -f app/keystore.properties "$RUNNER_TEMP/release.jks"
