@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="appicon.png" width="120" alt="NexFlow logo" />
+<img src="docs/appicon.png" width="120" alt="NexFlow logo" />
 
 # NexFlow
 
@@ -353,6 +353,12 @@ adb shell settings put global animator_duration_scale 1.0
 
 - Flow 層級的 `conditions`（執行前置條件）已有資料模型、.mdr 匯入與 JSON 往返，但**引擎尚未評估、也沒有編輯 UI**。含約束的 `.mdr` 或 `.flow` 匯入時會列出警告，明確告知該流程仍會無條件執行，不會靜默失效
 - 全域變數需先在「設定 → 全域變數」建立才能寫入：`SET_VARIABLE` 不會用打錯的 `g:名稱` 自動建立新變數（避免 typo 悄悄產生殭屍變數）。設定框會擋下不存在的 `g:` 名稱、無法儲存；萬一仍寫入（例如匯入的舊檔），執行會**失敗並在執行記錄寫出該名稱**，而不是靜默跳過
+- **MacroDroid `.mdr` 相容為部分覆蓋**：目前對照 14 種觸發、25 種動作、5 種條件的 MacroDroid class type，其餘一律轉成 `UNSUPPORTED` 並在匯入時逐項列出警告（原始 class 名會保留在 config 裡，方便手動補上對應動作）。轉換是 best-effort，複雜巨集匯入後請先檢視再啟用
+- **精確時間需要「鬧鐘與提醒」權限**：TIME 觸發走 `AlarmManager`，Android 12+ 未授權 `SCHEDULE_EXACT_ALARM` 時會退回不精確排程 —— 仍能穿透 Doze，但系統可能併入維護視窗，**誤差數分鐘**。設定頁有引導前往授權
+- **省電機制可能中斷非時間類觸發**：搖晃、環境光、Wi-Fi／藍牙、耳機、螢幕等觸發依附於前景服務的事件串流，被系統或廠商的省電策略殺掉後就會停止監聽（TIME 因為由 AlarmManager 驅動不受影響）。目前**還沒有引導使用者把 App 加入電池最佳化白名單**的畫面，激進省電的機型請自行到系統設定放行
+- **同一流程不會並行執行**：正在執行的流程再次被觸發會直接略過（避免重複觸發疊加成多份同時執行），這些觸發**不會排隊補跑**
+- **Wi-Fi／飛航模式靜默切換需一次性 ADB 授權**：Android 10 起系統不再開放第三方 App 直接切換，必須手動授予 `WRITE_SECURE_SETTINGS`（App 內可複製指令）；未授權時只能改為跳轉系統設定頁
+- **NFC 觸發僅在 App 前景時有效**：使用 `enableReaderMode`，背景不會接收標籤
 
 ## 授權
 

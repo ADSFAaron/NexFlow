@@ -64,8 +64,9 @@ keystore.properties
 *.swp
 *.tmp
 *~
-appicon.psd
-appicon.png
+# Root design sources only — docs/appicon.png IS tracked (README uses it)
+/appicon.psd
+/appicon.png
 docs/PLAY_BG_LOCATION_DECLARATION.md
 docs/play-screenshots/*
 docs/play-accessibility/*
