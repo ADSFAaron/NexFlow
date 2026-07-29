@@ -44,15 +44,21 @@ jobs:
           echo "### versionName: \`$VERSION\`" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
         with:
-          packages: 'platforms;android-37'
+          # - compileSdk 37 對應的套件 id 是 android-37.0（Android 17），不是 android-37；
+          #   從 API 36.1 起 sdkmanager 的平台套件改用 <major>.<minor> 命名。
+          # - NDK 是必要的：release buildType 設了 ndk.debugSymbolLevel = "FULL"，
+          #   assembleGithubRelease 會跑 extractNativeDebugMetadata / stripDebugSymbols，
+          #   兩者都要 NDK。版本必須是 AGP 9.2.1 的預設值 28.2.13676358
+          #   （runner 只預裝 27.3.x，不裝這包 AGP 會自己下載或直接失敗）。
+          packages: 'platforms;android-37.0 build-tools;37.0.0 ndk;28.2.13676358'
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -67,7 +73,7 @@ jobs:
 
       - name: 上傳測試報告（失敗時）
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-reports
           path: '**/build/reports/tests/**'
