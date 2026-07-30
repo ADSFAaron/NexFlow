@@ -360,6 +360,16 @@ adb shell settings put global animator_duration_scale 1.0
 - **Wi-Fi／飛航模式靜默切換需一次性 ADB 授權**：Android 10 起系統不再開放第三方 App 直接切換，必須手動授予 `WRITE_SECURE_SETTINGS`（App 內可複製指令）；未授權時只能改為跳轉系統設定頁
 - **NFC 觸發僅在 App 前景時有效**：使用 `enableReaderMode`，背景不會接收標籤
 
+## 參與貢獻
+
+歡迎回報問題、提功能建議，或直接送 PR（新增觸發／動作、補翻譯、擴充 MacroDroid 相容都很受歡迎）：
+
+- 💬 [**Discussions**](https://github.com/ADSFAaron/NexFlow/discussions) — 使用問題、流程分享、還沒想清楚的點子都在這裡聊
+- 📋 [**CONTRIBUTING.md**](CONTRIBUTING.md) — 開發環境、flavor 與測試指令、**新增 Trigger／Action 的四個必要步驟**
+- 🤝 [**CODE_OF_CONDUCT.md**](CODE_OF_CONDUCT.md) — 社群行為準則（Contributor Covenant 2.1）
+- 🔐 [**SECURITY.md**](SECURITY.md) — 安全性漏洞請**私下回報**，不要開公開 issue
+
 ## 授權
 
-Apache License 2.0
+本專案採用 [Apache License 2.0](LICENSE) 授權，Copyright 2026 ADSFAaron and the NexFlow contributors。
+送出貢獻即表示同意以相同授權釋出。

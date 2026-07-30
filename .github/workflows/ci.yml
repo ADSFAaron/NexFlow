@@ -1,0 +1,65 @@
+name: CI
+
+# Pull request 的品質閘門：跑兩個 flavor 的單元測試。
+# master 的 push 由 release.yml 負責（它也會跑同一組測試），所以這裡不重複掛 push，
+# 避免每次 push 都跑兩份一樣的測試。
+on:
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read # 只需要讀 code，不碰 tag / release
+
+concurrency:
+  # 同一個 PR 連續 push 時，取消還在跑的舊 job
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    name: 單元測試
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          # compileSdk 37 對應的套件 id 是 android-37.0（從 API 36.1 起改用 <major>.<minor> 命名）。
+          # 這裡不裝 NDK：debugSymbolLevel = "FULL" 只在 release buildType 生效，
+          # debug 單元測試用不到，省下一大包下載。
+          packages: 'platforms;android-37.0 build-tools;37.0.0'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Core module 測試
+        run: >
+          ./gradlew
+          :core:automation:test
+          :core:flow-schema:test
+          :core:macrodroid-compat:test
+
+      - name: App 單元測試（github flavor）
+        run: ./gradlew :app:testGithubDebugUnitTest
+
+      # play flavor 移除了簡訊／撥號／模擬點擊的程式碼（app/src/play 對 app/src/github）。
+      # 動到 app/src/main 的共用程式碼很容易只顧到 github 版，這一步就是要抓那個。
+      - name: App 單元測試（play flavor）
+        run: ./gradlew :app:testPlayDebugUnitTest
+
+      - name: 上傳測試報告（失敗時）
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports
+          path: '**/build/reports/tests/**'
+          retention-days: 7

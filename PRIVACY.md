@@ -78,4 +78,4 @@
 如有隱私相關疑慮，請透過以下方式聯繫：
 
 - **GitHub Issues**：[https://github.com/ADSFAaron/NexFlow/issues](https://github.com/ADSFAaron/NexFlow/issues)
-- **Email**：aaron19991015@gmail.com
+- **Email**：aaron-chuang@haoder.dev
