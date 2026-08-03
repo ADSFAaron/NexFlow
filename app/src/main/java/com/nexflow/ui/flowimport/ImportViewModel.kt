@@ -18,6 +18,7 @@ package com.nexflow.ui.flowimport
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexflow.core.automation.interpreter.FlowInterpreter
+import com.nexflow.core.automation.model.ConditionType
 import com.nexflow.core.automation.model.GlobalVariable
 import com.nexflow.core.automation.model.VariableType
 import com.nexflow.core.automation.repository.FlowRepository
@@ -82,9 +83,15 @@ class ImportViewModel @Inject constructor(
             val errors = FlowSchemaValidator.validate(flowJson)
             val warnings = errors.map { "${it.field}: ${it.message}" }.toMutableList()
             warnings += reconcileGlobals(flowJson)
-            if (flowJson.conditions.isNotEmpty()) {
-                warnings += "Conditions: ${flowJson.conditions.size} flow-level condition(s) are " +
-                    "stored but NOT evaluated at runtime yet — this flow will run even when they don't hold"
+            // Conditions are enforced now, so an unrecognised one is not a harmless leftover:
+            // the engine refuses to run a flow whose constraint it cannot check.
+            val unknownConditions = flowJson.conditions
+                .map { it.type }
+                .filter { ConditionType.fromId(it) == null }
+                .distinct()
+            if (unknownConditions.isNotEmpty()) {
+                warnings += "Conditions: unsupported type(s) ${unknownConditions.joinToString()} — " +
+                    "this flow will not run until you remove them in the editor"
             }
 
             repository.save(flowJson.toDomain())

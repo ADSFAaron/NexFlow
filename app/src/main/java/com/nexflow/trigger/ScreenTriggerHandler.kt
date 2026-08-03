@@ -23,6 +23,7 @@ import com.nexflow.core.automation.model.Trigger
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.automation.trigger.TriggerEvent
 import com.nexflow.core.automation.trigger.TriggerHandler
+import com.nexflow.core.automation.trigger.TriggerVariables
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -30,6 +31,7 @@ import kotlinx.coroutines.flow.callbackFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/** Fires on screen on/off/unlock. Reports which one as `{{trigger.event}}`. */
 @Singleton
 class ScreenTriggerHandler @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -54,7 +56,15 @@ class ScreenTriggerHandler @Inject constructor(
                     Intent.ACTION_USER_PRESENT -> targetEvent == "UNLOCKED"
                     else -> false
                 }
-                if (matched) trySend(TriggerEvent(trigger.id, ""))
+                if (matched) {
+                    trySend(
+                        TriggerEvent(
+                            triggerId = trigger.id,
+                            flowId = "",
+                            metadata = mapOf(TriggerVariables.EVENT to targetEvent),
+                        ),
+                    )
+                }
             }
         }
         context.registerReceiver(receiver, filter)

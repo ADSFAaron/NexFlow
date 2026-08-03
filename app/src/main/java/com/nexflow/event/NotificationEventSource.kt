@@ -19,7 +19,23 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 
-data class NotificationEvent(val packageName: String, val text: String)
+/**
+ * One posted notification. [title] and [text] are kept apart so a trigger can filter on either,
+ * and [combined] is what a "match anywhere" filter reads.
+ */
+data class NotificationEvent(
+    val packageName: String,
+    val title: String,
+    val text: String,
+) {
+    /** Title and body as one line, e.g. `Alice: see you at 7`. */
+    val combined: String
+        get() = when {
+            title.isBlank() -> text
+            text.isBlank() -> title
+            else -> "$title: $text"
+        }
+}
 
 /** Bridges NexFlowNotificationListenerService → NotificationTriggerHandler. */
 object NotificationEventSource {

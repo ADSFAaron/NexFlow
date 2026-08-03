@@ -73,7 +73,17 @@ object AiCatalog {
         }
 
     private fun fieldsSpec(fields: List<ConfigField>): String {
-        val specs = fields.mapNotNull { fieldSpec(it) }
+        val specs = fields.mapNotNull { field ->
+            fieldSpec(field)?.let { spec ->
+                // A conditional field only applies for one value of the field it depends on;
+                // without saying so the model fills it in unconditionally.
+                if (field.showWhenKey != null) {
+                    "$spec (only when ${field.showWhenKey}=${field.showWhenValue})"
+                } else {
+                    spec
+                }
+            }
+        }
         return if (specs.isEmpty()) "" else " | config: ${specs.joinToString(", ")}"
     }
 
@@ -88,10 +98,7 @@ object AiCatalog {
         is ConfigField.TimePicker -> "${field.key}:time\"HH:mm\""
         is ConfigField.AppPicker -> "${field.key}:package (resolve via search_installed_apps)"
         is ConfigField.ShortcutPicker -> "${field.key}: leave empty (user picks the shortcut in the editor)"
-        is ConfigField.DayPicker -> buildString {
-            append("${field.key}:days\"MON,TUE,WED,THU,FRI,SAT,SUN\" comma-separated")
-            if (field.showWhenKey != null) append(" (only when ${field.showWhenKey}=${field.showWhenValue})")
-        }
+        is ConfigField.DayPicker -> "${field.key}:days\"MON,TUE,WED,THU,FRI,SAT,SUN\" comma-separated"
         is ConfigField.WifiSsidInput -> "${field.key}:text"
         is ConfigField.NfcTagScan -> "${field.key}: leave empty (user scans the tag in the editor)"
         is ConfigField.MenuOptionList -> "${field.key}:json array of option strings e.g. [\"A\",\"B\"]"

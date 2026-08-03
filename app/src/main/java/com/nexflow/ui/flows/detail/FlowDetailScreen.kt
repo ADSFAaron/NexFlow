@@ -87,6 +87,7 @@ import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.DataObject
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.outlined.Nfc
@@ -161,21 +162,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Canvas
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
-import androidx.compose.ui.graphics.drawscope.translate
-import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
@@ -192,9 +182,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -203,10 +191,14 @@ import com.nexflow.core.automation.model.Flow
 import com.nexflow.FlavorFeatures
 import com.nexflow.core.automation.interpreter.FlowInterpreter
 import com.nexflow.core.automation.model.ActionType
+import com.nexflow.core.automation.model.Condition
+import com.nexflow.core.automation.model.ConditionType
 import com.nexflow.core.automation.model.Trigger
 import com.nexflow.core.automation.model.TriggerLogic
 import com.nexflow.core.automation.model.TriggerType
+import com.nexflow.core.automation.trigger.TriggerVariables
 import com.nexflow.permissions.PermissionReminder
+import com.nexflow.service.AllTriggersGate
 import com.nexflow.ui.common.AppPickerDialog
 import com.nexflow.ui.common.FlowIconPickerDialog
 import com.nexflow.ui.common.FlowIcons
@@ -217,6 +209,7 @@ import com.nexflow.core.automation.model.VariableType
 import androidx.compose.ui.graphics.Color
 import com.nexflow.ui.flows.detail.config.ActionInfo
 import com.nexflow.ui.flows.detail.config.ConfigField
+import com.nexflow.ui.flows.detail.config.NEGATE_KEY
 import com.nexflow.ui.flows.detail.config.CoordinatePickerDialog
 import com.nexflow.ui.flows.detail.config.pointFrom
 import com.nexflow.ui.flows.detail.config.TriggerInfo
@@ -271,6 +264,7 @@ private fun FlowDetailContent(
     val currentActionId by vm.currentActionId.collectAsState()
 
     var showTriggerPicker by rememberSaveable { mutableStateOf(false) }
+    var showConditionPicker by rememberSaveable { mutableStateOf(false) }
     var showActionPicker by rememberSaveable { mutableStateOf(false) }
     // Non-null while the action picker was opened from a block marker's "+" (Menu Case /
     // If / Else / Repeat): the chosen action is inserted right after this id, inside the
@@ -291,15 +285,10 @@ private fun FlowDetailContent(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
-    // Rasterised once per icon/color change; pinning only needs it at click time.
-    val flowIconPainter = rememberVectorPainter(FlowIcons.vector(f.icon))
-    val flowIconColor = FlowIcons.color(f.iconColor) ?: MaterialTheme.colorScheme.primary
-    val density = LocalDensity.current
     val pinUnsupportedMessage = stringResource(R.string.fd_pin_shortcut_unsupported)
     val onPinShortcut: () -> Unit = {
         if (PinShortcutHelper.isSupported(context)) {
-            val bitmap = renderShortcutIcon(flowIconPainter, flowIconColor, density)
-            PinShortcutHelper.pin(context, f, bitmap)
+            PinShortcutHelper.pin(context, f)
         } else {
             scope.launch { snackbarHostState.showSnackbar(pinUnsupportedMessage) }
         }
@@ -325,6 +314,11 @@ private fun FlowDetailContent(
     LaunchedEffect(vm) {
         vm.permissionReminder.collect { permissionReminder = it }
     }
+    // A run the flow's own conditions held back has no visible effect otherwise.
+    val skippedMessage = stringResource(R.string.fd_flow_skipped)
+    LaunchedEffect(vm) {
+        vm.runSkipped.collect { snackbarHostState.showSnackbar(skippedMessage) }
+    }
     LaunchedEffect(vm) {
         vm.setupComplete.collect { result ->
             val msg = if (result.allGranted) {
@@ -348,13 +342,19 @@ private fun FlowDetailContent(
     )
 
     val globalVariableRefs by vm.globalVariableRefs.collectAsState()
-    val flowVariables = remember(f.actions, f.variables, globalVariableRefs) {
+    val flowVariables = remember(f.actions, f.variables, f.triggers, globalVariableRefs) {
         (
             f.variables.map { it.name } +
                 f.actions.filter { it.type == ActionType.SET_VARIABLE }
                     .mapNotNull { it.config["variable_name"]?.takeIf { n -> n.isNotBlank() } } +
                 // Global (cross-flow) variables, referenced as {{g:name}}.
-                globalVariableRefs
+                globalVariableRefs +
+                // What this flow's triggers report about the event, as {{trigger.name}} —
+                // offered by the insert menu and accepted by the dialog's unknown-reference
+                // check, which would otherwise block Save on a perfectly valid reference.
+                f.triggers.flatMap { trigger ->
+                    TriggerVariables.keysFor(trigger.type).map { "${TriggerVariables.PREFIX}$it" }
+                }
             ).distinct()
     }
 
@@ -506,6 +506,22 @@ private fun FlowDetailContent(
                 }
             }
 
+            // ALL is a combination over time, not a state — say how long it waits, otherwise the
+            // toggle reads as "and" and a flow that never fires looks broken.
+            if (f.triggerLogic == TriggerLogic.ALL && f.triggers.size > 1) {
+                item {
+                    Text(
+                        stringResource(
+                            R.string.fd_logic_all_hint,
+                            AllTriggersGate.DEFAULT_WINDOW_MS / 60_000,
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    )
+                }
+            }
+
             itemsIndexed(f.triggers, key = { _, t -> t.id }) { index, trigger ->
                 val ti = trigger.type.info(context)
                 // animateItem: added/removed/undone rows slide into place instead of popping.
@@ -531,6 +547,62 @@ private fun FlowDetailContent(
                     onClick = { showTriggerPicker = true },
                 ) {
                     AddRowContent(stringResource(R.string.fd_add_trigger))
+                }
+            }
+
+            item { Spacer(Modifier.height(20.dp)) }
+
+            // ---- CONDITIONS (constraints) ----
+            item { SectionHeader(stringResource(R.string.fd_section_only_if)) }
+
+            if (f.conditions.isEmpty()) {
+                item {
+                    Text(
+                        stringResource(R.string.fd_no_conditions),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    )
+                }
+            }
+
+            itemsIndexed(f.conditions, key = { _, c -> c.id }) { index, condition ->
+                // A type this build doesn't know (hand-edited file, MacroDroid import) is shown
+                // as-is with a warning: the engine refuses to run the flow rather than ignore a
+                // constraint it can't check, so the row must say why.
+                val knownType = remember(condition.type) { ConditionType.fromId(condition.type) }
+                val ci = knownType?.info(context)
+                GroupedItem(index = index, count = f.conditions.size + 1, modifier = Modifier.animateItem()) {
+                    TriggerOrActionRow(
+                        icon = {
+                            Icon(
+                                ci?.icon ?: Icons.Outlined.ErrorOutline,
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp),
+                            )
+                        },
+                        headline = ci?.label ?: condition.type,
+                        supporting = knownType?.configSummary(context, condition.config, condition.negate)
+                            ?: stringResource(R.string.cnd_unsupported),
+                        onEdit = if (knownType != null) {
+                            { pendingConfig = PendingConfig.EditCondition(condition.id) }
+                        } else null,
+                        onDelete = {
+                            vm.removeCondition(condition.id)
+                            showDeletedSnackbar(ci?.label ?: condition.type) { vm.addCondition(condition) }
+                        },
+                    )
+                }
+            }
+
+            item(key = "add_condition") {
+                GroupedItem(
+                    index = f.conditions.size,
+                    count = f.conditions.size + 1,
+                    modifier = Modifier.animateItem(),
+                    onClick = { showConditionPicker = true },
+                ) {
+                    AddRowContent(stringResource(R.string.fd_add_condition))
                 }
             }
 
@@ -676,6 +748,23 @@ private fun FlowDetailContent(
         )
     }
 
+    if (showConditionPicker) {
+        SearchPickerSheet(
+            entries = remember {
+                ConditionType.entries.map {
+                    val ci = it.info(context)
+                    PickerEntry(it, ci.label, ci.icon, ci.description, context.getString(it.category.labelRes), it.category.ordinal)
+                }
+            },
+            searchPlaceholder = stringResource(R.string.fd_search_conditions),
+            onSelect = { type ->
+                showConditionPicker = false
+                pendingConfig = PendingConfig.NewCondition(type)
+            },
+            onDismiss = { showConditionPicker = false },
+        )
+    }
+
     if (showActionPicker) {
         SearchPickerSheet(
             entries = remember {
@@ -732,6 +821,48 @@ private fun FlowDetailContent(
                         availableVariables = flowVariables,
                         onConfirm = { values ->
                             vm.updateTrigger(trigger.copy(config = values))
+                            pendingConfig = null
+                        },
+                        onDismiss = { pendingConfig = null },
+                    )
+                }
+            }
+            // Conditions carry `negate` outside their config map, so the dialog trades it through
+            // the reserved NEGATE_KEY toggle and it is split back off here.
+            is PendingConfig.NewCondition -> ConfigDialog(
+                title = cfg.type.info(context).label,
+                fields = cfg.type.info(context).fields,
+                initialValues = emptyMap(),
+                availableVariables = flowVariables,
+                onConfirm = { values ->
+                    vm.addCondition(
+                        Condition(
+                            id = UUID.randomUUID().toString(),
+                            type = cfg.type.name,
+                            config = values - NEGATE_KEY,
+                            negate = values[NEGATE_KEY] == "true",
+                        ),
+                    )
+                    pendingConfig = null
+                },
+                onDismiss = { pendingConfig = null },
+            )
+            is PendingConfig.EditCondition -> {
+                val condition = f.conditions.find { it.id == cfg.conditionId }
+                val type = condition?.let { ConditionType.fromId(it.type) }
+                if (condition != null && type != null) {
+                    ConfigDialog(
+                        title = type.info(context).label,
+                        fields = type.info(context).fields,
+                        initialValues = condition.config + (NEGATE_KEY to condition.negate.toString()),
+                        availableVariables = flowVariables,
+                        onConfirm = { values ->
+                            vm.updateCondition(
+                                condition.copy(
+                                    config = values - NEGATE_KEY,
+                                    negate = values[NEGATE_KEY] == "true",
+                                ),
+                            )
                             pendingConfig = null
                         },
                         onDismiss = { pendingConfig = null },
@@ -843,33 +974,6 @@ private fun FlowDetailContent(
             onDismiss = { showRenameDialog = false },
         )
     }
-}
-
-/**
- * Rasterises the flow's colored circle + white glyph as one bitmap for a pinned
- * shortcut icon — unlike the widget (which lets Glance/RemoteViews draw the circle),
- * the launcher needs a single flattened image. Canvas size follows the adaptive icon
- * convention (108dp canvas, ~66dp safe zone) so launchers that apply a shape mask
- * don't clip the circle.
- */
-private fun renderShortcutIcon(painter: Painter, backgroundColor: Color, density: Density): Bitmap {
-    val sizePx = with(density) { 108.dp.roundToPx() }
-    val circleRadiusPx = with(density) { 33.dp.roundToPx() }.toFloat()
-    val glyphSizePx = with(density) { 40.dp.roundToPx() }.toFloat()
-    val imageBitmap = ImageBitmap(sizePx, sizePx)
-    CanvasDrawScope().draw(
-        density,
-        LayoutDirection.Ltr,
-        Canvas(imageBitmap),
-        Size(sizePx.toFloat(), sizePx.toFloat()),
-    ) {
-        val center = Offset(sizePx / 2f, sizePx / 2f)
-        drawCircle(color = backgroundColor, radius = circleRadiusPx, center = center)
-        translate(left = center.x - glyphSizePx / 2f, top = center.y - glyphSizePx / 2f) {
-            with(painter) { draw(Size(glyphSizePx, glyphSizePx), colorFilter = ColorFilter.tint(Color.White)) }
-        }
-    }
-    return imageBitmap.asAndroidBitmap()
 }
 
 @Composable
@@ -1040,6 +1144,8 @@ private val branchStartTypes = setOf(
 private sealed class PendingConfig {
     data class NewTrigger(val type: TriggerType) : PendingConfig()
     data class EditTrigger(val triggerId: String) : PendingConfig()
+    data class NewCondition(val type: ConditionType) : PendingConfig()
+    data class EditCondition(val conditionId: String) : PendingConfig()
     /** [anchorId] non-null = insert the new action right after that row (branch insert). */
     data class NewAction(val type: ActionType, val anchorId: String? = null) : PendingConfig()
     data class EditAction(val actionId: String) : PendingConfig()
@@ -1056,6 +1162,8 @@ private val PendingConfigSaver = listSaver<PendingConfig?, String>(
             null -> emptyList()
             is PendingConfig.NewTrigger -> listOf("new_trigger", cfg.type.name)
             is PendingConfig.EditTrigger -> listOf("edit_trigger", cfg.triggerId)
+            is PendingConfig.NewCondition -> listOf("new_condition", cfg.type.name)
+            is PendingConfig.EditCondition -> listOf("edit_condition", cfg.conditionId)
             is PendingConfig.NewAction -> listOf("new_action", cfg.type.name, cfg.anchorId ?: "")
             is PendingConfig.EditAction -> listOf("edit_action", cfg.actionId)
         }
@@ -1066,6 +1174,8 @@ private val PendingConfigSaver = listSaver<PendingConfig?, String>(
             payload == null -> null
             saved[0] == "new_trigger" -> runCatching { PendingConfig.NewTrigger(TriggerType.valueOf(payload)) }.getOrNull()
             saved[0] == "edit_trigger" -> PendingConfig.EditTrigger(payload)
+            saved[0] == "new_condition" -> runCatching { PendingConfig.NewCondition(ConditionType.valueOf(payload)) }.getOrNull()
+            saved[0] == "edit_condition" -> PendingConfig.EditCondition(payload)
             saved[0] == "new_action" -> runCatching {
                 PendingConfig.NewAction(
                     ActionType.valueOf(payload),
@@ -1207,7 +1317,8 @@ private fun TriggerOrActionRow(
     icon: @Composable () -> Unit,
     headline: String,
     supporting: String,
-    onEdit: () -> Unit,
+    /** Null hides the edit button — for rows with nothing this build can configure. */
+    onEdit: (() -> Unit)?,
     onDelete: () -> Unit,
     isExecuting: Boolean = false,
     onAddBranchAction: (() -> Unit)? = null,
@@ -1244,8 +1355,10 @@ private fun TriggerOrActionRow(
                         )
                     }
                 }
-                IconButton(onClick = onEdit) {
-                    Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.action_edit), modifier = Modifier.size(20.dp))
+                if (onEdit != null) {
+                    IconButton(onClick = onEdit) {
+                        Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.action_edit), modifier = Modifier.size(20.dp))
+                    }
                 }
                 IconButton(onClick = onDelete) {
                     Icon(
@@ -1544,6 +1657,10 @@ internal fun ConfigDialog(
                         UndeclaredGlobalWarning(undeclaredGlobals)
                     }
                     fields.forEach { field ->
+                        // Conditional fields (e.g. the app picker that only matters once the
+                        // notification's tap action is "open app") stay out of the way until the
+                        // field they depend on selects them.
+                        if (!field.isVisible(values)) return@forEach
                         when (field) {
                             is ConfigField.TextInput -> {
                                 VariableInsertField(
@@ -1796,10 +1913,6 @@ internal fun ConfigDialog(
                             }
 
                             is ConfigField.DayPicker -> {
-                                if (field.showWhenKey != null &&
-                                    values[field.showWhenKey] != field.showWhenValue
-                                ) return@forEach
-
                                 val days = listOf(
                                     "MON" to stringResource(R.string.day_mon),
                                     "TUE" to stringResource(R.string.day_tue),

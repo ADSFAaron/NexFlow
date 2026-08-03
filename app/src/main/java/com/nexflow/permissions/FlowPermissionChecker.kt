@@ -25,8 +25,10 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.nexflow.R
 import com.nexflow.core.automation.model.ActionType
+import com.nexflow.core.automation.model.ConditionType
 import com.nexflow.core.automation.model.Flow
 import com.nexflow.core.automation.model.TriggerType
+import com.nexflow.executor.NotificationActionExecutor
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -141,6 +143,25 @@ class FlowPermissionChecker @Inject constructor(
             }
         }
 
+        // Conditions read device state too, and a condition that cannot read it never holds —
+        // the flow would be skipped forever with no hint why. Treat their permissions as
+        // required, exactly like a trigger's.
+        flow.conditions.forEach { condition ->
+            when (ConditionType.fromId(condition.type)) {
+                ConditionType.WIFI_CONNECTED ->
+                    if (!condition.config["ssid"].isNullOrBlank() &&
+                        !granted(Manifest.permission.ACCESS_FINE_LOCATION)
+                    ) {
+                        add(R.string.perm_location_wifi, Manifest.permission.ACCESS_FINE_LOCATION)
+                    }
+                ConditionType.BLUETOOTH_CONNECTED ->
+                    if (!bluetoothGranted()) {
+                        add(R.string.perm_bluetooth, Manifest.permission.BLUETOOTH_CONNECT)
+                    }
+                else -> Unit
+            }
+        }
+
         flow.actions.filter { it.enabled }.forEach { action ->
             when (action.type) {
                 ActionType.OPEN_APP -> requireApp(action.config["package_name"])
@@ -152,12 +173,18 @@ class FlowPermissionChecker @Inject constructor(
                     if (!granted(Manifest.permission.CALL_PHONE)) {
                         add(R.string.perm_call_phone, Manifest.permission.CALL_PHONE)
                     }
-                ActionType.NOTIFICATION ->
+                ActionType.NOTIFICATION -> {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                         !granted(Manifest.permission.POST_NOTIFICATIONS)
                     ) {
                         add(R.string.perm_notifications, Manifest.permission.POST_NOTIFICATIONS)
                     }
+                    // The app the notification hands over to on tap must be installed, same as
+                    // for OPEN_APP — otherwise tapping the reminder goes nowhere.
+                    if (action.config["tap_action"] == NotificationActionExecutor.TAP_OPEN_APP) {
+                        requireApp(action.config["tap_package"])
+                    }
+                }
                 ActionType.DND_TOGGLE ->
                     if (!dndAccessGranted()) addSpecial(R.string.perm_dnd, SpecialAccess.DND)
                 ActionType.BRIGHTNESS_ADJUST ->

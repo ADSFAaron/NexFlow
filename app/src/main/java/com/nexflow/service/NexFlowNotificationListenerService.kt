@@ -34,15 +34,13 @@ class NexFlowNotificationListenerService : NotificationListenerService() {
         if (pkg == applicationContext.packageName) return
 
         val extras = sbn.notification?.extras ?: return
-        val text = buildString {
-            extras.getCharSequence(Notification.EXTRA_TITLE)?.let { append(it) }
-            extras.getCharSequence(Notification.EXTRA_TEXT)?.let {
-                if (isNotEmpty()) append(": ")
-                append(it)
-            }
-        }
-
-        NotificationEventSource.emit(NotificationEvent(packageName = pkg, text = text))
+        NotificationEventSource.emit(
+            NotificationEvent(
+                packageName = pkg,
+                title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty(),
+                text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString().orEmpty(),
+            ),
+        )
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {}

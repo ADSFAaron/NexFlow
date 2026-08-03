@@ -104,6 +104,7 @@ class FlowEngineTriggerIsolationTest {
             globalVariableRepository = globalVariableRepository,
             triggerHandlerSet = setOf(explodingHandler, firingHandler),
             actionExecutorSet = emptySet(),
+            conditionEvaluatorSet = emptySet(),
             timeTriggerScheduler = scheduler,
             context = context,
         )

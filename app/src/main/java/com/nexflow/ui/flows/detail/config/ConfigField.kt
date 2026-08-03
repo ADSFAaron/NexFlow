@@ -19,11 +19,29 @@ sealed class ConfigField {
     abstract val key: String
     abstract val label: String
 
+    /**
+     * Conditional visibility: the field is only rendered (and only then captures input) while the
+     * value under [showWhenKey] equals [showWhenValue]. A null key means "always shown".
+     *
+     * Fields that never need it inherit the default rather than declaring it, so a field list
+     * reads as a flat list of inputs until one genuinely depends on another.
+     */
+    open val showWhenKey: String? get() = null
+    open val showWhenValue: String? get() = null
+
+    /** Whether this field should be shown given the dialog's current values. */
+    fun isVisible(values: Map<String, String>): Boolean {
+        val key = showWhenKey ?: return true
+        return values[key] == showWhenValue
+    }
+
     data class TextInput(
         override val key: String,
         override val label: String,
         val hint: String = "",
         val multiline: Boolean = false,
+        override val showWhenKey: String? = null,
+        override val showWhenValue: String? = null,
     ) : ConfigField()
 
     data class Dropdown(
@@ -75,6 +93,8 @@ sealed class ConfigField {
     data class AppPicker(
         override val key: String,
         override val label: String,
+        override val showWhenKey: String? = null,
+        override val showWhenValue: String? = null,
     ) : ConfigField()
 
     /**
@@ -88,18 +108,19 @@ sealed class ConfigField {
         override val label: String,
         val labelKey: String,
         val packageKey: String,
+        override val showWhenKey: String? = null,
+        override val showWhenValue: String? = null,
     ) : ConfigField()
 
     /**
      * Multi-select day-of-week chips.
      * Stored as comma-separated IDs: "MON,WED,FRI".
-     * Only rendered when [showWhenKey] equals [showWhenValue] (both null = always shown).
      */
     data class DayPicker(
         override val key: String,
         override val label: String,
-        val showWhenKey: String? = null,
-        val showWhenValue: String? = null,
+        override val showWhenKey: String? = null,
+        override val showWhenValue: String? = null,
     ) : ConfigField()
 
     /**

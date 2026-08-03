@@ -15,8 +15,10 @@
  */
 package com.nexflow
 
+import com.nexflow.core.automation.condition.ConditionEvaluator
 import com.nexflow.core.automation.executor.ActionExecutor
 import com.nexflow.core.automation.model.ActionType
+import com.nexflow.core.automation.model.ConditionType
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.automation.trigger.TriggerHandler
 import dagger.hilt.android.testing.HiltAndroidRule
@@ -30,9 +32,10 @@ import javax.inject.Inject
 
 /**
  * Verifies the real Hilt graph wires up every option offered in the Flows UI:
- * each TriggerType has a TriggerHandler and each executable ActionType has an
- * ActionExecutor. Catches a forgotten @Binds @IntoSet in ExecutionModule, which
- * would otherwise fail only at runtime ("No executor for …").
+ * each TriggerType has a TriggerHandler, each executable ActionType an ActionExecutor,
+ * and each ConditionType a ConditionEvaluator. Catches a forgotten @Binds @IntoSet in
+ * ExecutionModule, which would otherwise fail only at runtime ("No executor for …") — or,
+ * for a condition, by silently refusing to run every flow that uses it.
  */
 @HiltAndroidTest
 class ExecutionBindingsTest {
@@ -45,6 +48,9 @@ class ExecutionBindingsTest {
 
     @Inject
     lateinit var actionExecutors: Set<@JvmSuppressWildcards ActionExecutor>
+
+    @Inject
+    lateinit var conditionEvaluators: Set<@JvmSuppressWildcards ConditionEvaluator>
 
     /** Handled inline by FlowInterpreter — no executor needed. */
     private val interpreterHandled = setOf(
@@ -84,5 +90,16 @@ class ExecutionBindingsTest {
             .filter { it !in FlavorFeatures.hiddenActionTypes } // SMS/Call absent in play flavor
             .filter { it !in supported.toSet() }
         assertTrue("Action types without an executor: $missing", missing.isEmpty())
+    }
+
+    @Test
+    fun everyConditionTypeHasAnEvaluator() {
+        val supported = conditionEvaluators.map { it.supportedType }
+        assertEquals(
+            "Duplicate condition evaluators for: ${supported.groupBy { it }.filterValues { it.size > 1 }.keys}",
+            supported.size, supported.toSet().size,
+        )
+        val missing = ConditionType.entries.filter { it !in supported.toSet() }
+        assertTrue("Condition types without an evaluator: $missing", missing.isEmpty())
     }
 }

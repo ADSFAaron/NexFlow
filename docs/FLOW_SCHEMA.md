@@ -26,7 +26,7 @@ A `.flow` file is a UTF-8 encoded JSON document describing a single automation f
 | `created_at` | `string (ISO 8601)` | ✅ | Creation timestamp in UTC. Format: `2026-06-03T12:00:00Z`. |
 | `updated_at` | `string (ISO 8601)` | ✅ | Last modification timestamp in UTC. Must be ≥ `created_at`. |
 | `triggers` | `Trigger[]` | ✅ | One or more trigger definitions. Must contain at least 1 item. |
-| `trigger_logic` | `"ANY" \| "ALL"` | ✅ | `ANY`: flow fires when any trigger activates. `ALL`: all triggers must activate within a time window. |
+| `trigger_logic` | `"ANY" \| "ALL"` | ✅ | `ANY`: the flow runs as soon as any trigger fires. `ALL`: every trigger must fire within 5 minutes of the others before the flow runs — see below. |
 | `conditions` | `Condition[]` | ✅ | Zero or more conditions evaluated before actions run. May be empty array `[]`. |
 | `actions` | `Action[]` | ✅ | Ordered list of actions to execute. Must contain at least 1 item. |
 | `variables` | `Variable[]` | ✅ | Flow-scoped variables. May be empty array `[]`. |
@@ -53,13 +53,23 @@ A `.flow` file is a UTF-8 encoded JSON document describing a single automation f
 | `SCREEN` | Screen turned on or off | `{"event": "ON"}` |
 | `APP_LAUNCH` | Specific app moved to foreground | `{"package": "com.example.app"}` |
 | `INCOMING_CALL` | Incoming phone call | `{"contact_filter": null}` |
-| `SMS_RECEIVED` | SMS received | `{"sender_filter": null}` |
-| `NOTIFICATION_RECEIVED` | Notification posted by an app | `{"package": "com.example.app", "text_contains": null}` |
+| `SMS_RECEIVED` | SMS received | `{"sender": "0912", "body_keyword": "code", "match_mode": "CONTAINS"}` |
+| `NOTIFICATION_RECEIVED` | Notification posted by an app | `{"package_name": "com.example.app", "keyword": "urgent", "match_field": "ANY", "match_mode": "CONTAINS"}` |
 | `DEVICE_BOOT` | Device finished booting | `{}` |
 | `HEADSET_PLUG` | Headset plugged or unplugged | `{"event": "PLUGGED"}` |
 | `NFC_TAG` | NFC tag scanned | `{"tag_id": null}` |
 | `GEOFENCE` | Device enters/exits geographic area | `{"lat": 25.033, "lng": 121.565, "radius_m": 200, "event": "ENTER"}` |
 | `MANUAL` | User-triggered (Widget / Quick Tile) | `{}` |
+
+### trigger_logic = ALL
+
+Triggers are moments, not states, so "all of them" means "all of them recently". Each fire is remembered for 5 minutes; when the last missing trigger fires inside that window the flow runs once and the set resets. A trigger that fires again before the set completes simply refreshes its own timestamp.
+
+- The `{{trigger.x}}` values of every fire are merged, with later fires winning — so `trigger.type` and `trigger.timestamp` describe the trigger that completed the set.
+- A trigger removed from the flow stops counting immediately, so editing a flow can never leave it waiting forever.
+- The partial state is in memory only: disabling the flow, editing it, or restarting the app starts the combination over.
+- Manual runs (Run button, widget, tile, pinned shortcut) ignore `ALL` entirely — pressing Run means run.
+- A flow with a single trigger behaves identically under `ANY` and `ALL`.
 
 ### TIME config fields
 
@@ -74,12 +84,31 @@ A `.flow` file is a UTF-8 encoded JSON document describing a single automation f
 
 ## Condition Object
 
+Conditions are the flow's constraints: the triggers say *when* to run, the conditions say *only if*. Every condition must hold (AND) or the run is skipped — it is written to the execution log with status `SKIPPED` and the reason, never silently dropped.
+
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `id` | `string (UUID v4)` | ✅ | Unique identifier within this flow. |
-| `type` | `string` | ✅ | Condition type identifier (e.g. `"BATTERY_LEVEL"`, `"WIFI_CONNECTED"`, `"TIME_RANGE"`). |
+| `type` | `ConditionType` | ✅ | Condition type identifier. See the table below. |
 | `config` | `object` | ✅ | Type-specific parameters. May be `{}`. |
-| `negate` | `boolean` | ✅ | If `true`, the condition logic is inverted (NOT). |
+| `negate` | `boolean` | ✅ | If `true`, the condition's result is inverted (NOT). |
+
+### ConditionType Values
+
+| Value | Holds when | `config` |
+|---|---|---|
+| `TIME_RANGE` | The local clock is in `[start, end)`; a range whose end precedes its start wraps past midnight | `{"start": "22:00", "end": "07:00"}` |
+| `DAY_OF_WEEK` | Today is one of `days`; an empty list is no restriction | `{"days": "MON,TUE,WED,THU,FRI"}` |
+| `BATTERY_LEVEL` | Charge is at or above/below `level`; a missing `level` is no restriction | `{"direction": "ABOVE", "level": "30"}` |
+| `CHARGING` | The device is (or is not) charging | `{"state": "CHARGING"}` |
+| `WIFI_CONNECTED` | Wi-Fi is connected, optionally to `ssid` | `{"state": "CONNECTED", "ssid": "HomeWifi"}` |
+| `BLUETOOTH_CONNECTED` | A Bluetooth **audio** device is connected, optionally matching `device_name` | `{"state": "CONNECTED", "device_name": "Car"}` |
+| `SCREEN_STATE` | The screen is on or off | `{"state": "OFF"}` |
+| `EXPRESSION` | The expression evaluates to true, same syntax as `IF_BLOCK` | `{"expression": "{{trigger.sender}} == 0912345678"}` |
+
+**Unknown types fail closed.** A `type` this build doesn't recognise (a hand-edited file, a MacroDroid constraint) is a constraint that cannot be checked, so the flow is *not* run and the log says why. Importing such a flow raises a warning naming the type, and the editor marks the row as unsupported.
+
+Matching an SSID needs location permission, and Bluetooth needs the Bluetooth permission — a condition that cannot read the state it guards does not hold. Both are listed by the flow's permission check like any trigger's.
 
 ---
 
@@ -104,7 +133,7 @@ A `.flow` file is a UTF-8 encoded JSON document describing a single automation f
 | `BLUETOOTH_TOGGLE` | Enable/disable Bluetooth | `{"state": "OFF"}` |
 | `DND_TOGGLE` | Toggle Do Not Disturb | `{"state": "ON", "duration_min": 60}` |
 | `VOLUME_ADJUST` | Set media/ring/alarm volume | `{"stream": "MEDIA", "level": 5}` |
-| `NOTIFICATION` | Post a local notification | `{"title": "NexFlow", "body": "{{message}}"}` |
+| `NOTIFICATION` | Post a local notification, optionally with a tap target | `{"title": "NexFlow", "message": "{{message}}", "tap_action": "OPEN_APP", "tap_package": "com.example.app"}` |
 | `TOAST` | Show a brief Toast message | `{"text": "Done!"}` |
 | `HTTP_REQUEST` | Perform an HTTP call (Webhook) | `{"url": "https://...", "method": "POST", "body": "{{json}}"}` |
 | `CLIPBOARD_COPY` | Copy text to clipboard | `{"text": "{{content}}"}` |
@@ -126,6 +155,21 @@ A `.flow` file is a UTF-8 encoded JSON document describing a single automation f
 
 ---
 
+### NOTIFICATION tap target
+
+`tap_action` decides where tapping the notification sends the user — the way a flow hands the next step back to the person, at whatever time they get to it.
+
+| `tap_action` | Extra config | Tapping the notification |
+|---|---|---|
+| `NONE` (default) | — | Only dismisses it |
+| `OPEN_APP` | `tap_package` | Launches that app |
+| `OPEN_URL` | `tap_url` | Opens the link (a deep link lands on a specific screen) |
+| `OPEN_SHORTCUT` | `tap_shortcut_uri`, `tap_shortcut_label`, `tap_shortcut_package` | Opens that app shortcut |
+
+A target that no longer resolves (app uninstalled, blank URL) still posts the notification — the reminder is the point — but the run is logged as failed so the reason is visible.
+
+---
+
 ## Variable Object
 
 | Field | Type | Required | Description |
@@ -143,6 +187,40 @@ Variables are referenced using double-brace syntax in any string `config` value:
 ```
 
 The runtime substitutes the current value before executing the action. Nested or compound expressions (e.g. `{{count}} + 1`) are evaluated by the ActionExecutor interpreter.
+
+---
+
+## Trigger Variables
+
+Whatever fired the flow reports what it knew about the event, readable in any condition or action `config` string as `{{trigger.<name>}}`. These names are supplied by the runtime — they are not declared in `variables` and are not exported.
+
+Every run, including a manual one, carries:
+
+| Name | Description |
+|---|---|
+| `{{trigger.type}}` | The `TriggerType` that fired, e.g. `SMS_RECEIVED`. `MANUAL` for a run started by hand, the widget or the tile. |
+| `{{trigger.timestamp}}` | Epoch milliseconds at which the trigger fired. |
+
+Per trigger type:
+
+| TriggerType | Additional names |
+|---|---|
+| `TIME` | `time` (the scheduled `HH:mm`) |
+| `BATTERY` | `level` (0–100), `charging` (`true`/`false`) |
+| `BLUETOOTH` | `device`, `event` |
+| `WIFI` | `ssid`, `event` |
+| `SCREEN` | `event` |
+| `APP_LAUNCH` | `package` |
+| `INCOMING_CALL` | `number` |
+| `SMS_RECEIVED` | `sender`, `body` |
+| `NOTIFICATION_RECEIVED` | `package`, `title`, `text` |
+| `HEADSET_PLUG` | `event` |
+| `NFC_TAG` | `tag_id` |
+| `GEOFENCE` | `event` (`ENTER`/`EXIT`), `lat`, `lng` |
+| `AMBIENT_LIGHT` | `lux` |
+| `DEVICE_BOOT`, `SHAKE`, `MANUAL` | — (common names only) |
+
+A value the platform withholds arrives as an empty string rather than being absent — e.g. `ssid` without location permission, or `device` without the Bluetooth permission.
 
 ---
 

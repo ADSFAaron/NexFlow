@@ -79,9 +79,10 @@ class ConfigDialogRenderTest {
     }
 
     private fun assertFieldRendered(owner: String, field: ConfigField) {
+        // Conditional fields stay hidden until the field they depend on selects them, and the
+        // dialog opens here with an empty config — so nothing is expected on screen for them.
+        if (!field.isVisible(emptyMap())) return
         when (field) {
-            // Hidden until its showWhen condition is met — not expected with empty config
-            is ConfigField.DayPicker -> if (field.showWhenKey != null) return else assertDisplayed(owner, field.label)
             is ConfigField.AppPicker -> assertDisplayed(owner, context.getString(com.nexflow.R.string.fd_choose_app))
             is ConfigField.ShortcutPicker -> assertDisplayed(owner, context.getString(com.nexflow.R.string.fd_choose_shortcut))
             is ConfigField.InfoText -> assertDisplayed(owner, field.body)

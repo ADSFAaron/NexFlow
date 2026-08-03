@@ -20,6 +20,7 @@ import android.content.Context
 import android.content.Intent
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.automation.repository.FlowRepository
+import com.nexflow.core.automation.trigger.TriggerVariables
 import com.nexflow.prefs.ServiceEnabledPrefs
 import com.nexflow.service.FlowExecutionService
 import com.nexflow.trigger.TimeTriggerScheduler
@@ -68,7 +69,17 @@ class TimeAlarmReceiver : BroadcastReceiver() {
                 // not a manual action) but keep chaining below, so turning the service back
                 // on resumes the schedule without re-editing the flow.
                 if (ServiceEnabledPrefs.get(context)) {
-                    FlowExecutionService.runFlow(context, flowId)
+                    FlowExecutionService.runFlow(
+                        context = context,
+                        flowId = flowId,
+                        triggerVariables = mapOf(
+                            TriggerVariables.TYPE to TriggerType.TIME.name,
+                            TriggerVariables.TIME to (trigger.config["time"] ?: ""),
+                        ),
+                        // Carried so a TIME trigger counts towards a flow's ALL combination
+                        // like any in-process trigger.
+                        triggerId = triggerId,
+                    )
                 }
 
                 // Chain the next occurrence for repeating triggers (ONCE does not repeat).

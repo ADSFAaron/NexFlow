@@ -24,6 +24,7 @@ import com.nexflow.core.automation.model.Trigger
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.automation.trigger.TriggerEvent
 import com.nexflow.core.automation.trigger.TriggerHandler
+import com.nexflow.core.automation.trigger.TriggerVariables
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -31,6 +32,11 @@ import kotlinx.coroutines.flow.callbackFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Fires when a Bluetooth device connects or disconnects, optionally only for one device name.
+ * Reports `{{trigger.device}}` and `{{trigger.event}}`; the name is empty when it cannot be read
+ * without the BLUETOOTH_CONNECT permission.
+ */
 @Singleton
 class BluetoothTriggerHandler @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -52,13 +58,24 @@ class BluetoothTriggerHandler @Inject constructor(
                 }
                 if (!eventMatches) return
 
+                val device = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
+                // Reading the name throws without BLUETOOTH_CONNECT on API 31+.
+                val deviceName = runCatching { device?.name }.getOrNull()
+
                 if (!targetDeviceName.isNullOrBlank()) {
-                    val device = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
-                    val name = runCatching { device?.name }.getOrNull() ?: return
-                    if (!name.contains(targetDeviceName, ignoreCase = true)) return
+                    if (deviceName == null || !deviceName.contains(targetDeviceName, ignoreCase = true)) return
                 }
 
-                trySend(TriggerEvent(trigger.id, ""))
+                trySend(
+                    TriggerEvent(
+                        triggerId = trigger.id,
+                        flowId = "",
+                        metadata = mapOf(
+                            TriggerVariables.DEVICE to deviceName.orEmpty(),
+                            TriggerVariables.EVENT to targetEvent,
+                        ),
+                    ),
+                )
             }
         }
 

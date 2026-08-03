@@ -16,116 +16,53 @@
 package com.nexflow.ui.common
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AirplanemodeActive
-import androidx.compose.material.icons.outlined.Alarm
-import androidx.compose.material.icons.outlined.AutoAwesome
-import androidx.compose.material.icons.outlined.BatteryChargingFull
-import androidx.compose.material.icons.outlined.Bedtime
-import androidx.compose.material.icons.outlined.Bluetooth
 import androidx.compose.material.icons.outlined.Bolt
-import androidx.compose.material.icons.outlined.BrightnessMedium
-import androidx.compose.material.icons.outlined.Call
-import androidx.compose.material.icons.outlined.CameraAlt
-import androidx.compose.material.icons.outlined.Cloud
-import androidx.compose.material.icons.outlined.Code
-import androidx.compose.material.icons.outlined.Coffee
-import androidx.compose.material.icons.outlined.Description
-import androidx.compose.material.icons.outlined.DirectionsCar
-import androidx.compose.material.icons.outlined.DoNotDisturbOn
-import androidx.compose.material.icons.outlined.Favorite
-import androidx.compose.material.icons.outlined.FitnessCenter
-import androidx.compose.material.icons.outlined.Flight
-import androidx.compose.material.icons.outlined.Folder
-import androidx.compose.material.icons.outlined.Headphones
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Lightbulb
-import androidx.compose.material.icons.outlined.Link
-import androidx.compose.material.icons.outlined.LocationOn
-import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.MusicNote
-import androidx.compose.material.icons.outlined.Nfc
-import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.outlined.Pets
-import androidx.compose.material.icons.outlined.PlayArrow
-import androidx.compose.material.icons.outlined.Power
-import androidx.compose.material.icons.outlined.Rocket
-import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material.icons.outlined.School
-import androidx.compose.material.icons.outlined.Screenshot
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Share
-import androidx.compose.material.icons.outlined.ShoppingCart
-import androidx.compose.material.icons.outlined.Sms
-import androidx.compose.material.icons.outlined.SportsEsports
-import androidx.compose.material.icons.outlined.Star
-import androidx.compose.material.icons.outlined.Timer
-import androidx.compose.material.icons.outlined.VolumeUp
-import androidx.compose.material.icons.outlined.WbSunny
-import androidx.compose.material.icons.outlined.Wifi
-import androidx.compose.material.icons.outlined.Work
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 
 /**
- * Built-in icon catalog for flows. Icons are persisted by string key so the set can only
- * grow — never rename or remove a key, or existing flows/widgets will fall back to default.
+ * Icon catalog for flows: every `Icons.Outlined.*` icon, keyed by the snake_case form of its
+ * name (see the generated [FlowIconCatalog]).
+ *
+ * Icons are persisted by string key, so the set can only grow — never rename or remove a key,
+ * or existing flows fall back to the default icon. Nothing here resolves an [ImageVector] until
+ * it is actually drawn, so listing 2000+ keys costs a list of strings, not 2000 vectors.
  */
 object FlowIcons {
 
     const val DEFAULT_KEY = "bolt"
 
-    /** Ordered for display in the picker grid. */
-    val catalog: List<Pair<String, ImageVector>> = listOf(
-        "bolt" to Icons.Outlined.Bolt,
-        "sparkle" to Icons.Outlined.AutoAwesome,
-        "play" to Icons.Outlined.PlayArrow,
-        "star" to Icons.Outlined.Star,
-        "heart" to Icons.Outlined.Favorite,
-        "rocket" to Icons.Outlined.Rocket,
-        "alarm" to Icons.Outlined.Alarm,
-        "schedule" to Icons.Outlined.Schedule,
-        "timer" to Icons.Outlined.Timer,
-        "bedtime" to Icons.Outlined.Bedtime,
-        "sunny" to Icons.Outlined.WbSunny,
-        "home" to Icons.Outlined.Home,
-        "work" to Icons.Outlined.Work,
-        "school" to Icons.Outlined.School,
-        "location" to Icons.Outlined.LocationOn,
-        "car" to Icons.Outlined.DirectionsCar,
-        "flight" to Icons.Outlined.Flight,
-        "wifi" to Icons.Outlined.Wifi,
-        "bluetooth" to Icons.Outlined.Bluetooth,
-        "nfc" to Icons.Outlined.Nfc,
-        "battery" to Icons.Outlined.BatteryChargingFull,
-        "power" to Icons.Outlined.Power,
-        "brightness" to Icons.Outlined.BrightnessMedium,
-        "volume" to Icons.Outlined.VolumeUp,
-        "dnd" to Icons.Outlined.DoNotDisturbOn,
-        "airplane" to Icons.Outlined.AirplanemodeActive,
-        "notification" to Icons.Outlined.Notifications,
-        "sms" to Icons.Outlined.Sms,
-        "call" to Icons.Outlined.Call,
-        "music" to Icons.Outlined.MusicNote,
-        "headphones" to Icons.Outlined.Headphones,
-        "camera" to Icons.Outlined.CameraAlt,
-        "screenshot" to Icons.Outlined.Screenshot,
-        "share" to Icons.Outlined.Share,
-        "link" to Icons.Outlined.Link,
-        "cloud" to Icons.Outlined.Cloud,
-        "code" to Icons.Outlined.Code,
-        "file" to Icons.Outlined.Description,
-        "folder" to Icons.Outlined.Folder,
-        "lock" to Icons.Outlined.Lock,
-        "settings" to Icons.Outlined.Settings,
-        "lightbulb" to Icons.Outlined.Lightbulb,
-        "fitness" to Icons.Outlined.FitnessCenter,
-        "coffee" to Icons.Outlined.Coffee,
-        "pets" to Icons.Outlined.Pets,
-        "shopping" to Icons.Outlined.ShoppingCart,
-        "game" to Icons.Outlined.SportsEsports,
-    )
+    /** Every pickable key, ordered alphabetically. */
+    val keys: List<String> get() = FlowIconCatalog.keys
 
-    private val byKey: Map<String, ImageVector> = catalog.toMap()
+    /**
+     * Keys from the original 47-icon catalog whose name differed from the generated one, mapped
+     * onto their current key. Flows (and exported JSON) written before the catalog was opened up
+     * still carry these, so they must keep resolving.
+     *
+     * "camera" is deliberately absent: it now resolves to `Icons.Outlined.Camera` from the
+     * catalog rather than the `CameraAlt` it used to mean — the catalog has to win, or picking
+     * Camera in the picker would save a key that renders as something else.
+     */
+    private val LEGACY_ALIASES: Map<String, String> = mapOf(
+        "airplane" to "airplanemode_active",
+        "battery" to "battery_charging_full",
+        "brightness" to "brightness_medium",
+        "car" to "directions_car",
+        "dnd" to "do_not_disturb_on",
+        "file" to "description",
+        "fitness" to "fitness_center",
+        "game" to "sports_esports",
+        "heart" to "favorite",
+        "location" to "location_on",
+        "music" to "music_note",
+        "notification" to "notifications",
+        "play" to "play_arrow",
+        "shopping" to "shopping_cart",
+        "sparkle" to "auto_awesome",
+        "sunny" to "wb_sunny",
+        "volume" to "volume_up",
+    )
 
     /** Shortcuts-style background palette, persisted as ARGB hex strings. */
     val colorPalette: List<String> = listOf(
@@ -143,7 +80,31 @@ object FlowIcons {
         "#FF8D8D8D", // gray
     )
 
-    fun vector(key: String?): ImageVector = byKey[key] ?: Icons.Outlined.Bolt
+    fun vector(key: String?): ImageVector {
+        if (key == null) return Icons.Outlined.Bolt
+        FlowIconCatalog.vector(key)?.let { return it }
+        val alias = LEGACY_ALIASES[key] ?: return Icons.Outlined.Bolt
+        return FlowIconCatalog.vector(alias) ?: Icons.Outlined.Bolt
+    }
+
+    /**
+     * Keys containing [query] as a substring, with separators stripped from both sides — so
+     * "wbsunny", "wb sunny" and "wb_sunny" all find `wb_sunny`, and "car" finds both
+     * `directions_car` and `car_rental`. A blank query returns the whole catalog.
+     */
+    fun search(query: String): List<String> {
+        val needle = query.normalizeForSearch()
+        if (needle.isEmpty()) return keys
+        return searchIndex.mapNotNull { (key, haystack) -> key.takeIf { haystack.contains(needle) } }
+    }
+
+    /** key to its searchable form, built once — [search] runs on every keystroke. */
+    private val searchIndex: List<Pair<String, String>> by lazy {
+        keys.map { it to it.normalizeForSearch() }
+    }
+
+    private fun String.normalizeForSearch(): String =
+        filter { it.isLetterOrDigit() }.lowercase()
 
     /** Parses a stored "#AARRGGBB" string; null/invalid yields null (use theme default). */
     fun color(hex: String?): Color? = hex

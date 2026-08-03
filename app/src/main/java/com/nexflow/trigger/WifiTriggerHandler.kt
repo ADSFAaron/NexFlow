@@ -25,6 +25,7 @@ import com.nexflow.core.automation.model.Trigger
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.automation.trigger.TriggerEvent
 import com.nexflow.core.automation.trigger.TriggerHandler
+import com.nexflow.core.automation.trigger.TriggerVariables
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -32,6 +33,11 @@ import kotlinx.coroutines.flow.callbackFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Fires when Wi-Fi connects or disconnects, optionally only for one SSID.
+ * Reports `{{trigger.ssid}}` and `{{trigger.event}}`. The SSID is empty on disconnect and on
+ * devices that withhold it without location permission.
+ */
 @Singleton
 class WifiTriggerHandler @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -59,15 +65,31 @@ class WifiTriggerHandler @Inject constructor(
                 }
                 if (!eventMatches) return
 
-                if (!targetSsid.isNullOrBlank() && isConnected) {
+                // Read the SSID whenever we are connected — both to filter on it and to report
+                // it as {{trigger.ssid}}. Needs location permission; null when withheld.
+                val currentSsid = if (isConnected) {
                     val wm = ctx.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-                    val currentSsid = wm.connectionInfo?.ssid
+                    wm.connectionInfo?.ssid
                         ?.removePrefix("\"")?.removeSuffix("\"")
                         ?.takeIf { it.isNotBlank() && it != "<unknown ssid>" }
+                } else {
+                    null
+                }
+
+                if (!targetSsid.isNullOrBlank() && isConnected) {
                     if (currentSsid == null || !currentSsid.equals(targetSsid, ignoreCase = true)) return
                 }
 
-                trySend(TriggerEvent(trigger.id, ""))
+                trySend(
+                    TriggerEvent(
+                        triggerId = trigger.id,
+                        flowId = "",
+                        metadata = mapOf(
+                            TriggerVariables.SSID to currentSsid.orEmpty(),
+                            TriggerVariables.EVENT to if (isConnected) "CONNECTED" else "DISCONNECTED",
+                        ),
+                    ),
+                )
             }
         }
 

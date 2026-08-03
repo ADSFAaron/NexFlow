@@ -21,6 +21,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.os.Bundle
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.nexflow.MainActivity
@@ -68,8 +69,12 @@ class FlowExecutionService : Service() {
         if (intent?.action == ACTION_RUN_FLOW) {
             val flowId = intent.getStringExtra(EXTRA_FLOW_ID)
             if (flowId != null) {
+                val triggerVariables = intent.getBundleExtra(EXTRA_TRIGGER_VARS)
+                    ?.let { bundle -> bundle.keySet().associateWith { bundle.getString(it).orEmpty() } }
+                    ?: emptyMap()
+                val triggerId = intent.getStringExtra(EXTRA_TRIGGER_ID)
                 serviceScope.launch {
-                    flowEngine.runNow(flowId)
+                    flowEngine.runNow(flowId, triggerVariables, triggerId)
                     // Manual runs are allowed while the master switch is off, but the
                     // service must not linger afterwards — run one flow, then leave.
                     if (!ServiceEnabledPrefs.get(this@FlowExecutionService)) stopSelf()
@@ -134,6 +139,15 @@ class FlowExecutionService : Service() {
         const val ACTION_RUN_FLOW = "com.nexflow.action.RUN_FLOW"
         const val EXTRA_FLOW_ID = "flow_id"
 
+        /** Bundle of `{{trigger.x}}` values for this run; see [FlowEngine.runNow]. */
+        const val EXTRA_TRIGGER_VARS = "trigger_vars"
+
+        /**
+         * Id of the trigger behind this run, when it has one. Absent for widget/tile/shortcut
+         * taps — those are manual runs and must not be treated as part of an ALL combination.
+         */
+        const val EXTRA_TRIGGER_ID = "trigger_id"
+
         private val _running = MutableStateFlow(false)
         val running: StateFlow<Boolean> = _running.asStateFlow()
 
@@ -156,12 +170,26 @@ class FlowExecutionService : Service() {
          * exemption). Swallows ForegroundServiceStartNotAllowedException so a missed start
          * never crashes — the flow is simply skipped that cycle.
          */
-        fun runFlow(context: Context, flowId: String) {
+        fun runFlow(
+            context: Context,
+            flowId: String,
+            triggerVariables: Map<String, String> = emptyMap(),
+            triggerId: String? = null,
+        ) {
             try {
                 context.startForegroundService(
                     Intent(context, FlowExecutionService::class.java).apply {
                         action = ACTION_RUN_FLOW
                         putExtra(EXTRA_FLOW_ID, flowId)
+                        triggerId?.let { putExtra(EXTRA_TRIGGER_ID, it) }
+                        if (triggerVariables.isNotEmpty()) {
+                            putExtra(
+                                EXTRA_TRIGGER_VARS,
+                                Bundle().apply {
+                                    triggerVariables.forEach { (k, v) -> putString(k, v) }
+                                },
+                            )
+                        }
                     },
                 )
             } catch (e: Exception) {

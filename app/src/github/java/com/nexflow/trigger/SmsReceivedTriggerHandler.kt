@@ -19,6 +19,8 @@ import com.nexflow.core.automation.model.Trigger
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.automation.trigger.TriggerEvent
 import com.nexflow.core.automation.trigger.TriggerHandler
+import com.nexflow.core.automation.trigger.TriggerVariables
+import com.nexflow.core.automation.util.TextMatcher
 import com.nexflow.event.SmsEventSource
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filter
@@ -27,8 +29,11 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Fires when an SMS is received.
+ * Fires when an SMS is received, optionally filtered by sender and by a keyword in the message
+ * body (config: `body_keyword`, `match_mode`).
  * Requires RECEIVE_SMS permission. Events arrive via SmsReceiver → SmsEventSource.
+ *
+ * Reports the message as `{{trigger.sender}}` / `{{trigger.body}}`.
  */
 @Singleton
 class SmsReceivedTriggerHandler @Inject constructor() : TriggerHandler {
@@ -37,12 +42,25 @@ class SmsReceivedTriggerHandler @Inject constructor() : TriggerHandler {
 
     override fun observe(trigger: Trigger): Flow<TriggerEvent> {
         val targetSender = trigger.config["sender"]?.trim() ?: ""
+        val keyword = trigger.config["body_keyword"]?.trim() ?: ""
+        val mode = trigger.config["match_mode"]
+
         return SmsEventSource.events
             .filter { event ->
-                targetSender.isBlank() ||
+                val senderMatches = targetSender.isBlank() ||
                     event.sender.contains(targetSender, ignoreCase = true) ||
                     targetSender.contains(event.sender, ignoreCase = true)
+                senderMatches && TextMatcher.matches(event.body, keyword, mode)
             }
-            .map { TriggerEvent(trigger.id, "") }
+            .map { event ->
+                TriggerEvent(
+                    triggerId = trigger.id,
+                    flowId = "",
+                    metadata = mapOf(
+                        TriggerVariables.SENDER to event.sender,
+                        TriggerVariables.BODY to event.body,
+                    ),
+                )
+            }
     }
 }

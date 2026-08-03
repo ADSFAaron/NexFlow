@@ -24,6 +24,7 @@ import com.nexflow.core.automation.model.Trigger
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.automation.trigger.TriggerEvent
 import com.nexflow.core.automation.trigger.TriggerHandler
+import com.nexflow.core.automation.trigger.TriggerVariables
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -31,6 +32,10 @@ import kotlinx.coroutines.flow.callbackFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Fires when the battery level crosses the configured threshold, on the leading edge only.
+ * Reports `{{trigger.level}}` (0–100) and `{{trigger.charging}}`.
+ */
 @Singleton
 class BatteryTriggerHandler @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -55,7 +60,19 @@ class BatteryTriggerHandler @Inject constructor(
                 }
                 // Only fire on the leading edge (not → condition met)
                 if (conditionMet && !lastTriggered) {
-                    trySend(TriggerEvent(trigger.id, "", metadata = mapOf("level" to pct.toString())))
+                    val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+                    val charging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
+                        status == BatteryManager.BATTERY_STATUS_FULL
+                    trySend(
+                        TriggerEvent(
+                            triggerId = trigger.id,
+                            flowId = "",
+                            metadata = mapOf(
+                                TriggerVariables.LEVEL to pct.toString(),
+                                TriggerVariables.CHARGING to charging.toString(),
+                            ),
+                        ),
+                    )
                 }
                 lastTriggered = conditionMet
             }

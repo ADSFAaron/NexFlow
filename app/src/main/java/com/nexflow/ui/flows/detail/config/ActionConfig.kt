@@ -52,6 +52,7 @@ import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.nexflow.R
 import com.nexflow.core.automation.model.ActionType
+import com.nexflow.executor.NotificationActionExecutor
 
 data class ActionInfo(
     val label: String,
@@ -129,6 +130,31 @@ fun ActionType.info(context: Context): ActionInfo = when (this) {
         listOf(
             ConfigField.TextInput("title", context.getString(R.string.cfg_title)),
             ConfigField.TextInput("message", context.getString(R.string.cfg_message), multiline = true),
+            // What tapping the notification does. Turns a reminder into the handoff to whatever
+            // the user has to do next, at whatever time they get to it.
+            ConfigField.Dropdown(
+                "tap_action", context.getString(R.string.cfg_tap_action), listOf(
+                    NotificationActionExecutor.TAP_NONE to context.getString(R.string.opt_tap_none),
+                    NotificationActionExecutor.TAP_OPEN_APP to context.getString(R.string.opt_tap_open_app),
+                    NotificationActionExecutor.TAP_OPEN_URL to context.getString(R.string.opt_tap_open_url),
+                    NotificationActionExecutor.TAP_OPEN_SHORTCUT to context.getString(R.string.opt_tap_open_shortcut),
+                ),
+            ),
+            ConfigField.AppPicker(
+                "tap_package", context.getString(R.string.cfg_tap_app),
+                showWhenKey = "tap_action", showWhenValue = NotificationActionExecutor.TAP_OPEN_APP,
+            ),
+            ConfigField.TextInput(
+                "tap_url", context.getString(R.string.cfg_tap_url), hint = "https://",
+                showWhenKey = "tap_action", showWhenValue = NotificationActionExecutor.TAP_OPEN_URL,
+            ),
+            ConfigField.ShortcutPicker(
+                key = "tap_shortcut_uri",
+                label = context.getString(R.string.cfg_tap_shortcut),
+                labelKey = "tap_shortcut_label",
+                packageKey = "tap_shortcut_package",
+                showWhenKey = "tap_action", showWhenValue = NotificationActionExecutor.TAP_OPEN_SHORTCUT,
+            ),
         ),
     )
     ActionType.DELAY -> ActionInfo(
@@ -399,7 +425,20 @@ fun ActionType.info(context: Context): ActionInfo = when (this) {
 
 fun ActionType.configSummary(context: Context, config: Map<String, String>): String = when (this) {
     ActionType.TOAST -> config["message"]?.take(40) ?: context.getString(R.string.sum_no_message)
-    ActionType.NOTIFICATION -> config["title"]?.takeIf { it.isNotBlank() } ?: context.getString(R.string.sum_notification)
+    ActionType.NOTIFICATION -> {
+        val base = config["title"]?.takeIf { it.isNotBlank() } ?: context.getString(R.string.sum_notification)
+        // Name the tap target: a notification that jumps somewhere is a different thing from one
+        // that just says something, and the row is where the user checks which they built.
+        val target = when (config["tap_action"]) {
+            NotificationActionExecutor.TAP_OPEN_APP -> config["tap_package"]?.takeIf { it.isNotBlank() }
+            NotificationActionExecutor.TAP_OPEN_URL -> config["tap_url"]?.takeIf { it.isNotBlank() }
+            NotificationActionExecutor.TAP_OPEN_SHORTCUT ->
+                config["tap_shortcut_label"]?.takeIf { it.isNotBlank() }
+                    ?: config["tap_shortcut_package"]?.takeIf { it.isNotBlank() }
+            else -> null
+        }
+        if (target != null) context.getString(R.string.sum_notification_tap, base, target) else base
+    }
     ActionType.DELAY -> {
         val v = config["duration_value"] ?: config["duration_ms"] ?: "0"
         val u = when (config["duration_unit"]) { "SEC" -> "s"; else -> "ms" }

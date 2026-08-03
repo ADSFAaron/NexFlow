@@ -24,6 +24,7 @@ import com.nexflow.core.automation.model.Trigger
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.automation.trigger.TriggerEvent
 import com.nexflow.core.automation.trigger.TriggerHandler
+import com.nexflow.core.automation.trigger.TriggerVariables
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -31,6 +32,7 @@ import kotlinx.coroutines.flow.callbackFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/** Fires when a headset is plugged or unplugged. Reports which as `{{trigger.event}}`. */
 @Singleton
 class HeadsetTriggerHandler @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -51,7 +53,15 @@ class HeadsetTriggerHandler @Inject constructor(
                     "DISCONNECTED" -> state == 0
                     else -> false
                 }
-                if (eventMatches) trySend(TriggerEvent(trigger.id, ""))
+                if (eventMatches) {
+                    trySend(
+                        TriggerEvent(
+                            triggerId = trigger.id,
+                            flowId = "",
+                            metadata = mapOf(TriggerVariables.EVENT to targetEvent),
+                        ),
+                    )
+                }
             }
         }
 

@@ -20,6 +20,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexflow.core.automation.model.Action
 import com.nexflow.core.automation.model.ActionType
+import com.nexflow.core.automation.model.Condition
+import com.nexflow.core.automation.model.ExecutionStatus
 import com.nexflow.core.automation.model.Flow
 import com.nexflow.core.automation.model.GlobalVariable
 import com.nexflow.core.automation.model.Trigger
@@ -116,6 +118,14 @@ class FlowDetailViewModel @Inject constructor(
     fun removeTrigger(id: String) = edit { copy(triggers = triggers.filter { it.id != id }) }
 
     fun setTriggerLogic(logic: TriggerLogic) = edit { copy(triggerLogic = logic) }
+
+    fun addCondition(condition: Condition) = edit { copy(conditions = conditions + condition) }
+
+    fun updateCondition(condition: Condition) = edit {
+        copy(conditions = conditions.map { if (it.id == condition.id) condition else it })
+    }
+
+    fun removeCondition(id: String) = edit { copy(conditions = conditions.filter { it.id != id }) }
 
     fun addAction(action: Action) = edit {
         copy(actions = actions + action.copy(order = actions.size))
@@ -265,16 +275,24 @@ class FlowDetailViewModel @Inject constructor(
 
     private var runJob: kotlinx.coroutines.Job? = null
 
+    /**
+     * Emits when a manual run was held back by the flow's own conditions. Without it, tapping Run
+     * on a constrained flow looks like a bug: nothing happens and the only trace is a log entry.
+     */
+    private val _runSkipped = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val runSkipped: SharedFlow<Unit> = _runSkipped.asSharedFlow()
+
     fun runNow() {
         if (_isRunning.value) return
         runJob = viewModelScope.launch {
             _isRunning.value = true
             yield()
             try {
-                flowEngine.runNow(flowId) { actionId ->
+                val status = flowEngine.runNow(flowId) { actionId ->
                     _currentActionId.value = actionId
                     delay(300)
                 }
+                if (status == ExecutionStatus.SKIPPED) _runSkipped.tryEmit(Unit)
             } finally {
                 _isRunning.value = false
                 _currentActionId.value = null

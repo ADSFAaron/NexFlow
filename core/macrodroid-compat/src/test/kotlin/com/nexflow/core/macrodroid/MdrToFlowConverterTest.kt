@@ -31,17 +31,18 @@ class MdrToFlowConverterTest {
     )
 
     @Test
-    fun `imported constraints are reported as not evaluated`() {
+    fun `imported constraints are reported as needing setup`() {
         val result = MdrToFlowConverter.convert(
-            // A constraint whose class type IS supported: without the warning it would convert
-            // cleanly and the flow would then run unconditionally, with nothing to tell the user.
+            // A constraint whose class type IS supported: the type maps, but MacroDroid's own
+            // settings do not, and NexFlow enforces conditions — so a silent import would leave
+            // the user with a flow that mysteriously never runs.
             macro(listOf(MdrConstraint(classType = "WifiConstraint"))),
         )
 
         assertEquals(1, result.flow.conditions.size)
         assertTrue(
-            result.warnings.any { it.startsWith("Conditions:") && it.contains("NOT evaluated") },
-            "expected a warning that conditions are not evaluated, got ${result.warnings}",
+            result.warnings.any { it.startsWith("Conditions:") && it.contains("do NOT carry over") },
+            "expected a warning that condition settings need review, got ${result.warnings}",
         )
     }
 

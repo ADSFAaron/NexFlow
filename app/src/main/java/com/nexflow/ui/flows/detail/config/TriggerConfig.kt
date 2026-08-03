@@ -37,6 +37,8 @@ import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.nexflow.R
 import com.nexflow.core.automation.model.TriggerType
+import com.nexflow.core.automation.util.TextMatcher
+import com.nexflow.trigger.NotificationTriggerHandler
 
 data class TriggerInfo(
     val label: String,
@@ -81,6 +83,15 @@ val TriggerType.category: TriggerCategory
 private fun connectOptions(context: Context) = listOf(
     "CONNECTED" to context.getString(R.string.opt_connected),
     "DISCONNECTED" to context.getString(R.string.opt_disconnected),
+)
+
+/** How the notification/SMS keyword filter compares — shared so both read the same key. */
+private fun matchModeField(context: Context) = ConfigField.Dropdown(
+    "match_mode", context.getString(R.string.cfg_match_mode), listOf(
+        TextMatcher.MODE_CONTAINS to context.getString(R.string.opt_match_contains),
+        TextMatcher.MODE_EXACT to context.getString(R.string.opt_match_exact),
+        TextMatcher.MODE_REGEX to context.getString(R.string.opt_match_regex),
+    ),
 )
 
 fun TriggerType.info(context: Context): TriggerInfo = when (this) {
@@ -159,11 +170,32 @@ fun TriggerType.info(context: Context): TriggerInfo = when (this) {
     )
     TriggerType.SMS_RECEIVED -> TriggerInfo(
         context.getString(R.string.trg_sms_label), Icons.Outlined.Sms, context.getString(R.string.trg_sms_desc),
-        listOf(ConfigField.TextInput("sender", context.getString(R.string.cfg_sender_optional), hint = context.getString(R.string.cfg_hint_any_sender))),
+        listOf(
+            ConfigField.TextInput("sender", context.getString(R.string.cfg_sender_optional), hint = context.getString(R.string.cfg_hint_any_sender)),
+            ConfigField.TextInput(
+                "body_keyword", context.getString(R.string.cfg_body_keyword_optional),
+                hint = context.getString(R.string.cfg_hint_any_text),
+            ),
+            matchModeField(context),
+        ),
     )
     TriggerType.NOTIFICATION_RECEIVED -> TriggerInfo(
         context.getString(R.string.trg_notification_label), Icons.Outlined.Notifications, context.getString(R.string.trg_notification_desc),
-        listOf(ConfigField.AppPicker("package_name", context.getString(R.string.cfg_notif_app_optional))),
+        listOf(
+            ConfigField.AppPicker("package_name", context.getString(R.string.cfg_notif_app_optional)),
+            ConfigField.TextInput(
+                "keyword", context.getString(R.string.cfg_keyword_optional),
+                hint = context.getString(R.string.cfg_hint_any_text),
+            ),
+            ConfigField.Dropdown(
+                "match_field", context.getString(R.string.cfg_match_field), listOf(
+                    NotificationTriggerHandler.FIELD_ANY to context.getString(R.string.opt_field_any),
+                    NotificationTriggerHandler.FIELD_TITLE to context.getString(R.string.opt_field_title),
+                    NotificationTriggerHandler.FIELD_TEXT to context.getString(R.string.opt_field_text),
+                ),
+            ),
+            matchModeField(context),
+        ),
     )
     TriggerType.DEVICE_BOOT -> TriggerInfo(
         context.getString(R.string.trg_boot_label), Icons.Outlined.PowerSettingsNew, context.getString(R.string.trg_boot_desc), emptyList(),
@@ -221,6 +253,10 @@ fun TriggerType.info(context: Context): TriggerInfo = when (this) {
     )
 }
 
+/** Appends the content filter to a summary, so the row shows what the trigger is looking for. */
+private fun withKeyword(base: String, keyword: String?): String =
+    keyword?.trim()?.takeIf { it.isNotEmpty() }?.let { "$base · “$it”" } ?: base
+
 private fun connectEventLabel(context: Context, value: String?): String = context.getString(
     when (value?.uppercase()) {
         "DISCONNECTED" -> R.string.opt_disconnected
@@ -269,8 +305,14 @@ fun TriggerType.configSummary(context: Context, config: Map<String, String>): St
     )
     TriggerType.APP_LAUNCH -> config["package_name"]?.takeIf { it.isNotBlank() } ?: context.getString(R.string.sum_not_set)
     TriggerType.INCOMING_CALL -> config["contact"]?.takeIf { it.isNotBlank() } ?: context.getString(R.string.sum_any_caller)
-    TriggerType.SMS_RECEIVED -> config["sender"]?.takeIf { it.isNotBlank() } ?: context.getString(R.string.sum_any_sender)
-    TriggerType.NOTIFICATION_RECEIVED -> config["package_name"]?.takeIf { it.isNotBlank() } ?: context.getString(R.string.sum_any_app)
+    TriggerType.SMS_RECEIVED -> withKeyword(
+        config["sender"]?.takeIf { it.isNotBlank() } ?: context.getString(R.string.sum_any_sender),
+        config["body_keyword"],
+    )
+    TriggerType.NOTIFICATION_RECEIVED -> withKeyword(
+        config["package_name"]?.takeIf { it.isNotBlank() } ?: context.getString(R.string.sum_any_app),
+        config["keyword"],
+    )
     TriggerType.DEVICE_BOOT -> context.getString(R.string.sum_on_boot)
     TriggerType.HEADSET_PLUG -> connectEventLabel(context, config["event"])
     TriggerType.NFC_TAG -> config["tag_id"]?.takeIf { it.isNotBlank() } ?: context.getString(R.string.sum_any_tag)

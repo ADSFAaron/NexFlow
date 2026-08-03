@@ -157,6 +157,47 @@ class FlowInterpreterTest {
         assertEquals(listOf("tick", "tick", "tick"), executor.messages)
     }
 
+    // ----- trigger variables -----
+
+    @Test
+    fun `trigger values are readable via trigger-prefixed references`() = runTest {
+        val executor = RecordingExecutor()
+        val result = interpreter(executor).execute(
+            flow(listOf(action(ActionType.TOAST, 0, mapOf("message" to "{{trigger.sender}}: {{trigger.body}}")))),
+            triggerVariables = mapOf("sender" to "0912345678", "body" to "code 1234"),
+        )
+        assertTrue(result is InterpreterResult.Success)
+        assertEquals(listOf("0912345678: code 1234"), executor.messages)
+    }
+
+    @Test
+    fun `trigger values are usable in an if expression`() = runTest {
+        val executor = RecordingExecutor()
+        val result = interpreter(executor).execute(
+            flow(
+                listOf(
+                    action(ActionType.IF_BLOCK, 0, mapOf("expression" to "{{trigger.level}} < 20")),
+                    action(ActionType.TOAST, 1, mapOf("message" to "low")),
+                    action(ActionType.END_IF, 2),
+                ),
+            ),
+            triggerVariables = mapOf("level" to "15"),
+        )
+        assertTrue(result is InterpreterResult.Success)
+        assertEquals(listOf("low"), executor.messages)
+    }
+
+    @Test
+    fun `a run with no trigger values leaves the reference untouched`() = runTest {
+        // Manual runs carry no event: the token must survive verbatim rather than becoming
+        // an empty string that silently changes what an action does.
+        val executor = RecordingExecutor()
+        interpreter(executor).execute(
+            flow(listOf(action(ActionType.TOAST, 0, mapOf("message" to "from {{trigger.sender}}")))),
+        )
+        assertEquals(listOf("from {{trigger.sender}}"), executor.messages)
+    }
+
     // ----- global variables -----
 
     @Test

@@ -19,6 +19,7 @@ import com.nexflow.core.automation.model.Trigger
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.automation.trigger.TriggerEvent
 import com.nexflow.core.automation.trigger.TriggerHandler
+import com.nexflow.core.automation.trigger.TriggerVariables
 import com.nexflow.event.NfcEventSource
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filter
@@ -30,6 +31,8 @@ import javax.inject.Singleton
  * Fires when an NFC tag is scanned by the user.
  * Android only dispatches NFC to the foreground activity — this trigger works when
  * the NexFlow app is open. The MainActivity handles NFC intents and feeds NfcEventSource.
+ *
+ * Reports the scanned UID as `{{trigger.tag_id}}`, so one flow can branch on several tags.
  */
 @Singleton
 class NfcTagTriggerHandler @Inject constructor() : TriggerHandler {
@@ -42,6 +45,12 @@ class NfcTagTriggerHandler @Inject constructor() : TriggerHandler {
             .filter { tagId ->
                 targetTagId.isBlank() || tagId.equals(targetTagId, ignoreCase = true)
             }
-            .map { TriggerEvent(trigger.id, "") }
+            .map { tagId ->
+                TriggerEvent(
+                    triggerId = trigger.id,
+                    flowId = "",
+                    metadata = mapOf(TriggerVariables.TAG_ID to tagId),
+                )
+            }
     }
 }

@@ -33,14 +33,19 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -65,6 +70,9 @@ fun FlowIconPickerDialog(
     var selectedColor by rememberSaveable {
         mutableStateOf(initialColor ?: FlowIcons.colorPalette.first())
     }
+    var query by rememberSaveable { mutableStateOf("") }
+    // The catalog is ~2000 keys, so filter only when the query actually changes.
+    val visibleIcons = remember(query) { FlowIcons.search(query) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -118,49 +126,43 @@ fun FlowIconPickerDialog(
                     }
                 }
 
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 44.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    singleLine = true,
+                    label = { Text(stringResource(R.string.icon_search_hint)) },
+                    leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                    trailingIcon = {
+                        if (query.isNotEmpty()) {
+                            IconButton(onClick = { query = "" }) {
+                                Icon(
+                                    Icons.Outlined.Close,
+                                    contentDescription = stringResource(R.string.action_clear),
+                                )
+                            }
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(220.dp),
-                ) {
-                    items(FlowIcons.catalog, key = { it.first }) { (key, vector) ->
-                        val selected = key == selectedIcon
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .size(44.dp)
-                                .then(
-                                    if (selected) {
-                                        Modifier
-                                            .border(
-                                                2.dp,
-                                                MaterialTheme.colorScheme.primary,
-                                                CircleShape,
-                                            )
-                                            .background(
-                                                MaterialTheme.colorScheme.primaryContainer,
-                                                CircleShape,
-                                            )
-                                    } else {
-                                        Modifier
-                                    },
-                                )
-                                .clickable { selectedIcon = key },
-                        ) {
-                            Icon(
-                                vector,
-                                contentDescription = key,
-                                tint = if (selected) {
-                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                },
-                            )
-                        }
-                    }
+                        .padding(bottom = 8.dp),
+                )
+
+                if (visibleIcons.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.icon_search_empty),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(220.dp)
+                            .padding(top = 24.dp),
+                    )
+                } else {
+                    IconGrid(
+                        keys = visibleIcons,
+                        selectedIcon = selectedIcon,
+                        onSelect = { selectedIcon = it },
+                    )
                 }
             }
         },
@@ -171,4 +173,52 @@ fun FlowIconPickerDialog(
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
         },
     )
+}
+
+@Composable
+private fun IconGrid(
+    keys: List<String>,
+    selectedIcon: String,
+    onSelect: (String) -> Unit,
+) {
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 44.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(220.dp),
+    ) {
+        items(keys, key = { it }) { key ->
+            val selected = key == selectedIcon
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(44.dp)
+                    .then(
+                        if (selected) {
+                            Modifier
+                                .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                                .background(
+                                    MaterialTheme.colorScheme.primaryContainer,
+                                    CircleShape,
+                                )
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .clickable { onSelect(key) },
+            ) {
+                Icon(
+                    FlowIcons.vector(key),
+                    contentDescription = key,
+                    tint = if (selected) {
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+            }
+        }
+    }
 }

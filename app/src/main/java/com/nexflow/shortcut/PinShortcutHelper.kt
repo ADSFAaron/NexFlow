@@ -17,7 +17,6 @@ package com.nexflow.shortcut
 
 import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
 import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
@@ -26,27 +25,32 @@ import com.nexflow.core.automation.model.Flow
 import com.nexflow.service.FlowExecutionService
 
 /**
- * Pins a home-screen shortcut for a single flow, independent of [ShortcutSyncManager]'s
- * dynamic (long-press menu) shortcuts. Uses the same "flow_<id>" shortcut id, so the
- * system treats both as the same shortcut — pinning survives even if the dynamic list
- * later evicts this flow.
+ * Pins a home-screen shortcut for a single flow. Shares the "flow_<id>" shortcut id with
+ * [ShortcutSyncManager]'s dynamic (long-press menu) shortcuts, so the system treats both as
+ * the same shortcut — which also means the two MUST publish the same label/icon/intent, or
+ * whichever writes last silently overwrites the pinned copy on the home screen.
+ * [shortcutId] and [buildIntent] are the shared definition; keep [ShortcutSyncManager] on them.
  */
 object PinShortcutHelper {
+
+    fun shortcutId(flowId: String): String = "flow_$flowId"
+
+    fun buildIntent(context: Context, flowId: String): Intent =
+        Intent(context, MainActivity::class.java).apply {
+            action = FlowExecutionService.ACTION_RUN_FLOW
+            putExtra(FlowExecutionService.EXTRA_FLOW_ID, flowId)
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
 
     fun isSupported(context: Context): Boolean =
         ShortcutManagerCompat.isRequestPinShortcutSupported(context)
 
-    fun pin(context: Context, flow: Flow, iconBitmap: Bitmap) {
-        val shortcut = ShortcutInfoCompat.Builder(context, "flow_${flow.id}")
+    fun pin(context: Context, flow: Flow) {
+        val shortcut = ShortcutInfoCompat.Builder(context, shortcutId(flow.id))
             .setShortLabel(flow.name.take(25))
             .setLongLabel(flow.name)
-            .setIcon(IconCompat.createWithAdaptiveBitmap(iconBitmap))
-            .setIntent(
-                Intent(context, MainActivity::class.java).apply {
-                    action = FlowExecutionService.ACTION_RUN_FLOW
-                    putExtra(FlowExecutionService.EXTRA_FLOW_ID, flow.id)
-                },
-            )
+            .setIcon(IconCompat.createWithAdaptiveBitmap(FlowShortcutIcon.render(context, flow)))
+            .setIntent(buildIntent(context, flow.id))
             .build()
         ShortcutManagerCompat.requestPinShortcut(context, shortcut, null)
     }

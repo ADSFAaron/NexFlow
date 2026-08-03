@@ -17,6 +17,7 @@ package com.nexflow.ui.flows
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nexflow.core.automation.model.ExecutionStatus
 import com.nexflow.core.automation.model.Flow
 import com.nexflow.core.automation.model.Trigger
 import com.nexflow.core.automation.model.TriggerLogic
@@ -134,12 +135,19 @@ class FlowsViewModel @Inject constructor(
         viewModelScope.launch { repository.save(flow) }
     }
 
+    /**
+     * Emits when a run was held back by the flow's own conditions, so the list can correct the
+     * "running…" snackbar it has already shown.
+     */
+    private val _runSkipped = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val runSkipped: SharedFlow<Unit> = _runSkipped.asSharedFlow()
+
     fun runFlow(id: String) {
         viewModelScope.launch {
             // If something is missing, guide the user to grant it rather than running a flow
             // that would silently no-op (or throw). Otherwise run it now.
             if (!remindIfMissingPermissions(id, autoEnable = false)) {
-                flowEngine.runNow(id)
+                if (flowEngine.runNow(id) == ExecutionStatus.SKIPPED) _runSkipped.tryEmit(Unit)
             }
         }
     }

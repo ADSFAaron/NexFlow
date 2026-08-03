@@ -15,6 +15,15 @@
  */
 package com.nexflow.di
 
+import com.nexflow.condition.BatteryLevelConditionEvaluator
+import com.nexflow.condition.BluetoothConnectedConditionEvaluator
+import com.nexflow.condition.ChargingConditionEvaluator
+import com.nexflow.condition.DayOfWeekConditionEvaluator
+import com.nexflow.condition.ExpressionConditionEvaluator
+import com.nexflow.condition.ScreenStateConditionEvaluator
+import com.nexflow.condition.TimeRangeConditionEvaluator
+import com.nexflow.condition.WifiConnectedConditionEvaluator
+import com.nexflow.core.automation.condition.ConditionEvaluator
 import com.nexflow.core.automation.executor.ActionExecutor
 import com.nexflow.core.automation.trigger.TriggerHandler
 import com.nexflow.executor.AirplaneModeActionExecutor
@@ -193,6 +202,34 @@ abstract class ExecutionModule {
 
     @Binds @IntoSet
     abstract fun bindMenu(impl: MenuActionExecutor): ActionExecutor
+
+    // ----- ConditionEvaluators -----
+    // Flow-level constraints ("only if…"), evaluated by FlowEngine before any action runs.
+    // A ConditionType with no evaluator here fails closed: the flow is skipped, not run.
+
+    @Binds @IntoSet
+    abstract fun bindTimeRangeCondition(impl: TimeRangeConditionEvaluator): ConditionEvaluator
+
+    @Binds @IntoSet
+    abstract fun bindDayOfWeekCondition(impl: DayOfWeekConditionEvaluator): ConditionEvaluator
+
+    @Binds @IntoSet
+    abstract fun bindBatteryLevelCondition(impl: BatteryLevelConditionEvaluator): ConditionEvaluator
+
+    @Binds @IntoSet
+    abstract fun bindChargingCondition(impl: ChargingConditionEvaluator): ConditionEvaluator
+
+    @Binds @IntoSet
+    abstract fun bindWifiConnectedCondition(impl: WifiConnectedConditionEvaluator): ConditionEvaluator
+
+    @Binds @IntoSet
+    abstract fun bindBluetoothConnectedCondition(impl: BluetoothConnectedConditionEvaluator): ConditionEvaluator
+
+    @Binds @IntoSet
+    abstract fun bindScreenStateCondition(impl: ScreenStateConditionEvaluator): ConditionEvaluator
+
+    @Binds @IntoSet
+    abstract fun bindExpressionCondition(impl: ExpressionConditionEvaluator): ConditionEvaluator
 
     companion object {
         @Provides

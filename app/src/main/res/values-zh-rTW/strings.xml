@@ -49,19 +49,24 @@
     <string name="fd_pin_shortcut_unsupported">此啟動器不支援釘選捷徑</string>
     <string name="fd_flow_started">流程已啟動</string>
     <string name="fd_flow_stopped">流程已停止</string>
+    <string name="fd_flow_skipped">已跳過 — 限制條件不成立</string>
     <string name="fd_export_flow">匯出流程</string>
     <string name="fd_export">匯出</string>
     <string name="fd_section_when">觸發</string>
+    <string name="fd_section_only_if">限制條件</string>
     <string name="fd_section_then">動作</string>
     <string name="fd_section_variables">變數</string>
     <string name="fd_no_triggers">尚無觸發器，請在下方新增。</string>
+    <string name="fd_no_conditions">尚無限制條件。只要觸發器響應，流程就會執行。</string>
     <string name="fd_no_actions">尚無動作，請在下方新增。</string>
     <string name="fd_no_variables">尚無變數。定義預設值後可在任何欄位以 {{name}} 使用。</string>
     <string name="fd_empty_value">（空白）</string>
     <string name="fd_add_trigger">新增觸發器</string>
+    <string name="fd_add_condition">新增限制條件</string>
     <string name="fd_add_action">新增動作</string>
     <string name="fd_add_variable">新增變數</string>
     <string name="fd_search_triggers">搜尋觸發器</string>
+    <string name="fd_search_conditions">搜尋限制條件</string>
     <string name="fd_search_actions">搜尋動作</string>
     <string name="fd_run_flow">執行流程</string>
     <string name="fd_stop_flow">停止流程</string>
@@ -71,6 +76,7 @@
     <string name="fd_disabled">已停用</string>
     <string name="fd_logic_any">任一</string>
     <string name="fd_logic_all">全部</string>
+    <string name="fd_logic_all_hint">ALL：所有觸發器都要在 %1$d 分鐘內響應，流程才會執行。</string>
     <string name="fd_clear_search">清除搜尋</string>
     <string name="fd_nothing_matches">找不到符合「%1$s」的項目</string>
     <string name="fd_no_config_needed">此類型不需要設定。</string>
@@ -252,6 +258,8 @@
 
     <!-- Common dialogs -->
     <string name="icon_selected_color">已選色彩</string>
+    <string name="icon_search_hint">搜尋圖示</string>
+    <string name="icon_search_empty">找不到符合的圖示</string>
     <string name="app_picker_search">搜尋應用程式…</string>
 
     <!-- Log retention options -->
@@ -284,6 +292,7 @@
     <string name="cat_device_state">裝置狀態</string>
     <string name="cat_apps">應用程式</string>
     <string name="cat_location">位置</string>
+    <string name="cat_advanced">進階</string>
 
     <string name="act_toast_label">快顯訊息</string>
     <string name="act_toast_desc">顯示簡短的螢幕訊息</string>
@@ -407,6 +416,25 @@
     <string name="opt_darker_than">暗於</string>
     <string name="opt_brighter_than">亮於</string>
     <string name="cfg_lux_threshold">光線強度(lux)</string>
+
+    <!-- 限制條件標籤與說明 -->
+    <string name="cnd_time_range_label">時間範圍</string>
+    <string name="cnd_time_range_desc">只在指定時段內成立</string>
+    <string name="cnd_day_of_week_label">星期</string>
+    <string name="cnd_day_of_week_desc">只在選取的星期成立</string>
+    <string name="cnd_battery_label">電池電量</string>
+    <string name="cnd_battery_desc">只在電量高於或低於指定值時成立</string>
+    <string name="cnd_charging_label">充電狀態</string>
+    <string name="cnd_charging_desc">只在充電中（或未充電）時成立</string>
+    <string name="cnd_wifi_label">Wi-Fi</string>
+    <string name="cnd_wifi_desc">只在連上 Wi-Fi 時成立</string>
+    <string name="cnd_bluetooth_label">藍牙</string>
+    <string name="cnd_bluetooth_desc">只在藍牙音訊裝置連線時成立</string>
+    <string name="cnd_screen_label">螢幕</string>
+    <string name="cnd_screen_desc">只在螢幕開啟或關閉時成立</string>
+    <string name="cnd_expression_label">運算式</string>
+    <string name="cnd_expression_desc">只在變數比較結果成立時執行</string>
+    <string name="cnd_unsupported">不支援的限制條件 — 移除它之前，這個流程不會執行</string>
     <string name="act_tap_label">模擬點擊</string>
     <string name="act_tap_desc">點擊螢幕指定座標</string>
     <string name="cfg_tap_x">X 座標(px)</string>
@@ -512,10 +540,30 @@
     <string name="cfg_latitude">緯度</string>
     <string name="cfg_longitude">經度</string>
     <string name="cfg_radius">半徑</string>
+    <string name="cfg_tap_action">點擊通知時</string>
+    <string name="cfg_tap_app">要開啟的 App</string>
+    <string name="cfg_tap_url">要開啟的網址</string>
+    <string name="cfg_tap_shortcut">要開啟的捷徑</string>
+    <string name="opt_tap_none">只關閉通知</string>
+    <string name="opt_tap_open_app">開啟 App</string>
+    <string name="opt_tap_open_url">開啟連結</string>
+    <string name="opt_tap_open_shortcut">開啟 App 捷徑</string>
+    <string name="cfg_keyword_optional">關鍵字（選填）</string>
+    <string name="cfg_body_keyword_optional">內文關鍵字（選填）</string>
+    <string name="cfg_match_field">比對範圍</string>
+    <string name="cfg_match_mode">比對方式</string>
+    <string name="cfg_start_time">從</string>
+    <string name="cfg_end_time">到</string>
+    <string name="cfg_days_of_week">星期</string>
+    <string name="cfg_state">狀態</string>
+    <string name="cfg_battery_when">電量</string>
+    <string name="cfg_negate">反轉（NOT）</string>
+    <string name="cfg_negate_desc">只在這個條件「不成立」時執行</string>
 
     <string name="cfg_hint_any_device">留空表示任何裝置</string>
     <string name="cfg_hint_any_caller">留空表示任何來電者</string>
     <string name="cfg_hint_any_sender">留空表示任何寄件者</string>
+    <string name="cfg_hint_any_text">留空表示任何內容</string>
 
     <string name="cfg_info_language_label">語言</string>
     <string name="cfg_info_language_body">使用裝置預設的 TTS 引擎語言。若要變更，請至「設定 → 無障礙 → 文字轉語音輸出」。</string>
@@ -523,6 +571,8 @@
     <string name="cfg_info_permission_body">需要「修改系統設定」權限——請在設定分頁的權限區段授予。</string>
     <string name="cfg_info_requirement_label">需求</string>
     <string name="cfg_info_screenshot_body">螢幕截圖需要啟用 NexFlow 無障礙服務。請至「設定 → 無障礙 → 已安裝的應用程式 → NexFlow」並開啟。需要 Android 12 以上。</string>
+    <string name="cfg_info_wifi_ssid_body">比對網路名稱需要定位權限 — 沒有權限時 Android 會隱藏名稱，這個條件將永遠不成立。留空即接受任何 Wi-Fi 網路。</string>
+    <string name="cfg_info_bluetooth_audio_body">只偵測得到音訊裝置（耳機、喇叭、車用音響），其他藍牙配件無法被這個條件偵測。</string>
     <string name="cfg_info_condition_label">條件</string>
     <string name="cfg_info_condition_body">範例：{{battery}} &lt; 20 · {{status}} == ok · true。支援 ==、!=、&lt;、&gt;、&lt;=、&gt;=——數字會以數值比較。請以「結束如果」動作關閉此區塊。</string>
 
@@ -553,9 +603,18 @@
     <string name="opt_screen_unlocked">螢幕解鎖</string>
     <string name="opt_entering_area">進入區域</string>
     <string name="opt_leaving_area">離開區域</string>
+    <string name="opt_at_or_above">大於或等於</string>
+    <string name="opt_at_or_below">小於或等於</string>
+    <string name="opt_field_any">標題與內文</string>
+    <string name="opt_field_title">僅標題</string>
+    <string name="opt_field_text">僅內文</string>
+    <string name="opt_match_contains">包含</string>
+    <string name="opt_match_exact">完全相同</string>
+    <string name="opt_match_regex">正規表示式</string>
 
     <string name="sum_no_message">無訊息</string>
     <string name="sum_notification">通知</string>
+    <string name="sum_notification_tap">%1$s → %2$s</string>
     <string name="sum_toggle">切換</string>
     <string name="sum_not_set">未設定</string>
     <string name="sum_no_url">無網址</string>
@@ -579,6 +638,8 @@
     <string name="sum_any_app">任何應用程式</string>
     <string name="sum_on_boot">開機時</string>
     <string name="sum_any_tag">任何標籤</string>
+    <string name="sum_any_day">每一天</string>
+    <string name="sum_negated">非 %1$s</string>
     <string name="sum_no_days">無日期</string>
     <string name="sum_level">等級：%1$s%2$s</string>
     <string name="sum_stream_level">%1$s：%2$s</string>

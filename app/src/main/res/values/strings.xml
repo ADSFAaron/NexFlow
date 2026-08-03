@@ -50,19 +50,24 @@
     <string name="fd_pin_shortcut_unsupported">This launcher does not support pinned shortcuts</string>
     <string name="fd_flow_started">Flow started</string>
     <string name="fd_flow_stopped">Flow stopped</string>
+    <string name="fd_flow_skipped">Skipped — a condition is not met</string>
     <string name="fd_export_flow">Export flow</string>
     <string name="fd_export">Export</string>
     <string name="fd_section_when">WHEN</string>
+    <string name="fd_section_only_if">ONLY IF</string>
     <string name="fd_section_then">THEN</string>
     <string name="fd_section_variables">VARIABLES</string>
     <string name="fd_no_triggers">No triggers yet. Add one below.</string>
+    <string name="fd_no_conditions">No conditions. The flow runs every time a trigger fires.</string>
     <string name="fd_no_actions">No actions yet. Add one below.</string>
     <string name="fd_no_variables">No variables. Define defaults usable as {{name}} in any field.</string>
     <string name="fd_empty_value">(empty)</string>
     <string name="fd_add_trigger">Add Trigger</string>
+    <string name="fd_add_condition">Add Condition</string>
     <string name="fd_add_action">Add Action</string>
     <string name="fd_add_variable">Add Variable</string>
     <string name="fd_search_triggers">Search triggers</string>
+    <string name="fd_search_conditions">Search conditions</string>
     <string name="fd_search_actions">Search actions</string>
     <string name="fd_run_flow">Run flow</string>
     <string name="fd_stop_flow">Stop flow</string>
@@ -72,6 +77,7 @@
     <string name="fd_disabled">Disabled</string>
     <string name="fd_logic_any">ANY</string>
     <string name="fd_logic_all">ALL</string>
+    <string name="fd_logic_all_hint">ALL: every trigger must fire within %1$d minutes of each other.</string>
     <string name="fd_clear_search">Clear search</string>
     <string name="fd_nothing_matches">Nothing matches “%1$s”</string>
     <string name="fd_no_config_needed">No configuration needed for this type.</string>
@@ -253,6 +259,8 @@
 
     <!-- Common dialogs -->
     <string name="icon_selected_color">Selected color</string>
+    <string name="icon_search_hint">Search icons</string>
+    <string name="icon_search_empty">No icon matches that search</string>
     <string name="app_picker_search">Search apps…</string>
 
     <!-- Log retention options -->
@@ -287,6 +295,7 @@
     <string name="cat_device_state">Device State</string>
     <string name="cat_apps">Apps</string>
     <string name="cat_location">Location</string>
+    <string name="cat_advanced">Advanced</string>
 
     <!-- Action labels &amp; descriptions -->
     <string name="act_toast_label">Toast</string>
@@ -412,6 +421,25 @@
     <string name="opt_darker_than">Darker than</string>
     <string name="opt_brighter_than">Brighter than</string>
     <string name="cfg_lux_threshold">Light level (lux)</string>
+
+    <!-- Condition (constraint) labels &amp; descriptions -->
+    <string name="cnd_time_range_label">Time range</string>
+    <string name="cnd_time_range_desc">Only within a time window</string>
+    <string name="cnd_day_of_week_label">Day of week</string>
+    <string name="cnd_day_of_week_desc">Only on the selected days</string>
+    <string name="cnd_battery_label">Battery level</string>
+    <string name="cnd_battery_desc">Only above or below a charge level</string>
+    <string name="cnd_charging_label">Charging</string>
+    <string name="cnd_charging_desc">Only while the device is (or is not) charging</string>
+    <string name="cnd_wifi_label">Wi-Fi</string>
+    <string name="cnd_wifi_desc">Only while connected to Wi-Fi</string>
+    <string name="cnd_bluetooth_label">Bluetooth</string>
+    <string name="cnd_bluetooth_desc">Only while a Bluetooth audio device is connected</string>
+    <string name="cnd_screen_label">Screen</string>
+    <string name="cnd_screen_desc">Only while the screen is on or off</string>
+    <string name="cnd_expression_label">Expression</string>
+    <string name="cnd_expression_desc">Only when a comparison over variables holds</string>
+    <string name="cnd_unsupported">Unsupported condition — this flow will not run until you remove it</string>
     <string name="act_tap_label">Simulate tap</string>
     <string name="act_tap_desc">Tap the screen at a coordinate</string>
     <string name="cfg_tap_x">X coordinate (px)</string>
@@ -518,11 +546,31 @@
     <string name="cfg_latitude">Latitude</string>
     <string name="cfg_longitude">Longitude</string>
     <string name="cfg_radius">Radius</string>
+    <string name="cfg_tap_action">Tap action</string>
+    <string name="cfg_tap_app">App to open</string>
+    <string name="cfg_tap_url">URL to open</string>
+    <string name="cfg_tap_shortcut">Shortcut to open</string>
+    <string name="opt_tap_none">Just dismiss</string>
+    <string name="opt_tap_open_app">Open an app</string>
+    <string name="opt_tap_open_url">Open a link</string>
+    <string name="opt_tap_open_shortcut">Open an app shortcut</string>
+    <string name="cfg_keyword_optional">Keyword (optional)</string>
+    <string name="cfg_body_keyword_optional">Message keyword (optional)</string>
+    <string name="cfg_match_field">Search in</string>
+    <string name="cfg_match_mode">Match</string>
+    <string name="cfg_start_time">From</string>
+    <string name="cfg_end_time">Until</string>
+    <string name="cfg_days_of_week">Days</string>
+    <string name="cfg_state">State</string>
+    <string name="cfg_battery_when">Battery is</string>
+    <string name="cfg_negate">Invert (NOT)</string>
+    <string name="cfg_negate_desc">Run only when this condition does NOT hold</string>
 
     <!-- Config field hints (textual) -->
     <string name="cfg_hint_any_device">Leave blank for any device</string>
     <string name="cfg_hint_any_caller">Leave blank for any caller</string>
     <string name="cfg_hint_any_sender">Leave blank for any sender</string>
+    <string name="cfg_hint_any_text">Leave blank for any text</string>
 
     <!-- Config InfoText blocks -->
     <string name="cfg_info_language_label">Language</string>
@@ -531,6 +579,8 @@
     <string name="cfg_info_permission_body">Requires \'Modify system settings\' — grant it in the Permissions section of the Settings tab.</string>
     <string name="cfg_info_requirement_label">Requirement</string>
     <string name="cfg_info_screenshot_body">Screenshot requires the NexFlow Accessibility Service to be enabled. Go to Settings → Accessibility → Installed apps → NexFlow and toggle it on. Requires Android 12 or higher.</string>
+    <string name="cfg_info_wifi_ssid_body">Matching a network name needs location permission — without it Android hides the name and the condition never holds. Leave it blank to accept any Wi-Fi network.</string>
+    <string name="cfg_info_bluetooth_audio_body">Only audio devices are detected (headphones, speakers, car kits). Other Bluetooth accessories are invisible to this condition.</string>
     <string name="cfg_info_condition_label">Condition</string>
     <string name="cfg_info_condition_body">Examples: {{battery}} &lt; 20 · {{status}} == ok · true. Supports ==, !=, &lt;, &gt;, &lt;=, &gt;= — numbers compare numerically. Close the block with an End If action.</string>
 
@@ -562,10 +612,19 @@
     <string name="opt_screen_unlocked">Screen unlocked</string>
     <string name="opt_entering_area">Entering area</string>
     <string name="opt_leaving_area">Leaving area</string>
+    <string name="opt_at_or_above">At or above</string>
+    <string name="opt_at_or_below">At or below</string>
+    <string name="opt_field_any">Title and text</string>
+    <string name="opt_field_title">Title only</string>
+    <string name="opt_field_text">Text only</string>
+    <string name="opt_match_contains">Contains</string>
+    <string name="opt_match_exact">Exactly</string>
+    <string name="opt_match_regex">Regular expression</string>
 
     <!-- Config summaries (subtitle under each row) -->
     <string name="sum_no_message">No message</string>
     <string name="sum_notification">Notification</string>
+    <string name="sum_notification_tap">%1$s → %2$s</string>
     <string name="sum_toggle">Toggle</string>
     <string name="sum_not_set">Not set</string>
     <string name="sum_no_url">No URL</string>
@@ -589,6 +648,8 @@
     <string name="sum_any_app">Any app</string>
     <string name="sum_on_boot">On boot</string>
     <string name="sum_any_tag">Any tag</string>
+    <string name="sum_any_day">Any day</string>
+    <string name="sum_negated">NOT %1$s</string>
     <string name="sum_no_days">no days</string>
     <string name="sum_level">Level: %1$s%2$s</string>
     <string name="sum_stream_level">%1$s: %2$s</string>

@@ -19,6 +19,7 @@ import com.nexflow.core.automation.model.Trigger
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.automation.trigger.TriggerEvent
 import com.nexflow.core.automation.trigger.TriggerHandler
+import com.nexflow.core.automation.trigger.TriggerVariables
 import com.nexflow.event.PhoneCallEventSource
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filter
@@ -29,6 +30,8 @@ import javax.inject.Singleton
 /**
  * Fires when an incoming call is detected.
  * Requires READ_PHONE_STATE permission. Events arrive via PhoneStateReceiver → PhoneCallEventSource.
+ *
+ * Reports the caller as `{{trigger.number}}`.
  */
 @Singleton
 class IncomingCallTriggerHandler @Inject constructor() : TriggerHandler {
@@ -43,6 +46,12 @@ class IncomingCallTriggerHandler @Inject constructor() : TriggerHandler {
                     number.contains(targetContact, ignoreCase = true) ||
                     targetContact.contains(number, ignoreCase = true)
             }
-            .map { TriggerEvent(trigger.id, "") }
+            .map { number ->
+                TriggerEvent(
+                    triggerId = trigger.id,
+                    flowId = "",
+                    metadata = mapOf(TriggerVariables.NUMBER to number),
+                )
+            }
     }
 }

@@ -37,6 +37,10 @@ class FlowInterpreter(
      * @param globalVariables cross-flow variables (name -> current value). They are merged into
      *   the run's variable map under the [GLOBAL_PREFIX] namespace, so a flow references them as
      *   `{{g:name}}` and they never collide with a flow's own variables.
+     * @param triggerVariables what the trigger reported about the event that started this run
+     *   (see [com.nexflow.core.automation.trigger.TriggerVariables]), merged under the
+     *   [TRIGGER_PREFIX] namespace — a flow reads the incoming SMS body as `{{trigger.body}}`.
+     *   Empty for a manual run that carries no event.
      * @param onGlobalVariableSet invoked (with the un-prefixed name) whenever a SET_VARIABLE action
      *   writes a `g:`-namespaced variable, so the caller can persist the new value for other flows.
      *   Only names present in [globalVariables] can be written — a write to an unknown `g:` name
@@ -46,11 +50,13 @@ class FlowInterpreter(
     suspend fun execute(
         flow: Flow,
         globalVariables: Map<String, String> = emptyMap(),
+        triggerVariables: Map<String, String> = emptyMap(),
         onActionStart: (suspend (actionId: String) -> Unit)? = null,
         onGlobalVariableSet: (suspend (name: String, value: String) -> Unit)? = null,
     ): InterpreterResult {
         val variables = buildVariableMap(flow.variables)
         globalVariables.forEach { (name, value) -> variables["$GLOBAL_PREFIX$name"] = value }
+        triggerVariables.forEach { (name, value) -> variables["$TRIGGER_PREFIX$name"] = value }
         val actions = flow.actions.sortedBy { it.order }
         return executeBlock(
             actions = actions,
@@ -183,61 +189,17 @@ class FlowInterpreter(
     }
 
     // Replaces {{varName}} tokens with current variable values.
-    internal fun interpolate(template: String, variables: Map<String, String>): String {
-        var result = template
-        variables.forEach { (key, value) ->
-            result = result.replace("{{$key}}", value)
-        }
-        return result
-    }
+    internal fun interpolate(template: String, variables: Map<String, String>): String =
+        ExpressionEvaluator.interpolate(template, variables)
 
     private fun interpolateAction(action: Action, variables: Map<String, String>): Action {
         val interpolatedConfig = action.config.mapValues { (_, v) -> interpolate(v, variables) }
         return action.copy(config = interpolatedConfig)
     }
 
-    /**
-     * Evaluates a boolean expression after variable interpolation.
-     *
-     * Supported forms (see docs/FLOW_SCHEMA.md):
-     * - "true" / "false" literals (case-insensitive)
-     * - binary comparisons: ==, !=, <=, >=, <, > — numeric when both sides parse
-     *   as numbers, otherwise case-insensitive string comparison
-     */
-    internal fun evaluateExpression(expression: String, variables: Map<String, String>): Boolean {
-        val resolved = interpolate(expression.trim(), variables)
-
-        // Two-char operators must be matched before their single-char prefixes.
-        for (op in listOf("==", "!=", "<=", ">=", "<", ">")) {
-            val idx = resolved.indexOf(op)
-            if (idx <= 0) continue
-            val left = resolved.substring(0, idx).trim().removeSurrounding("\"")
-            val right = resolved.substring(idx + op.length).trim().removeSurrounding("\"")
-            val leftNum = left.toDoubleOrNull()
-            val rightNum = right.toDoubleOrNull()
-            return if (leftNum != null && rightNum != null) {
-                when (op) {
-                    "==" -> leftNum == rightNum
-                    "!=" -> leftNum != rightNum
-                    "<=" -> leftNum <= rightNum
-                    ">=" -> leftNum >= rightNum
-                    "<" -> leftNum < rightNum
-                    else -> leftNum > rightNum
-                }
-            } else {
-                val cmp = left.compareTo(right, ignoreCase = true)
-                when (op) {
-                    "==" -> cmp == 0
-                    "!=" -> cmp != 0
-                    "<=" -> cmp <= 0
-                    ">=" -> cmp >= 0
-                    "<" -> cmp < 0
-                    else -> cmp > 0
-                }
-            }
-        }
-        return resolved.equals("true", ignoreCase = true)
-    }
+    /** @see ExpressionEvaluator.evaluate */
+    internal fun evaluateExpression(expression: String, variables: Map<String, String>): Boolean =
+        ExpressionEvaluator.evaluate(expression, variables)
 
     private fun findMatchingEndIf(actions: List<Action>, ifIndex: Int): Int {
         var depth = 0
@@ -323,6 +285,13 @@ class FlowInterpreter(
 
         /** Namespace prefix for global (cross-flow) variables, referenced as `{{g:name}}`. */
         const val GLOBAL_PREFIX = "g:"
+
+        /**
+         * Namespace prefix for values supplied by the trigger, referenced as `{{trigger.name}}`.
+         * Mirrors [com.nexflow.core.automation.trigger.TriggerVariables.PREFIX], kept here so the
+         * interpreter stays independent of the trigger package.
+         */
+        const val TRIGGER_PREFIX = "trigger."
 
         /** Failure text for a SET_VARIABLE that targets a `g:` name no global variable declares. */
         fun unknownGlobalMessage(bareName: String): String =

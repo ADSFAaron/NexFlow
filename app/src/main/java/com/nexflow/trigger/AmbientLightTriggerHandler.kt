@@ -24,6 +24,7 @@ import com.nexflow.core.automation.model.Trigger
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.automation.trigger.TriggerEvent
 import com.nexflow.core.automation.trigger.TriggerHandler
+import com.nexflow.core.automation.trigger.TriggerVariables
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -61,7 +62,13 @@ class AmbientLightTriggerHandler @Inject constructor(
                 val lux = event.values[0]
                 val satisfied = if (below) lux < threshold else lux > threshold
                 if (satisfied && wasSatisfied == false) {
-                    trySend(TriggerEvent(trigger.id, ""))
+                    trySend(
+                        TriggerEvent(
+                            triggerId = trigger.id,
+                            flowId = "",
+                            metadata = mapOf(TriggerVariables.LUX to lux.toString()),
+                        ),
+                    )
                 }
                 wasSatisfied = satisfied
             }

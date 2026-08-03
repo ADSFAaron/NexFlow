@@ -29,6 +29,7 @@ import com.nexflow.core.automation.model.Trigger
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.automation.trigger.TriggerEvent
 import com.nexflow.core.automation.trigger.TriggerHandler
+import com.nexflow.core.automation.trigger.TriggerVariables
 import com.nexflow.event.GeofenceEventSource
 import com.nexflow.receiver.GeofenceTransitionReceiver
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -43,6 +44,9 @@ import javax.inject.Singleton
  * Fires when the device enters or leaves a defined geofence area.
  * Requires ACCESS_FINE_LOCATION + ACCESS_BACKGROUND_LOCATION (Android 10+).
  * Events persist even when the app is killed — delivered via GeofenceTransitionReceiver.
+ *
+ * Reports the transition and the area's centre as `{{trigger.event}}` / `{{trigger.lat}}` /
+ * `{{trigger.lng}}`.
  */
 @Singleton
 class GeofenceTriggerHandler @Inject constructor(
@@ -126,7 +130,25 @@ class GeofenceTriggerHandler @Inject constructor(
                     "EXIT" -> event.transitionType == Geofence.GEOFENCE_TRANSITION_EXIT
                     else -> true
                 }
-                if (matches) trySend(TriggerEvent(trigger.id, ""))
+                if (matches) {
+                    trySend(
+                        TriggerEvent(
+                            triggerId = trigger.id,
+                            flowId = "",
+                            metadata = mapOf(
+                                // The actual transition, which differs from the configured one
+                                // when the trigger accepts both directions.
+                                TriggerVariables.EVENT to when (event.transitionType) {
+                                    Geofence.GEOFENCE_TRANSITION_ENTER -> "ENTER"
+                                    Geofence.GEOFENCE_TRANSITION_EXIT -> "EXIT"
+                                    else -> targetEvent
+                                },
+                                TriggerVariables.LATITUDE to lat.toString(),
+                                TriggerVariables.LONGITUDE to lng.toString(),
+                            ),
+                        ),
+                    )
+                }
             }
         }
 

@@ -229,6 +229,12 @@ fun FlowsScreen(
             snackbarHostState.showSnackbar(msg)
         }
     }
+    // Corrects the "running…" snackbar shown on tap when the flow's conditions held it back.
+    LaunchedEffect(vm) {
+        vm.runSkipped.collect {
+            snackbarHostState.showSnackbar(context.getString(R.string.fd_flow_skipped))
+        }
+    }
 
     // Re-check permission warnings each time the screen resumes — the user may have just
     // returned from system Settings after granting (or revoking) a permission. (The wizard
