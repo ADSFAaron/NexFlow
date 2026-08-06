@@ -1,5 +1,5 @@
 [versions]
-agp = "9.2.1"
+agp = "9.3.1"
 kotlin = "2.2.10"
 # KSP version must match Kotlin major.minor.patch. Check https://github.com/google/ksp/releases
 ksp = "2.3.9"
@@ -13,7 +13,7 @@ navigationCompose = "2.9.0"
 hilt = "2.59.2"
 hiltNavigationCompose = "1.2.0"
 hiltWork = "1.2.0"
-room = "2.7.1"
+room = "2.7.2"
 kotlinxSerialization = "1.7.3"
 ktor = "3.0.3"
 workmanager = "2.10.0"
