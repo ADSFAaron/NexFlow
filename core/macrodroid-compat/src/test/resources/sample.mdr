@@ -1,0 +1,75 @@
+{
+  "exportFormat": 1,
+  "categoryList": ["Uncategorized"],
+  "macroList": [
+    {
+      "m_GUID": -8430540620057371258,
+      "m_name": "Morning routine",
+      "m_description": "",
+      "m_enabled": true,
+      "m_category": "Uncategorized",
+      "m_triggerList": [
+        {
+          "m_alarmId": "a174aae1-063b-4fca-a6a6-d3659a39d5d6",
+          "m_daysOfWeek": [true, true, true, true, true, false, false],
+          "m_hour": 7,
+          "m_minute": 30,
+          "m_useAlarm": true,
+          "fakeIcon": 2131230995,
+          "m_SIGUID": -5381372544201902085,
+          "m_classType": "TimerTrigger",
+          "m_constraintList": [],
+          "m_isDisabled": false,
+          "m_isOrCondition": false
+        }
+      ],
+      "m_actionList": [
+        {
+          "configComplete": false,
+          "m_keepBluetoothOn": false,
+          "m_keepWifiOn": false,
+          "m_state": 1,
+          "mechanismOption": 0,
+          "m_SIGUID": -7481478513948885255,
+          "m_classType": "SetAirplaneModeAction",
+          "m_constraintList": [],
+          "m_isDisabled": false,
+          "m_isOrCondition": false
+        },
+        {
+          "m_delayInMilliSeconds": 0,
+          "m_delayInSeconds": 7,
+          "m_useAlarm": true,
+          "m_SIGUID": -5841258625541235507,
+          "m_classType": "PauseAction",
+          "m_constraintList": [],
+          "m_isDisabled": false,
+          "m_isOrCondition": false
+        },
+        {
+          "m_applicationName": "Musicolet",
+          "m_option": "Play",
+          "m_packageName": "in.krosbits.musicolet",
+          "m_sendMediaPlayerCommands": false,
+          "m_simulateMediaButton": true,
+          "m_SIGUID": -6106654859705007437,
+          "m_classType": "ControlMediaAction",
+          "m_constraintList": [],
+          "m_isDisabled": false,
+          "m_isOrCondition": false
+        }
+      ],
+      "m_constraintList": [
+        {
+          "m_batteryLevel": 30,
+          "m_equals": false,
+          "m_greaterThan": true,
+          "m_SIGUID": -1234567890123456789,
+          "m_classType": "BatteryLevelConstraint",
+          "m_isDisabled": false,
+          "m_isOrCondition": false
+        }
+      ]
+    }
+  ]
+}

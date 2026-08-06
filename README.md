@@ -36,7 +36,7 @@
 - 🌙 **晚上 11 點自動截圖記帳通知、傳到你的伺服器**
 - 📷 **NFC 標籤一刷就開特定 App + 朗讀今日行程**
 
-只要想得到「**什麼情況下 → 做什麼事**」，幾乎都能組出來，還支援**變數、條件分支（If/Else）、迴圈（Repeat）**，以及匯入 MacroDroid 的 `.mdr` 檔。
+只要想得到「**什麼情況下 → 做什麼事**」，幾乎都能組出來，還支援**變數、條件分支（If/Else）、迴圈（Repeat）**，以及匯入 MacroDroid 的 `.mdr` / `.macro` 檔。
 
 > ✨ **不想手動組？** 內建 **Gemini AI 助手**：用文字或語音描述需求（例如「插上耳機時把音量調到 80% 並打開 Spotify」），AI 就會產生對應流程讓你檢視、儲存。需自備 Google AI Studio 的 Gemini API 金鑰，見 [AI 助手](#-ai-助手gemini)。
 
@@ -179,7 +179,7 @@ flowchart LR
 ### 匯入／匯出
 
 - 自有格式：`.flow`（JSON），規格見 [docs/FLOW_SCHEMA.md](docs/FLOW_SCHEMA.md)
-- MacroDroid 相容：可解析並轉換 `.mdr` 匯出檔（`core/macrodroid-compat`）
+- MacroDroid 相容：可解析並轉換 `.mdr`（整份備份）與 `.macro`（單一巨集分享）匯出檔，連同設定欄位一起轉換（`core/macrodroid-compat`，格式與對照依據見 [docs/MACRODROID_IMPORT.md](docs/MACRODROID_IMPORT.md)）
 - 支援檔案選擇器匯入、系統分享（Share）匯入、Flow 詳細頁直接匯出分享
 - 🌐 匯出的 `.flow` 會一併帶上該流程用到的**全域變數宣告**（名稱／型別／預設值），匯入時自動補建缺少的變數 —— 換裝置後 `{{g:名稱}}` 仍可用。只帶宣告不帶當下的值（計數器跑到一半的值換台手機沒有意義），已存在的同名變數不會被覆寫
 - 🔒 匯入的流程一律以**停用**狀態加入，外部分享的檔案會先跳確認框，避免惡意檔案自動執行
@@ -351,9 +351,8 @@ adb shell settings put global animator_duration_scale 1.0
 
 ## 已知限制（規劃中）
 
-- Flow 層級的 `conditions`（執行前置條件）已有資料模型、.mdr 匯入與 JSON 往返，但**引擎尚未評估、也沒有編輯 UI**。含約束的 `.mdr` 或 `.flow` 匯入時會列出警告，明確告知該流程仍會無條件執行，不會靜默失效
 - 全域變數需先在「設定 → 全域變數」建立才能寫入：`SET_VARIABLE` 不會用打錯的 `g:名稱` 自動建立新變數（避免 typo 悄悄產生殭屍變數）。設定框會擋下不存在的 `g:` 名稱、無法儲存；萬一仍寫入（例如匯入的舊檔），執行會**失敗並在執行記錄寫出該名稱**，而不是靜默跳過
-- **MacroDroid `.mdr` 相容為部分覆蓋**：目前對照 14 種觸發、25 種動作、5 種條件的 MacroDroid class type，其餘一律轉成 `UNSUPPORTED` 並在匯入時逐項列出警告（原始 class 名會保留在 config 裡，方便手動補上對應動作）。轉換是 best-effort，複雜巨集匯入後請先檢視再啟用
+- **MacroDroid 相容為部分覆蓋**：目前對照 22 種觸發、30 種動作、7 種條件的 MacroDroid class type（MacroDroid 本身有上百種），其餘一律轉成 `UNSUPPORTED` 並在匯入時逐項列出警告（原始 class 名會保留在 config 裡，方便手動補上對應動作）。設定欄位有 46 種 class 的對照，沒有對照或對不過去的欄位同樣會逐項寫進警告，不會靜默消失。轉換是 best-effort，複雜巨集匯入後請先檢視再啟用 —— 已知一定轉不過來的項目（地理圍欄座標、選單各選項的動作、捷徑、桌布圖片…）列在 [docs/MACRODROID_IMPORT.md](docs/MACRODROID_IMPORT.md)
 - **精確時間需要「鬧鐘與提醒」權限**：TIME 觸發走 `AlarmManager`，Android 12+ 未授權 `SCHEDULE_EXACT_ALARM` 時會退回不精確排程 —— 仍能穿透 Doze，但系統可能併入維護視窗，**誤差數分鐘**。設定頁有引導前往授權
 - **省電機制可能中斷非時間類觸發**：搖晃、環境光、Wi-Fi／藍牙、耳機、螢幕等觸發依附於前景服務的事件串流，被系統或廠商的省電策略殺掉後就會停止監聽（TIME 因為由 AlarmManager 驅動不受影響）。目前**還沒有引導使用者把 App 加入電池最佳化白名單**的畫面，激進省電的機型請自行到系統設定放行
 - **同一流程不會並行執行**：正在執行的流程再次被觸發會直接略過（避免重複觸發疊加成多份同時執行），這些觸發**不會排隊補跑**

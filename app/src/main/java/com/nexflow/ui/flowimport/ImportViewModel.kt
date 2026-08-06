@@ -59,10 +59,15 @@ class ImportViewModel @Inject constructor(
                 return@launch
             }
 
+            if (root.macros.isEmpty()) {
+                _result.update { ImportResult(error = "No macros found in this MacroDroid file") }
+                return@launch
+            }
+
             var imported = 0
             val allWarnings = mutableListOf<String>()
 
-            root.macroList.forEach { macro ->
+            root.macros.forEach { macro ->
                 val conversion = MdrToFlowConverter.convert(macro)
                 allWarnings += conversion.warnings.map { "[${macro.name}] $it" }
                 repository.save(conversion.flow.toDomain())
@@ -146,12 +151,13 @@ class ImportViewModel @Inject constructor(
         return names
     }
 
+    /**
+     * Picks the reader by what the file actually is. A MacroDroid export is JSON too, so the
+     * shape of the content decides — testing for a leading brace would send every .mdr to the
+     * .flow reader, where it can only fail.
+     */
     fun importAuto(content: String) {
-        if (content.trimStart().startsWith("{")) {
-            importFlowJson(content)
-        } else {
-            importMdr(content)
-        }
+        if (MdrParser.looksLikeMacroDroid(content)) importMdr(content) else importFlowJson(content)
     }
 
     fun clearResult() = _result.update { null }

@@ -25,7 +25,21 @@ private val mdrJson = Json {
 }
 
 object MdrParser {
+
     fun parse(content: String): Result<MdrRoot> = runCatching {
         mdrJson.decodeFromString<MdrRoot>(content)
     }
+
+    /**
+     * Whether this looks like a MacroDroid export rather than a NexFlow flow.
+     *
+     * Both formats are JSON objects, so "starts with a brace" tells them apart from nothing —
+     * a MacroDroid file routed to the .flow reader just fails to parse. These two keys are
+     * MacroDroid's own and appear in every export: the backup wrapper and the single-macro
+     * wrapper respectively.
+     */
+    fun looksLikeMacroDroid(content: String): Boolean =
+        MACRODROID_MARKERS.any { it in content }
+
+    private val MACRODROID_MARKERS = listOf("\"macroList\"", "\"m_classType\"")
 }

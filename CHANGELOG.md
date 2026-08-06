@@ -2,6 +2,35 @@
 
 本檔記錄 NexFlow 的重要變更。格式依循 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本遵循 [語意化版本](https://semver.org/lang/zh-TW/)。
 
+## [未發布]
+
+### 新增（Added）
+
+- **用 Gemini 修改現有流程**：流程詳細頁可直接「用 Gemini 編輯」，AI 會先讀進整個流程再依指示修改，儲存時更新原流程而不是產生一份近乎重複的副本
+  - 重新進入同一個流程會保留對話；換一個流程則重新開始（否則模型的歷史仍在描述上一個流程）
+- **AI 回覆支援 Markdown**：清單、粗體、行內程式碼等格式會正常呈現，不再顯示成原始符號
+
+### 修正（Fixed）
+
+- **MacroDroid 匯入實際上完全不會生效**（#6）：以下三件事任一都足以讓匯入失效，三件都存在
+  - 自動判斷格式時用「內容開頭是 `{`」決定走哪個解析器，但 `.mdr` 本身就是 JSON，於是每個 MacroDroid 檔都被丟去 `.flow` 解析器並回報 parse failed
+  - 解析器的欄位名稱與真實格式不符（真實格式為 `macroList` / `m_actionList` / `m_classType`，且設定欄位**平鋪**在物件上、沒有 `options` 子物件），套用在真實檔案上會得到零個巨集
+  - 對照表 25 筆動作裡有 20 筆的 class 名稱在 MacroDroid 中根本不存在（`WaitAction` 實為 `PauseAction`、`LaunchApplication` 實為 `LaunchActivityAction`、`MediaAction` 實為 `ControlMediaAction`、`GeoFenceTrigger` 實為 `GeofenceTrigger`…）
+- **匯入後設定欄位是空的**（#6）：新增設定欄位（option key）對照層，涵蓋 46 種 MacroDroid class，時間、電量、Wi-Fi、藍牙、通知、簡訊、延遲、音樂、變數、寫入檔案、HTTP 等都會連同設定一起轉換（例如 `m_hour`/`m_minute`/`m_daysOfWeek` → `time`/`repeat`/`days`）
+  - 轉不過去的欄位會**逐項寫進匯入警告**並指出原因，不再靜默丟掉
+  - 未知的動作型別在匯入後會降級成吐司，現在該吐司會寫明原本是哪個 MacroDroid 動作，而不是一個空吐司
+- 動作在 MacroDroid 中被停用（`m_isDisabled`）時，匯入後維持停用
+
+### 變更（Changed）
+
+- MacroDroid 相容範圍擴充至 22 種觸發、30 種動作、7 種條件的 class type（#3、#4、#5、#7）
+  - 新增：飛航模式、更換桌布、擴音、啟動捷徑（#3）
+  - 新增：搖晃、環境光線觸發（#4）。搖晃靈敏度是 MacroDroid 的全域設定、不存在於巨集裡，因此沿用 NexFlow 預設值
+  - 新增：模擬點擊／滑動（#5）。舊檔為 `TouchScreenAction`，新檔為 `UIInteractionAction` 並以 `uiInteractionConfiguration.type`（`Click`／`Gesture`）區分。**照樣對照**以保留座標，並固定附上「僅 GitHub 版可執行」的警告 —— Play 版依平台政策沒有執行器，執行時會失敗並在執行記錄寫明原因
+  - 新增：選單（#7）。MacroDroid 的 `OptionDialogAction` 會展開成 `SHOW_MENU` + N×`MENU_CASE` + `END_MENU` 並重算 order；各選項的動作在 MacroDroid 是指向**另一個巨集**（`m_actionMacroGuids`）而非內嵌分支，因此 case 內容必為空，匯入警告會明講
+- 支援 `.macro`（單一巨集分享）格式，先前只處理整份備份的 `.mdr`
+- 新增 [docs/MACRODROID_IMPORT.md](docs/MACRODROID_IMPORT.md)：記錄真實檔案格式、每一筆對照的查證來源，以及已知一定轉不過來的項目
+
 ## [1.2.0] - 2026-08-03
 
 觸發系統補完：觸發器現在會把「發生了什麼」交給流程使用，限制條件真正生效，`ALL` 觸發邏輯不再是空殼，通知也能把使用者直接送到下一個 App。
