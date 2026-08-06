@@ -233,7 +233,80 @@
     <string name="flows_import_failed">インポートに失敗しました</string>
     <string name="flows_import_complete">インポート完了</string>
     <string name="flows_bullet">• %1$s</string>
-    <string name="flows_and_more">…他 %1$d 件</string>
+
+    <!-- インポートの確認：権限ウィザードと同じく 1 件ずつ -->
+    <string name="import_review_title">インポート内容の確認</string>
+    <string name="import_review_step">%1$d / %2$d 件目</string>
+    <string name="import_review_next">次へ</string>
+    <string name="import_review_skip">スキップ</string>
+    <string name="import_review_fix">修正する</string>
+    <string name="import_review_done">完了</string>
+
+    <!-- インポート時の警告。タイトル＝何が起きたか、本文＝意味と対処。 -->
+    <string name="iw_unsupported_trigger">このトリガーに相当する機能がありません</string>
+    <string name="iw_unsupported_trigger_body">MacroDroid の「%1$s」は手動トリガーとしてインポートされました。実行ボタンを押したときだけ動きます。NexFlow のトリガーに置き換えるか、削除してください。</string>
+    <string name="iw_unsupported_condition">この条件に相当する機能がありません</string>
+    <string name="iw_unsupported_condition_body">MacroDroid の「%1$s」は変換できませんでした。NexFlow は実行前に必ず条件を確認するため、置き換えるか削除するまでこのフローは実行されません。</string>
+    <string name="iw_unsupported_action">このアクションに相当する機能がありません</string>
+    <string name="iw_unsupported_action_body">MacroDroid の「%1$s」は、メッセージを表示するだけのプレースホルダーになっています。必要な処理に置き換えるか、削除してください。</string>
+    <string name="iw_settings_not_mapped">種類は変換できましたが、設定は残っていません</string>
+    <string name="iw_settings_not_mapped_body">項目自体は認識できましたが、設定の持ち方が違いすぎて変換できません。開いて設定し直してください。</string>
+    <string name="iw_settings_dropped">一部の MacroDroid 設定が失われました</string>
+    <string name="iw_settings_dropped_body">NexFlow に該当する設定がありません：%1$s。他の設定は引き継がれています。必要なら項目を開いて確認してください。</string>
+    <string name="iw_tap_swipe">タップ／スワイプは GitHub 版のみ</string>
+    <string name="iw_tap_swipe_body">座標は保持され、実行にはユーザー補助サービスが必要です。Google Play 版はポリシー上この機能を持たないため、実行は失敗し、その理由が実行ログに記録されます。</string>
+    <string name="iw_menu_cases">メニューは変換できましたが、分岐の中身はありません</string>
+    <string name="iw_menu_cases_body">%1$s 件の選択肢を空の分岐としてインポートしました。MacroDroid は選択後の処理を別のマクロに保存するため、各分岐に必要な処理を追加してください。</string>
+    <string name="iw_menu_empty">このメニューに選択肢がありません</string>
+    <string name="iw_menu_empty_body">ファイルにボタンが含まれていません。エディタで選択肢を追加するか、メニューを削除してください。</string>
+    <string name="iw_time_seconds">秒の指定は失われました</string>
+    <string name="iw_time_seconds_body">NexFlow の時刻トリガーは分単位です。表示されている分の開始時に実行されます。</string>
+    <string name="iw_battery_any">バッテリー：比較する値がありません</string>
+    <string name="iw_battery_any_body">MacroDroid は残量が変化するたびに実行していました。NexFlow はしきい値を必要とするため、残量と方向（以上／以下）を確認してください。</string>
+    <string name="iw_conn_adapter">接続ではなく、オン／オフを見ています</string>
+    <string name="iw_conn_adapter_body">MacroDroid は Wi-Fi／Bluetooth 自体のオン・オフで実行していました。NexFlow は接続・切断のみを扱うため、設定し直すか削除してください。</string>
+    <string name="iw_app_multiple">アプリは 1 つだけ残しました</string>
+    <string name="iw_app_multiple_body">MacroDroid は %1$s 個のアプリを監視していました。NexFlow は 1 つずつです。「%2$s」を残したので、残りは別のトリガーとして追加してください。</string>
+    <string name="iw_app_closed">元はアプリの終了時に実行していました</string>
+    <string name="iw_app_closed_body">NexFlow はアプリの起動のみを検出します。現在は起動時に実行されます。意図と違う場合は削除してください。</string>
+    <string name="iw_exclude">「除外」の指定は失われました</string>
+    <string name="iw_exclude_body">MacroDroid は特定の送信者やアプリを無視できました。NexFlow は一致のみで除外はできないため、キーワードに一致すればすべて反応します。</string>
+    <string name="iw_notif_cleared">元は通知の消去時に実行していました</string>
+    <string name="iw_notif_cleared_body">NexFlow は通知の受信のみを検出します。現在は受信時に実行されます。意図と違う場合は削除してください。</string>
+    <string name="iw_geofence">エリアは引き継がれていません</string>
+    <string name="iw_geofence_body">MacroDroid は座標をマクロの外に保存するため、入る／出るだけが変換されました。エディタで位置と半径を設定しないと、このトリガーは実行されません。</string>
+    <string name="iw_sms_prefill">SMS を自動で送信するようになります</string>
+    <string name="iw_sms_prefill_body">MacroDroid は本文を入力した状態でアプリを開くだけでした。NexFlow はそのまま送信します。番号と本文を確認してください。</string>
+    <string name="iw_open_app_blank">アプリが指定されていません</string>
+    <string name="iw_open_app_blank_body">アプリを開くアクションですが、対象が書かれていません。エディタで選択してください。</string>
+    <string name="iw_shortcut">ショートカットはインポートできません</string>
+    <string name="iw_shortcut_body">ショートカットは以前の端末上の対象を指すため、名前だけが引き継がれました。エディタで選び直してください。</string>
+    <string name="iw_wallpaper">画像はインポートできません</string>
+    <string name="iw_wallpaper_body">壁紙は以前の端末上のファイルです。どの画面に設定するかは引き継がれています。エディタで画像を選んでください。</string>
+    <string name="iw_toggle_option">この選択肢に相当する機能がありません</string>
+    <string name="iw_toggle_option_body">MacroDroid には NexFlow にない選択肢（特定のネットワークや機器への接続、切り替え）があります。アクションは未設定のままなので、動作を選んでください。</string>
+    <string name="iw_write_append">ファイルは上書きされます</string>
+    <string name="iw_write_append_body">MacroDroid は末尾に追記していました。NexFlow は毎回内容を置き換えるため、元の内容は失われます。</string>
+    <string name="iw_media_option">認識できないメディア操作です</string>
+    <string name="iw_media_option_body">「%1$s」に相当する機能がないため、再生／一時停止としてインポートしました。</string>
+    <string name="iw_var_computed">固定値だけをインポートしました</string>
+    <string name="iw_var_computed_body">MacroDroid は値を計算していました（加算・ランダム・式・入力を求める）。必要な値を入力するか、エディタで式に変更してください。</string>
+    <string name="iw_loop_conditional">元は条件付きの繰り返しでした</string>
+    <string name="iw_loop_conditional_body">NexFlow は決まった回数だけ繰り返します。回数が元の動作と合っているか確認してください。</string>
+    <string name="iw_click_by_view">タップに座標がありません</string>
+    <string name="iw_click_by_view_body">MacroDroid は文字やビュー ID でボタンを探してタップしていました。NexFlow にはできないため、エディタで画面上の座標を設定してください。</string>
+    <string name="iw_swipe_percent">スワイプの座標が割合です</string>
+    <string name="iw_swipe_percent_body">MacroDroid は画面に対する割合で保存します。NexFlow はピクセルです。座標を確認してください。</string>
+    <string name="iw_http_extras">ヘッダーと認証情報は失われました</string>
+    <string name="iw_http_extras_body">NexFlow のリクエストは URL・メソッド・本文のみです。それ以外は URL か本文にまとめてください。</string>
+    <string name="iw_global_created">グローバル変数を作成しました</string>
+    <string name="iw_global_created_body">この端末に「%1$s」が無かったため、ファイルの既定値で作成しました。</string>
+    <string name="iw_global_undeclared">グローバル変数が足りません</string>
+    <string name="iw_global_undeclared_body">フローは「%1$s」を使っていますが、ファイルに宣言がありません。設定 → グローバル変数で作成しないと、書き込み時に失敗します。</string>
+    <string name="iw_unknown_condition">不明な条件の種類</string>
+    <string name="iw_unknown_condition_body">このフローは条件「%1$s」を使っていますが、このバージョンでは扱えません。削除するまでフローは実行されません。</string>
+    <string name="iw_schema_error">ファイルがフロー形式と一致しません</string>
+    <string name="iw_schema_error_body">%1$s：%2$s</string>
     <string name="flows_permissions_needed">権限が必要です</string>
     <string name="flows_missing_permission">権限が不足</string>
     <string name="flows_missing_permission_desc">このフローは有効ですが権限が不足しています。タップして許可してください</string>
@@ -653,9 +726,6 @@
 
     <plurals name="flows_imported_count">
         <item quantity="other">%1$d 件のフローをインポートしました。</item>
-    </plurals>
-    <plurals name="flows_warning_count">
-        <item quantity="other">%1$d 件の警告：</item>
     </plurals>
 
     <!-- Onboarding -->

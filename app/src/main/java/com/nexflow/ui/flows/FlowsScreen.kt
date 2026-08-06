@@ -109,7 +109,6 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.input.ImeAction
@@ -127,6 +126,7 @@ import com.nexflow.ui.common.PermissionSetupDialogs
 import com.nexflow.ui.common.geminiGradientTint
 import com.nexflow.ui.flows.detail.config.info
 import com.nexflow.service.FlowExecutionService
+import com.nexflow.ui.flowimport.ImportReviewDialog
 import com.nexflow.ui.flowimport.ImportViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -136,7 +136,8 @@ import kotlinx.coroutines.launch
 fun FlowsScreen(
     vm: FlowsViewModel = hiltViewModel(),
     importVm: ImportViewModel = hiltViewModel(),
-    onFlowClick: (String) -> Unit = {},
+    /** [focusItemId] opens that trigger/condition/action's settings on arrival. */
+    onFlowClick: (flowId: String, focusItemId: String?) -> Unit = { _, _ -> },
     onAiClick: () -> Unit = {},
 ) {
     val flows by vm.flows.collectAsState()
@@ -210,7 +211,7 @@ fun FlowsScreen(
     LaunchedEffect(vm) {
         vm.navigateToFlow.collect { flowId ->
             showCreateDialog = false
-            onFlowClick(flowId)
+            onFlowClick(flowId, null)
         }
     }
 
@@ -406,7 +407,7 @@ fun FlowsScreen(
                         FlowCard(
                             flow = flow,
                             permissionWarning = flow.id in flowsMissingPermissions,
-                            onClick = { onFlowClick(flow.id) },
+                            onClick = { onFlowClick(flow.id, null) },
                             onToggle = { vm.toggleEnabled(flow.id, it) },
                             onRun = { vm.runFlow(flow.id) },
                             onWarningClick = { vm.showMissingPermissions(flow.id) },
@@ -482,32 +483,10 @@ fun FlowsScreen(
     }
 
     importResult?.let { result ->
-        AlertDialog(
-            onDismissRequest = importVm::clearResult,
-            title = {
-                Text(if (result.error != null) stringResource(R.string.flows_import_failed) else stringResource(R.string.flows_import_complete))
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    if (result.error != null) {
-                        Text(result.error)
-                    } else {
-                        Text(pluralStringResource(R.plurals.flows_imported_count, result.imported, result.imported))
-                        if (result.warnings.isNotEmpty()) {
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                pluralStringResource(R.plurals.flows_warning_count, result.warnings.size, result.warnings.size),
-                                style = MaterialTheme.typography.labelMedium,
-                            )
-                            result.warnings.take(5).forEach { Text(stringResource(R.string.flows_bullet, it), style = MaterialTheme.typography.bodySmall) }
-                            if (result.warnings.size > 5) {
-                                Text(stringResource(R.string.flows_and_more, result.warnings.size - 5), style = MaterialTheme.typography.bodySmall)
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = { TextButton(onClick = importVm::clearResult) { Text(stringResource(R.string.action_ok)) } },
+        ImportReviewDialog(
+            result = result,
+            onDismiss = importVm::clearResult,
+            onOpenItem = { flowId, itemId -> onFlowClick(flowId, itemId) },
         )
     }
 

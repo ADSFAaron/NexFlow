@@ -26,6 +26,9 @@ import com.nexflow.core.automation.repository.GlobalVariableRepository
 import com.nexflow.core.flowschema.FlowJson
 import com.nexflow.core.flowschema.FlowSchemaValidator
 import com.nexflow.core.flowschema.FlowSerializer
+import com.nexflow.core.flowschema.ImportItemKind
+import com.nexflow.core.flowschema.ImportWarning
+import com.nexflow.core.flowschema.ImportWarnings
 import com.nexflow.core.macrodroid.MdrToFlowConverter
 import com.nexflow.core.macrodroid.parser.MdrParser
 import com.nexflow.data.toDomain
@@ -39,7 +42,7 @@ import javax.inject.Inject
 
 data class ImportResult(
     val imported: Int = 0,
-    val warnings: List<String> = emptyList(),
+    val warnings: List<ImportWarning> = emptyList(),
     val error: String? = null,
 )
 
@@ -65,11 +68,13 @@ class ImportViewModel @Inject constructor(
             }
 
             var imported = 0
-            val allWarnings = mutableListOf<String>()
+            val allWarnings = mutableListOf<ImportWarning>()
 
             root.macros.forEach { macro ->
                 val conversion = MdrToFlowConverter.convert(macro)
-                allWarnings += conversion.warnings.map { "[${macro.name}] $it" }
+                // The converter already tagged each warning with the flow and item it belongs to,
+                // and toDomain() keeps those ids, so the review UI can open the exact row.
+                allWarnings += conversion.warnings
                 repository.save(conversion.flow.toDomain())
                 imported++
             }
@@ -85,19 +90,23 @@ class ImportViewModel @Inject constructor(
                 return@launch
             }
 
-            val errors = FlowSchemaValidator.validate(flowJson)
-            val warnings = errors.map { "${it.field}: ${it.message}" }.toMutableList()
-            warnings += reconcileGlobals(flowJson)
+            fun warning(code: String, vararg args: String, itemKind: ImportItemKind? = null, itemId: String? = null) =
+                ImportWarning(code, args.toList(), flowJson.id, flowJson.name, itemKind, itemId)
+
+            val warnings = FlowSchemaValidator.validate(flowJson)
+                .map { warning(ImportWarnings.SCHEMA_ERROR, it.field, it.message) }
+                .toMutableList()
+            warnings += reconcileGlobals(flowJson).map { (code, name) -> warning(code, name) }
             // Conditions are enforced now, so an unrecognised one is not a harmless leftover:
             // the engine refuses to run a flow whose constraint it cannot check.
-            val unknownConditions = flowJson.conditions
-                .map { it.type }
-                .filter { ConditionType.fromId(it) == null }
-                .distinct()
-            if (unknownConditions.isNotEmpty()) {
-                warnings += "Conditions: unsupported type(s) ${unknownConditions.joinToString()} — " +
-                    "this flow will not run until you remove them in the editor"
-            }
+            flowJson.conditions
+                .filter { ConditionType.fromId(it.type) == null }
+                .forEach {
+                    warnings += warning(
+                        ImportWarnings.UNKNOWN_CONDITION_TYPES, it.type,
+                        itemKind = ImportItemKind.CONDITION, itemId = it.id,
+                    )
+                }
 
             repository.save(flowJson.toDomain())
             _result.update { ImportResult(imported = 1, warnings = warnings) }
@@ -109,8 +118,8 @@ class ImportViewModel @Inject constructor(
      * any `g:` name the flow uses without declaring — those would otherwise fail at run time.
      * An existing global is never overwritten: another flow may already be using its value.
      */
-    private suspend fun reconcileGlobals(flowJson: FlowJson): List<String> {
-        val warnings = mutableListOf<String>()
+    private suspend fun reconcileGlobals(flowJson: FlowJson): List<Pair<String, String>> {
+        val warnings = mutableListOf<Pair<String, String>>()
         val existing = globalVariableRepository.currentValues().keys.toMutableSet()
 
         flowJson.globalVariables.forEach { g ->
@@ -125,13 +134,12 @@ class ImportViewModel @Inject constructor(
                 ),
             )
             existing += g.name
-            warnings += "Global variable '${FlowInterpreter.GLOBAL_PREFIX}${g.name}' created from the imported flow"
+            warnings += ImportWarnings.GLOBAL_CREATED to "${FlowInterpreter.GLOBAL_PREFIX}${g.name}"
         }
 
         val undeclared = referencedGlobalNames(flowJson) - existing
         undeclared.sorted().forEach {
-            warnings += "Global variable '${FlowInterpreter.GLOBAL_PREFIX}$it' is used but not declared — " +
-                "create it in Settings → Global Variables, or the flow will fail when it writes to it"
+            warnings += ImportWarnings.GLOBAL_UNDECLARED to "${FlowInterpreter.GLOBAL_PREFIX}$it"
         }
         return warnings
     }

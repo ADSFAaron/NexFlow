@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.takeOrElse
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
@@ -53,7 +54,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.TextUnitType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.isSpecified
+import androidx.compose.ui.unit.times
 
 /**
  * Renders the [MarkdownParser] subset. Sizes and colors are derived from [style] and [color],
@@ -81,6 +87,14 @@ fun MarkdownText(
     val codeBackground = resolvedColor.copy(alpha = 0.08f)
     val accentColor = MaterialTheme.colorScheme.primary
 
+    // Everything that sits *beside* text is measured from the text itself rather than in fixed
+    // dp, so the list gutter and indent grow with the user's font-size setting instead of
+    // clipping "10." at 200%. The em factors are what a bullet/number needs at any scale.
+    val textEm = style.fontSize.toDpOrDefault()
+    val markerWidth = textEm * 0.95f
+    val numberWidth = textEm * 1.7f
+    val indentStep = textEm
+
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         blocks.forEach { block ->
             when (block) {
@@ -93,7 +107,7 @@ fun MarkdownText(
                 is MarkdownBlock.Heading -> Text(
                     text = block.text.toAnnotated(codeBackground, accentColor),
                     style = style.copy(
-                        fontSize = style.fontSize * headingScale(block.level),
+                        fontSize = style.fontSize.scaledBy(headingScale(block.level)),
                         fontWeight = FontWeight.Bold,
                     ),
                     color = resolvedColor,
@@ -101,14 +115,14 @@ fun MarkdownText(
                 )
 
                 is MarkdownBlock.ListItem -> Row(
-                    modifier = Modifier.padding(start = (block.indent * 16).dp),
+                    modifier = Modifier.padding(start = indentStep * block.indent),
                     verticalAlignment = Alignment.Top,
                 ) {
                     Text(
                         text = block.marker,
                         style = style,
                         color = resolvedColor,
-                        modifier = Modifier.width(if (block.ordered) 22.dp else 14.dp),
+                        modifier = Modifier.width(if (block.ordered) numberWidth else markerWidth),
                     )
                     Text(
                         text = block.text.toAnnotated(codeBackground, accentColor),
@@ -128,7 +142,7 @@ fun MarkdownText(
                         text = block.code,
                         style = style.copy(
                             fontFamily = FontFamily.Monospace,
-                            fontSize = style.fontSize * 0.9f,
+                            fontSize = style.fontSize.scaledBy(0.9f),
                         ),
                         color = resolvedColor,
                         // Code lines must not wrap mid-token; the block scrolls instead.
@@ -160,6 +174,24 @@ fun MarkdownText(
                 )
             }
         }
+    }
+}
+
+/** Relative resize that leaves an Unspecified size alone instead of throwing. */
+private fun TextUnit.scaledBy(factor: Float): TextUnit = if (isSpecified) this * factor else this
+
+/**
+ * This text size expressed in dp. `Density.toDp()` applies the user's font scale — including
+ * Android 14+'s non-linear curve — so a dp derived here grows exactly as much as the glyphs do.
+ * Falls back to a scaled 16dp for the Em/Unspecified sizes a caller's [TextStyle] may carry.
+ */
+@Composable
+private fun TextUnit.toDpOrDefault(fallback: Dp = 16.dp): Dp {
+    val density = LocalDensity.current
+    return if (isSpecified && type == TextUnitType.Sp) {
+        with(density) { toDp() }
+    } else {
+        fallback * density.fontScale
     }
 }
 

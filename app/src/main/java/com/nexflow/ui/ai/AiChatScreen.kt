@@ -102,6 +102,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
@@ -213,22 +214,7 @@ fun AiChatScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Column {
-                        Text(stringResource(R.string.ai_chat_title))
-                        // Entered from a flow's "edit with Gemini" button — name what the
-                        // conversation is scoped to, since saving updates that flow in place.
-                        uiState.editingFlowName?.let { name ->
-                            Text(
-                                text = stringResource(R.string.ai_editing_flow, name),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
-                },
+                title = { Text(stringResource(R.string.ai_chat_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -276,6 +262,14 @@ fun AiChatScreen(
                     .fillMaxSize()
                     .imePadding(),
             ) {
+            // Entered from a flow's "edit with Gemini" button — name what the conversation is
+            // scoped to, since saving updates that flow in place. It sits below the app bar
+            // rather than inside it: the bar's container height is fixed, so a second line
+            // there would be clipped once the user raises the system font size.
+            uiState.editingFlowName?.let { name ->
+                EditingFlowBanner(name)
+            }
+
             when {
                 uiState.apiKeyMissing -> ApiKeyMissingContent(
                     onOpenSettings = onOpenSettings,
@@ -564,6 +558,42 @@ private fun ApiKeyMissingContent(onOpenSettings: () -> Unit, modifier: Modifier 
     }
 }
 
+/** "Editing: <flow>" strip under the app bar; wraps instead of clipping at large font sizes. */
+@Composable
+private fun EditingFlowBanner(flowName: String) {
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        ) {
+            Icon(
+                Icons.Outlined.Edit,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = stringResource(R.string.ai_editing_flow, flowName),
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+/**
+ * How wide a bubble may get. Fixed dp would squeeze enlarged text into the same narrow column,
+ * so the cap follows the user's font-size setting; the list's own constraints clamp it to the
+ * screen when the scale is large.
+ */
+@Composable
+private fun bubbleMaxWidth(): Dp = 340.dp * LocalDensity.current.fontScale
+
 /**
  * Chat bubble with a long-press menu (copy for all bubbles, edit for the user's own) and a
  * subtle timestamp underneath.
@@ -596,7 +626,7 @@ private fun MessageBubble(
                     bottomEnd = if (fromUser) 4.dp else 20.dp,
                 ),
                 modifier = Modifier
-                    .widthIn(max = 340.dp)
+                    .widthIn(max = bubbleMaxWidth())
                     .pointerInput(text) {
                         detectTapGestures(
                             onLongPress = {
@@ -643,7 +673,7 @@ private fun ErrorBubble(text: String, modifier: Modifier = Modifier) {
             color = MaterialTheme.colorScheme.errorContainer,
             shape = RoundedCornerShape(20.dp),
             modifier = Modifier
-                .widthIn(max = 340.dp)
+                .widthIn(max = bubbleMaxWidth())
                 // Error text is what users paste into bug reports — make it copyable too
                 .pointerInput(text) {
                     detectTapGestures(

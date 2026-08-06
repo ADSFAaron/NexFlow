@@ -281,6 +281,20 @@ private fun FlowDetailContent(
     }
     var showRenameDialog by rememberSaveable { mutableStateOf(false) }
     var showIconPicker by rememberSaveable { mutableStateOf(false) }
+
+    // Arriving from the import review's "Fix now": open the settings of the exact item it was
+    // about. Consumed immediately so returning here later doesn't reopen the dialog.
+    LaunchedEffect(f.id) {
+        val focusId = vm.focusItemId ?: return@LaunchedEffect
+        vm.consumeFocusItem()
+        pendingConfig = when {
+            f.triggers.any { it.id == focusId } -> PendingConfig.EditTrigger(focusId)
+            f.conditions.any { it.id == focusId } -> PendingConfig.EditCondition(focusId)
+            f.actions.any { it.id == focusId } -> PendingConfig.EditAction(focusId)
+            // The item was already deleted, or it is a menu block the editor opens as a whole.
+            else -> null
+        }
+    }
     // null = closed; Variable with blank name = creating a new one
     var editingVariable by rememberSaveable(stateSaver = EditingVariableSaver) {
         mutableStateOf<Variable?>(null)

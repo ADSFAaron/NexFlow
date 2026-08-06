@@ -78,6 +78,13 @@ val bottomNavScreens = listOf(Screen.Flows, Screen.Logs, Screen.Settings)
 /** Route pattern — `flowId` is optional and only set by a flow's "edit with Gemini" button. */
 private const val AI_CHAT_ROUTE = "ai_chat?flowId={flowId}"
 
+/**
+ * A flow's detail screen, optionally opening one item's settings on arrival — how the import
+ * review takes the user from "this needs attention" straight to the thing that needs it.
+ */
+private fun flowRoute(flowId: String, focusItemId: String?): String =
+    if (focusItemId == null) "flows/$flowId" else "flows/$flowId?focus=$focusItemId"
+
 private data class NavItem(val screen: Screen, val selected: Boolean, val label: String)
 
 @Composable
@@ -144,7 +151,7 @@ fun NexFlowNavHost(navController: NavHostController, modifier: Modifier = Modifi
     ) {
         composable(Screen.Flows.route) {
             FlowsScreen(
-                onFlowClick = { flowId -> navController.navigate("flows/$flowId") },
+                onFlowClick = { flowId, focusItemId -> navController.navigate(flowRoute(flowId, focusItemId)) },
                 onAiClick = { navController.navigate("ai_chat") },
             )
         }
@@ -153,9 +160,19 @@ fun NexFlowNavHost(navController: NavHostController, modifier: Modifier = Modifi
             SettingsScreen(
                 onAboutClick = { navController.navigate("about") },
                 onGlobalVariablesClick = { navController.navigate("global_variables") },
+                onOpenFlow = { flowId, focusItemId -> navController.navigate(flowRoute(flowId, focusItemId)) },
             )
         }
-        composable("flows/{flowId}") { entry ->
+        composable(
+            "flows/{flowId}?focus={focus}",
+            arguments = listOf(
+                navArgument("focus") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+            ),
+        ) { entry ->
             FlowDetailScreen(
                 onBack = { navController.popBackStack() },
                 onEditWithAi = {

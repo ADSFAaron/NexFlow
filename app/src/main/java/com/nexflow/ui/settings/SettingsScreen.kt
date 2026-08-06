@@ -110,6 +110,7 @@ import com.nexflow.prefs.AiPrefs
 import com.nexflow.prefs.AutoStartPrefs
 import com.nexflow.prefs.ExecutionFeedbackPrefs
 import com.nexflow.ui.common.PermissionStatusIcon
+import com.nexflow.ui.flowimport.ImportReviewDialog
 import com.nexflow.ui.flowimport.ImportViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -117,6 +118,8 @@ import com.nexflow.ui.flowimport.ImportViewModel
 fun SettingsScreen(
     onAboutClick: () -> Unit = {},
     onGlobalVariablesClick: () -> Unit = {},
+    /** [focusItemId] opens that trigger/condition/action's settings on arrival. */
+    onOpenFlow: (flowId: String, focusItemId: String?) -> Unit = { _, _ -> },
     importVm: ImportViewModel = hiltViewModel(),
     aiVm: AiSettingsViewModel = hiltViewModel(),
 ) {
@@ -208,6 +211,9 @@ fun SettingsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
+    // Importing from here used to report nothing at all — same review as the Flows screen.
+    val importResult by importVm.result.collectAsState()
+
     val filePicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri: Uri? ->
@@ -215,6 +221,14 @@ fun SettingsScreen(
         val content = context.contentResolver.openInputStream(uri)
             ?.bufferedReader()?.use { it.readText() } ?: return@rememberLauncherForActivityResult
         importVm.importAuto(content)
+    }
+
+    importResult?.let { result ->
+        ImportReviewDialog(
+            result = result,
+            onDismiss = importVm::clearResult,
+            onOpenItem = onOpenFlow,
+        )
     }
 
     if (showAccessibilityDisclosure) {

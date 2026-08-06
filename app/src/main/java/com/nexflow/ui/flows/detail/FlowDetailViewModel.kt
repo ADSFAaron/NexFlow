@@ -72,6 +72,17 @@ class FlowDetailViewModel @Inject constructor(
 
     private val flowId: String = checkNotNull(savedStateHandle["flowId"])
 
+    /**
+     * Trigger/condition/action whose settings should open on arrival, set when the import review
+     * sends the user here to fix something. Consumed once so it doesn't reopen on every rotation.
+     */
+    var focusItemId: String? = savedStateHandle["focus"]
+        private set
+
+    fun consumeFocusItem() {
+        focusItemId = null
+    }
+
     val flow: StateFlow<Flow?> = repository.observeAll()
         .map { flows -> flows.find { it.id == flowId } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)

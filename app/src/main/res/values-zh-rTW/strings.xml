@@ -233,7 +233,80 @@
     <string name="flows_import_failed">匯入失敗</string>
     <string name="flows_import_complete">匯入完成</string>
     <string name="flows_bullet">• %1$s</string>
-    <string name="flows_and_more">…還有 %1$d 個</string>
+
+    <!-- 匯入檢視：一次看一項，跟權限精靈同一套操作 -->
+    <string name="import_review_title">檢視匯入結果</string>
+    <string name="import_review_step">第 %1$d / %2$d 項</string>
+    <string name="import_review_next">下一項</string>
+    <string name="import_review_skip">略過</string>
+    <string name="import_review_fix">前往修正</string>
+    <string name="import_review_done">完成</string>
+
+    <!-- 匯入警告。標題＝發生什麼事，內文＝代表什麼、要怎麼處理。 -->
+    <string name="iw_unsupported_trigger">這個觸發器 NexFlow 沒有對應功能</string>
+    <string name="iw_unsupported_trigger_body">MacroDroid 的「%1$s」已改成手動觸發，所以這個流程只有你按下執行時才會跑。請換成 NexFlow 有的觸發器，或直接刪除。</string>
+    <string name="iw_unsupported_condition">這個限制條件 NexFlow 沒有對應功能</string>
+    <string name="iw_unsupported_condition_body">MacroDroid 的「%1$s」無法轉換。NexFlow 每次執行前都會檢查限制條件，所以在你換掉或刪除它之前，這個流程不會執行。</string>
+    <string name="iw_unsupported_action">這個動作 NexFlow 沒有對應功能</string>
+    <string name="iw_unsupported_action_body">MacroDroid 的「%1$s」目前只是一個會顯示訊息的佔位動作。請改成你要它做的事，或直接刪除。</string>
+    <string name="iw_settings_not_mapped">類型有轉過來，設定沒有</string>
+    <string name="iw_settings_not_mapped_body">NexFlow 認得這個項目，但兩邊的設定方式差太多、無法自動轉換。請打開它重新設定。</string>
+    <string name="iw_settings_dropped">有些 MacroDroid 設定被捨棄</string>
+    <string name="iw_settings_dropped_body">NexFlow 沒有對應的設定：%1$s。其餘設定都有轉過來，如果這些對你很重要，請打開項目確認。</string>
+    <string name="iw_tap_swipe">模擬點擊／滑動只有 GitHub 版能用</string>
+    <string name="iw_tap_swipe_body">座標已經保留，執行時需要開啟無障礙服務。Google Play 版依平台政策沒有模擬觸控功能，在那個版本執行會失敗並在執行記錄寫明原因。</string>
+    <string name="iw_menu_cases">選單有轉過來，各選項的內容沒有</string>
+    <string name="iw_menu_cases_body">已匯入 %1$s 個選項，每個都是空的分支。MacroDroid 把「選了之後要做什麼」放在另一個巨集裡，請自行補上每個分支要執行的動作。</string>
+    <string name="iw_menu_empty">這個選單沒有任何選項</string>
+    <string name="iw_menu_empty_body">檔案裡沒有列出按鈕。請在編輯器補上選項，或把這個選單刪掉。</string>
+    <string name="iw_time_seconds">秒數被捨棄了</string>
+    <string name="iw_time_seconds_body">NexFlow 的時間觸發以「分」為單位，所以現在會在你看到的那一分鐘整點觸發。</string>
+    <string name="iw_battery_any">電池：沒有比較的基準電量</string>
+    <string name="iw_battery_any_body">MacroDroid 是「電量一有變化就觸發」，NexFlow 需要一個要通過的電量門檻。請確認電量與方向（高於／低於）。</string>
+    <string name="iw_conn_adapter">這是在偵測開關本身，不是連線</string>
+    <string name="iw_conn_adapter_body">MacroDroid 偵測的是 Wi-Fi／藍牙功能被開啟或關閉。NexFlow 只認得「連上」與「中斷」，請重新設定或把它移除。</string>
+    <string name="iw_app_multiple">只保留了一個 App</string>
+    <string name="iw_app_multiple_body">MacroDroid 同時監看 %1$s 個 App，NexFlow 一次一個。目前保留「%2$s」，其餘請自行新增觸發器。</string>
+    <string name="iw_app_closed">原本是 App 被關閉時觸發</string>
+    <string name="iw_app_closed_body">NexFlow 只偵測 App 被開啟。現在改成開啟時觸發，如果這不是你要的請把它移除。</string>
+    <string name="iw_exclude">「排除」條件被捨棄</string>
+    <string name="iw_exclude_body">MacroDroid 可以忽略特定寄件者或 App，NexFlow 只能比對、不能排除，所以現在只要符合關鍵字就會反應。</string>
+    <string name="iw_notif_cleared">原本是通知被清除時觸發</string>
+    <string name="iw_notif_cleared_body">NexFlow 只偵測通知送達。現在改成送達時觸發，如果這不是你要的請把它移除。</string>
+    <string name="iw_geofence">地理圍欄的範圍沒有轉過來</string>
+    <string name="iw_geofence_body">MacroDroid 把座標存在巨集外面，所以只有進入／離開有轉過來。請在編輯器設定位置與半徑，否則這個觸發器永遠不會響應。</string>
+    <string name="iw_sms_prefill">現在會直接把簡訊送出去</string>
+    <string name="iw_sms_prefill_body">MacroDroid 只是幫你把內容填好、還要你自己按送出。NexFlow 會直接送出，請確認號碼與內容。</string>
+    <string name="iw_open_app_blank">檔案裡沒有指定 App</string>
+    <string name="iw_open_app_blank_body">這個動作要開啟 App，但沒有寫是哪一個。請在編輯器選擇。</string>
+    <string name="iw_shortcut">捷徑無法匯入</string>
+    <string name="iw_shortcut_body">捷徑指向的是舊裝置上的東西，所以只有名稱轉過來。請在編輯器重新選一次捷徑。</string>
+    <string name="iw_wallpaper">桌布圖片無法匯入</string>
+    <string name="iw_wallpaper_body">桌布是舊裝置上的檔案。要換哪一個畫面已經轉過來了，請在編輯器重新選一張圖。</string>
+    <string name="iw_toggle_option">這個選項 NexFlow 沒有對應</string>
+    <string name="iw_toggle_option_body">MacroDroid 提供了 NexFlow 沒有的選項（連到特定網路或裝置、或是切換開關）。這個動作目前未設定，請選擇它要做什麼。</string>
+    <string name="iw_write_append">檔案會被整個覆寫</string>
+    <string name="iw_write_append_body">MacroDroid 是接在檔案後面寫，NexFlow 每次都會覆蓋整份內容，原本的內容會消失。</string>
+    <string name="iw_media_option">無法辨識的媒體選項</string>
+    <string name="iw_media_option_body">「%1$s」在 NexFlow 沒有對應，已改成播放／暫停。</string>
+    <string name="iw_var_computed">只匯入了固定值</string>
+    <string name="iw_var_computed_body">MacroDroid 會自己算出這個值（遞增、隨機、運算式或詢問你）。請自行填入要的值，或在編輯器改用運算式。</string>
+    <string name="iw_loop_conditional">原本是依條件重複</string>
+    <string name="iw_loop_conditional_body">NexFlow 只能重複固定次數。請確認次數是否符合原本的行為。</string>
+    <string name="iw_click_by_view">這個點擊沒有座標</string>
+    <string name="iw_click_by_view_body">MacroDroid 是用文字或元件 id 找按鈕來點，NexFlow 做不到。請在編輯器設定螢幕座標。</string>
+    <string name="iw_swipe_percent">滑動座標是百分比</string>
+    <string name="iw_swipe_percent_body">MacroDroid 把起訖點存成螢幕百分比，NexFlow 用的是像素。請確認座標。</string>
+    <string name="iw_http_extras">標頭與驗證資訊被捨棄</string>
+    <string name="iw_http_extras_body">NexFlow 的 HTTP 請求只有網址、方法與內文。其他資訊請自行併進網址或內文。</string>
+    <string name="iw_global_created">已建立全域變數</string>
+    <string name="iw_global_created_body">這台裝置上原本沒有「%1$s」，已用檔案裡帶的預設值建立。</string>
+    <string name="iw_global_undeclared">缺少全域變數</string>
+    <string name="iw_global_undeclared_body">流程用到「%1$s」，但檔案裡沒有宣告。請到「設定 → 全域變數」建立，否則流程寫入時會失敗。</string>
+    <string name="iw_unknown_condition">不認得的限制條件類型</string>
+    <string name="iw_unknown_condition_body">這個流程用到限制條件「%1$s」，目前版本的 NexFlow 不認得。在你移除它之前，流程不會執行。</string>
+    <string name="iw_schema_error">檔案格式與流程格式不符</string>
+    <string name="iw_schema_error_body">%1$s：%2$s</string>
     <string name="flows_permissions_needed">需要權限</string>
     <string name="flows_missing_permission">缺少權限</string>
     <string name="flows_missing_permission_desc">此流程已啟用但缺少權限，點擊前往授權</string>
@@ -653,9 +726,6 @@
 
     <plurals name="flows_imported_count">
         <item quantity="other">已匯入 %1$d 個流程。</item>
-    </plurals>
-    <plurals name="flows_warning_count">
-        <item quantity="other">%1$d 個警告：</item>
     </plurals>
 
     <!-- Onboarding -->

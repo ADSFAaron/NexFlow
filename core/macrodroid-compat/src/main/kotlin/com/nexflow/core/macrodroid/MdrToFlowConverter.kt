@@ -18,6 +18,9 @@ package com.nexflow.core.macrodroid
 import com.nexflow.core.flowschema.ActionJson
 import com.nexflow.core.flowschema.ConditionJson
 import com.nexflow.core.flowschema.FlowJson
+import com.nexflow.core.flowschema.ImportItemKind
+import com.nexflow.core.flowschema.ImportWarning
+import com.nexflow.core.flowschema.ImportWarnings
 import com.nexflow.core.flowschema.TriggerJson
 import com.nexflow.core.macrodroid.model.MdrItem
 import com.nexflow.core.macrodroid.model.MdrMacro
@@ -37,6 +40,8 @@ import kotlinx.serialization.json.JsonPrimitive
  *    its settings blank, which the caller must surface, because an item that looks fine but does
  *    nothing is worse than one that is visibly missing.
  *
+ * Warnings carry the id of the item they are about, so the UI can walk the user to it.
+ *
  * Every class name and option below was read from MacroDroid's own classes and from real export
  * files; docs/MACRODROID_IMPORT.md lists the sources. Do not add entries from memory — MacroDroid
  * names them inconsistently (`MakeCallAction` but `SetPriorityMode`, `WifiConnectionTrigger` but
@@ -46,22 +51,22 @@ object MdrToFlowConverter {
 
     fun convert(macro: MdrMacro): ConversionResult {
         val now = Instant.now().toString()
-        val warnings = mutableListOf<String>()
+        val flowId = macro.guid.takeIf { it != 0L }?.toString() ?: UUID.randomUUID().toString()
+        val flowName = macro.name.ifBlank { "Imported Macro" }
+        val warnings = WarningSink(flowId, flowName)
 
-        val triggers = macro.triggerList.mapIndexed { i, t -> convertTrigger(t, i, warnings) }
-        val conditions = macro.constraintList.mapIndexed { i, c -> convertCondition(c, i, warnings) }
+        val triggers = macro.triggerList.map { convertTrigger(it, warnings) }
+        val conditions = macro.constraintList.map { convertCondition(it, warnings) }
 
         // Actions can expand (one MacroDroid menu becomes a whole NexFlow menu block), so the
         // order is a running count rather than the index in the source list.
         val actions = mutableListOf<ActionJson>()
-        macro.actionList.forEachIndexed { i, a ->
-            actions += convertAction(a, i, actions.size, warnings)
-        }
+        macro.actionList.forEach { actions += convertAction(it, actions.size, warnings) }
 
         val flowJson = FlowJson(
             schemaVersion = 1,
-            id = macro.guid.takeIf { it != 0L }?.toString() ?: UUID.randomUUID().toString(),
-            name = macro.name.ifBlank { "Imported Macro" },
+            id = flowId,
+            name = flowName,
             description = macro.description,
             author = null,
             tags = listOf("macrodroid-import"),
@@ -74,78 +79,82 @@ object MdrToFlowConverter {
             actions = actions,
             variables = emptyList(),
         )
-        return ConversionResult(flowJson, warnings)
+        return ConversionResult(flowJson, warnings.all)
     }
 
-    private fun convertTrigger(trigger: MdrItem, index: Int, warnings: MutableList<String>): TriggerJson {
-        val mappedType = TRIGGER_TYPE_MAP[trigger.classType]
-        if (mappedType == null) {
-            warnings += "Trigger[$index]: unsupported MacroDroid trigger '${trigger.classType}' — " +
-                "imported as a manual trigger, replace it in the editor"
+    /** Collects warnings already tagged with the flow and item they belong to. */
+    private class WarningSink(private val flowId: String, private val flowName: String) {
+        val all = mutableListOf<ImportWarning>()
+
+        fun at(kind: ImportItemKind, itemId: String) = Warn { code, args ->
+            all += ImportWarning(
+                code = code,
+                args = args.toList(),
+                flowId = flowId,
+                flowName = flowName,
+                itemKind = kind,
+                itemId = itemId,
+            )
         }
+    }
+
+    private fun convertTrigger(trigger: MdrItem, warnings: WarningSink): TriggerJson {
+        val id = trigger.guid.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString()
+        val warn = warnings.at(ImportItemKind.TRIGGER, id)
+        val mappedType = TRIGGER_TYPE_MAP[trigger.classType]
+        if (mappedType == null) warn(ImportWarnings.UNSUPPORTED_TRIGGER, trigger.classType)
         return TriggerJson(
-            id = trigger.guid.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString(),
+            id = id,
             type = mappedType ?: "MANUAL",
-            config = mapOptions(trigger, "Trigger[$index]", mappedType, warnings),
+            config = mapOptions(trigger, mappedType, warn),
         )
     }
 
-    private fun convertCondition(constraint: MdrItem, index: Int, warnings: MutableList<String>): ConditionJson {
+    private fun convertCondition(constraint: MdrItem, warnings: WarningSink): ConditionJson {
+        val id = constraint.guid.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString()
+        val warn = warnings.at(ImportItemKind.CONDITION, id)
         val mappedType = CONDITION_TYPE_MAP[constraint.classType]
-        if (mappedType == null) {
-            // NexFlow enforces conditions before a run, so an unrecognised one holds the whole
-            // flow back — never let this one pass unmentioned.
-            warnings += "Condition[$index]: unsupported MacroDroid constraint '${constraint.classType}' — " +
-                "the flow will not run until you replace or remove it in the editor"
-        }
+        // NexFlow enforces conditions before a run, so an unrecognised one holds the whole flow
+        // back — never let this one pass unmentioned.
+        if (mappedType == null) warn(ImportWarnings.UNSUPPORTED_CONDITION, constraint.classType)
         return ConditionJson(
-            id = constraint.guid.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString(),
+            id = id,
             type = mappedType ?: "UNKNOWN",
-            config = mapOptions(constraint, "Condition[$index]", mappedType, warnings),
+            config = mapOptions(constraint, mappedType, warn),
             negate = false,
         )
     }
 
-    /**
-     * One MacroDroid action, as one or more NexFlow actions starting at [order].
-     */
-    private fun convertAction(
-        action: MdrItem,
-        index: Int,
-        order: Int,
-        warnings: MutableList<String>,
-    ): List<ActionJson> {
-        val label = "Action[$index]"
-        if (action.classType == OPTION_DIALOG) return expandOptionDialog(action, label, order, warnings)
+    /** One MacroDroid action, as one or more NexFlow actions starting at [order]. */
+    private fun convertAction(action: MdrItem, order: Int, warnings: WarningSink): List<ActionJson> {
+        val id = action.guid.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString()
+        val warn = warnings.at(ImportItemKind.ACTION, id)
+        if (action.classType == OPTION_DIALOG) return expandOptionDialog(action, id, order, warn)
 
         val mappedType = actionTypeFor(action)
-        if (mappedType == null) {
-            warnings += "$label: unsupported MacroDroid action '${action.classType}' — imported as a " +
-                "placeholder, replace it in the editor"
-        }
+        if (mappedType == null) warn(ImportWarnings.UNSUPPORTED_ACTION, action.classType)
         if (mappedType == "SIMULATE_TAP" || mappedType == "SIMULATE_SWIPE") {
             // Kept as a real action rather than dropped: the coordinates are worth carrying over,
             // and the run fails loudly with this reason if the build or the service can't do it.
-            warnings += "$label: tap/swipe needs the accessibility service, and is only available " +
-                "in the GitHub build of NexFlow — it will fail at run time in the Play build"
+            warn(ImportWarnings.TAP_SWIPE_GITHUB_ONLY)
         }
 
         val config = if (mappedType == null) {
             // The type falls back to a toast on import, so give that toast something to say —
             // an empty one would leave the user guessing what used to be here.
             JsonObject(
-                mapOptions(action, label, null, warnings) + mapOf(
+                mapOptions(action, null, warn) + mapOf(
                     "_mdr_class" to JsonPrimitive(action.classType),
                     "message" to JsonPrimitive("Unsupported MacroDroid action: ${action.classType}"),
                 ),
             )
         } else {
-            mapOptions(action, label, mappedType, warnings)
+            mapOptions(action, mappedType, warn)
         }
 
         return listOf(
             ActionJson(
-                id = action.guid.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString(),
+                id = id,
                 type = mappedType ?: "UNSUPPORTED",
                 config = config,
                 order = order,
@@ -165,9 +174,9 @@ object MdrToFlowConverter {
      */
     private fun expandOptionDialog(
         action: MdrItem,
-        label: String,
+        menuId: String,
         order: Int,
-        warnings: MutableList<String>,
+        warn: Warn,
     ): List<ActionJson> {
         val options = MdrOptions(action.options)
         val buttons = options.strings("m_buttonNames").orEmpty().filter { it.isNotBlank() }
@@ -178,14 +187,12 @@ object MdrToFlowConverter {
         )
 
         if (buttons.isEmpty()) {
-            warnings += "$label: the option dialog has no buttons in the file — imported as an empty menu"
+            warn(ImportWarnings.MENU_NO_BUTTONS)
         } else {
-            warnings += "$label: imported as a menu with ${buttons.size} option(s), but each option's " +
-                "actions live in a separate MacroDroid macro and did not come across — fill the cases in"
+            warn(ImportWarnings.MENU_CASES_EMPTY, buttons.size.toString())
         }
-        reportLeftovers(options, label, warnings)
+        reportLeftovers(options, warn)
 
-        val menuId = action.guid.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString()
         val enabled = !action.disabled
         val showMenu = ActionJson(
             id = menuId,
@@ -240,32 +247,21 @@ object MdrToFlowConverter {
      * item is imported blank — said out loud, because the alternative is a flow that looks
      * complete and silently does nothing.
      */
-    private fun mapOptions(
-        item: MdrItem,
-        label: String,
-        mappedType: String?,
-        warnings: MutableList<String>,
-    ): JsonObject {
+    private fun mapOptions(item: MdrItem, mappedType: String?, warn: Warn): JsonObject {
         val mapper = MdrOptionMappers.forClass(item.classType)
         if (mapper == null) {
-            if (mappedType != null && item.options.isNotEmpty()) {
-                warnings += "$label: the type was recognised but its settings were not — " +
-                    "open it in the editor and set it up"
-            }
+            if (mappedType != null && item.options.isNotEmpty()) warn(ImportWarnings.SETTINGS_NOT_MAPPED)
             return JsonObject(emptyMap())
         }
         val options = MdrOptions(item.options)
-        val config = mapper.map(options) { warnings += "$label: $it" }
-        reportLeftovers(options, label, warnings)
+        val config = mapper.map(options, warn)
+        reportLeftovers(options, warn)
         return JsonObject(config.mapValues { (_, v) -> JsonPrimitive(v) })
     }
 
-    private fun reportLeftovers(options: MdrOptions, label: String, warnings: MutableList<String>) {
+    private fun reportLeftovers(options: MdrOptions, warn: Warn) {
         val leftovers = options.leftovers
-        if (leftovers.isNotEmpty()) {
-            warnings += "$label: ${leftovers.size} MacroDroid setting(s) have no NexFlow equivalent " +
-                "and were dropped (${leftovers.joinToString()})"
-        }
+        if (leftovers.isNotEmpty()) warn(ImportWarnings.SETTINGS_DROPPED, leftovers.joinToString())
     }
 
     private const val OPTION_DIALOG = "OptionDialogAction"
@@ -350,7 +346,7 @@ object MdrToFlowConverter {
 
 data class ConversionResult(
     val flow: FlowJson,
-    val warnings: List<String>,
+    val warnings: List<ImportWarning>,
 ) {
     val hasWarnings: Boolean get() = warnings.isNotEmpty()
 }

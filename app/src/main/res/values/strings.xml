@@ -234,7 +234,80 @@
     <string name="flows_import_failed">Import failed</string>
     <string name="flows_import_complete">Import complete</string>
     <string name="flows_bullet">• %1$s</string>
-    <string name="flows_and_more">… and %1$d more</string>
+
+    <!-- Import review: one thing to check at a time, in the same shape as the permission wizard -->
+    <string name="import_review_title">Check the import</string>
+    <string name="import_review_step">%1$d of %2$d</string>
+    <string name="import_review_next">Next</string>
+    <string name="import_review_skip">Skip</string>
+    <string name="import_review_fix">Fix now</string>
+    <string name="import_review_done">Done</string>
+
+    <!-- Import warnings. Title = what happened, body = what it means and what to do. -->
+    <string name="iw_unsupported_trigger">This trigger has no NexFlow equivalent</string>
+    <string name="iw_unsupported_trigger_body">MacroDroid\'s “%1$s” was imported as a manual trigger, so the flow only runs when you tap Run. Replace it with a NexFlow trigger, or delete it.</string>
+    <string name="iw_unsupported_condition">This condition has no NexFlow equivalent</string>
+    <string name="iw_unsupported_condition_body">MacroDroid\'s “%1$s” could not be translated. NexFlow checks every condition before a run, so this flow will not run until you replace the condition or remove it.</string>
+    <string name="iw_unsupported_action">This action has no NexFlow equivalent</string>
+    <string name="iw_unsupported_action_body">MacroDroid\'s “%1$s” was imported as a placeholder that only shows a message. Replace it with what you want to happen here, or delete it.</string>
+    <string name="iw_settings_not_mapped">The type came across, the settings did not</string>
+    <string name="iw_settings_not_mapped_body">NexFlow recognises this item, but its settings are stored too differently to translate. Open it and set it up.</string>
+    <string name="iw_settings_dropped">Some MacroDroid settings were dropped</string>
+    <string name="iw_settings_dropped_body">NexFlow has nothing matching these: %1$s. Everything else came across; check the item if it mattered.</string>
+    <string name="iw_tap_swipe">Tap/swipe only works in the GitHub build</string>
+    <string name="iw_tap_swipe_body">The coordinates were kept, and this needs the accessibility service. The Play Store build has no simulated-touch feature, so there the action will fail with that reason in the run log.</string>
+    <string name="iw_menu_cases">The menu came across, its branches did not</string>
+    <string name="iw_menu_cases_body">%1$s option(s) were imported as an empty branch each. MacroDroid keeps what an option does in a separate macro, so fill each branch in with the actions you want.</string>
+    <string name="iw_menu_empty">This menu has no options</string>
+    <string name="iw_menu_empty_body">The file lists no buttons for it. Add the options in the editor, or delete the menu.</string>
+    <string name="iw_time_seconds">The seconds were dropped</string>
+    <string name="iw_time_seconds_body">NexFlow schedules to the minute, so this trigger now fires at the start of the minute you see.</string>
+    <string name="iw_battery_any">Battery: no level to compare against</string>
+    <string name="iw_battery_any_body">MacroDroid fired on any change of battery level. NexFlow needs a level to cross, so check the level and the direction.</string>
+    <string name="iw_conn_adapter">This watched the adapter, not the connection</string>
+    <string name="iw_conn_adapter_body">MacroDroid fired when Wi-Fi/Bluetooth itself was switched on or off. NexFlow only knows about connecting and disconnecting, so set it up again or remove it.</string>
+    <string name="iw_app_multiple">Only one app was kept</string>
+    <string name="iw_app_multiple_body">MacroDroid watched %1$s apps; NexFlow watches one. It kept “%2$s” — add another trigger for the rest.</string>
+    <string name="iw_app_closed">This fired when the app was closed</string>
+    <string name="iw_app_closed_body">NexFlow only detects an app being opened. The trigger now fires on launch instead; remove it if that is wrong.</string>
+    <string name="iw_exclude">The “exclude” filter was dropped</string>
+    <string name="iw_exclude_body">MacroDroid could ignore specific senders or apps. NexFlow can only match, not exclude, so this now reacts to everything the keyword matches.</string>
+    <string name="iw_notif_cleared">This fired when a notification was cleared</string>
+    <string name="iw_notif_cleared_body">NexFlow only detects notifications arriving. The trigger now fires on arrival instead; remove it if that is wrong.</string>
+    <string name="iw_geofence">The area did not come across</string>
+    <string name="iw_geofence_body">MacroDroid stores the coordinates outside the macro, so only enter/exit was imported. Set the location and radius in the editor, or this trigger will never fire.</string>
+    <string name="iw_sms_prefill">This will now send the message itself</string>
+    <string name="iw_sms_prefill_body">MacroDroid only opened the messaging app with the text filled in. NexFlow sends it directly — check the number and the text.</string>
+    <string name="iw_open_app_blank">No app in the file</string>
+    <string name="iw_open_app_blank_body">The action says to open an app but names none. Pick the app in the editor.</string>
+    <string name="iw_shortcut">The shortcut could not be imported</string>
+    <string name="iw_shortcut_body">A shortcut points at something on the old device, so only its name came across. Pick the shortcut again in the editor.</string>
+    <string name="iw_wallpaper">The image could not be imported</string>
+    <string name="iw_wallpaper_body">The wallpaper is a file on the old device. Which screen to change came across; pick an image in the editor.</string>
+    <string name="iw_toggle_option">This option has no NexFlow equivalent</string>
+    <string name="iw_toggle_option_body">MacroDroid offered something NexFlow does not (connecting to a specific network or device, or toggling). The action was left unset — choose what it should do.</string>
+    <string name="iw_write_append">The file will be overwritten</string>
+    <string name="iw_write_append_body">MacroDroid added to the end of the file. NexFlow replaces its contents each time, so earlier content will be lost.</string>
+    <string name="iw_media_option">This media option was not recognised</string>
+    <string name="iw_media_option_body">“%1$s” has no NexFlow equivalent, so it was imported as play/pause.</string>
+    <string name="iw_var_computed">Only a plain value was imported</string>
+    <string name="iw_var_computed_body">MacroDroid worked the value out (increment, random, expression or asking you). Set the value you want, or use an expression in the editor.</string>
+    <string name="iw_loop_conditional">This loop ran on a condition</string>
+    <string name="iw_loop_conditional_body">NexFlow repeats a fixed number of times. Check the count — it may not be what the macro did.</string>
+    <string name="iw_click_by_view">The tap had no coordinates</string>
+    <string name="iw_click_by_view_body">MacroDroid tapped a button by its text or id, which NexFlow cannot do. Set the screen position in the editor.</string>
+    <string name="iw_swipe_percent">The swipe used percentages</string>
+    <string name="iw_swipe_percent_body">MacroDroid stored the points as a percentage of the screen; NexFlow uses pixels. Check the coordinates.</string>
+    <string name="iw_http_extras">Headers and authentication were dropped</string>
+    <string name="iw_http_extras_body">NexFlow\'s request carries a URL, a method and a body. Move anything else into the URL or the body.</string>
+    <string name="iw_global_created">A global variable was created</string>
+    <string name="iw_global_created_body">“%1$s” did not exist on this device, so it was created with the value the file carried.</string>
+    <string name="iw_global_undeclared">A global variable is missing</string>
+    <string name="iw_global_undeclared_body">The flow uses “%1$s” but the file does not declare it. Create it in Settings → Global variables, or the flow fails when it writes to it.</string>
+    <string name="iw_unknown_condition">Unknown condition type</string>
+    <string name="iw_unknown_condition_body">This flow uses the condition “%1$s”, which this version of NexFlow does not know. The flow will not run until you remove it.</string>
+    <string name="iw_schema_error">The file does not match the flow format</string>
+    <string name="iw_schema_error_body">%1$s: %2$s</string>
     <string name="flows_permissions_needed">Permissions needed</string>
     <string name="flows_missing_permission">Permission required</string>
     <string name="flows_missing_permission_desc">This flow is enabled but missing permissions; tap to grant</string>
@@ -664,10 +737,6 @@
     <plurals name="flows_imported_count">
         <item quantity="one">Imported %1$d flow.</item>
         <item quantity="other">Imported %1$d flows.</item>
-    </plurals>
-    <plurals name="flows_warning_count">
-        <item quantity="one">%1$d warning:</item>
-        <item quantity="other">%1$d warnings:</item>
     </plurals>
 
     <!-- Onboarding -->

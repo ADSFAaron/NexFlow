@@ -15,9 +15,15 @@
  */
 package com.nexflow.core.macrodroid
 
+import com.nexflow.core.flowschema.ImportWarnings
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
+
+/** Reports one difference the user has to know about, as a code the UI localizes. */
+internal fun interface Warn {
+    operator fun invoke(code: String, vararg args: String)
+}
 
 /**
  * Translates one MacroDroid item's settings into the NexFlow config keys for its type.
@@ -25,10 +31,10 @@ import kotlinx.serialization.json.contentOrNull
  * Mapping the class type alone is not enough to make an imported flow usable: the two apps name
  * their settings differently (`m_hour`/`m_minute` vs a single `"HH:mm"` string), so without this
  * step every imported item arrives blank. Anything that cannot be carried over is passed to
- * [warn] rather than dropped in silence.
+ * [Warn] rather than dropped in silence.
  */
 internal fun interface MdrOptionMapper {
-    fun map(options: MdrOptions, warn: (String) -> Unit): Map<String, String>
+    fun map(options: MdrOptions, warn: Warn): Map<String, String>
 }
 
 /**
@@ -71,11 +77,11 @@ internal object MdrOptionMappers {
      * 0 = adapter enabled, 1 = adapter disabled, 2 = connected, 3 = disconnected. NexFlow's
      * trigger only covers the connection half, so 0/1 are reported instead of guessed at.
      */
-    private fun connectionEvent(value: Int?, warn: (String) -> Unit, what: String): String? = when (value) {
+    private fun connectionEvent(value: Int?, warn: Warn): String? = when (value) {
         2 -> "CONNECTED"
         3 -> "DISCONNECTED"
         0, 1 -> {
-            warn("$what fires on the adapter being turned on/off, which NexFlow has no equivalent for — set it up as a connect/disconnect, or remove it")
+            warn(ImportWarnings.CONNECTION_ADAPTER_STATE)
             null
         }
         else -> null
@@ -97,9 +103,7 @@ internal object MdrOptionMappers {
             val minute = o.int("m_minute") ?: 0
             val selected = o.booleans("m_daysOfWeek").orEmpty()
                 .let { days -> DAY_IDS.filterIndexed { i, _ -> days.getOrElse(i) { false } } }
-            if ((o.int("m_second") ?: 0) > 0) {
-                warn("Time trigger: the seconds part was dropped — NexFlow schedules to the minute")
-            }
+            if ((o.int("m_second") ?: 0) > 0) warn(ImportWarnings.TIME_SECONDS_DROPPED)
             // MacroDroid's own alarm bookkeeping, meaningless on this side.
             o.ignore("m_alarmId", "m_useAlarm")
             buildMap {
@@ -118,9 +122,7 @@ internal object MdrOptionMappers {
 
         "BatteryLevelTrigger" to MdrOptionMapper { o, warn ->
             // m_option: 0 = crosses the level, 1 = any change. NexFlow always compares to a level.
-            if (o.int("m_option") == 1) {
-                warn("Battery trigger: MacroDroid fired on any level change; NexFlow needs a level to cross — check the level and direction")
-            }
+            if (o.int("m_option") == 1) warn(ImportWarnings.BATTERY_ANY_CHANGE)
             mapOf(
                 "level" to (o.int("m_batteryLevel") ?: 0).toString(),
                 "direction" to if (o.bool("m_decreasesTo") != false) "BELOW" else "ABOVE",
@@ -138,7 +140,7 @@ internal object MdrOptionMappers {
             o.ignore("m_SSIDList")
             buildMap {
                 o.string("m_SSID")?.let { put("ssid", it) }
-                connectionEvent(o.int("m_wifiState"), warn, "Wi-Fi trigger")?.let { put("event", it) }
+                connectionEvent(o.int("m_wifiState"), warn)?.let { put("event", it) }
             }
         },
 
@@ -146,7 +148,7 @@ internal object MdrOptionMappers {
             o.ignore("m_deviceAddress", "m_anyDevice")
             buildMap {
                 if (o.bool("m_anyDevice") != true) o.string("m_deviceName")?.let { put("device_name", it) }
-                connectionEvent(o.int("m_btState"), warn, "Bluetooth trigger")?.let { put("event", it) }
+                connectionEvent(o.int("m_btState"), warn)?.let { put("event", it) }
             }
         },
 
@@ -154,11 +156,9 @@ internal object MdrOptionMappers {
             o.ignore("m_applicationNameList", "usePackageNameOption", "isAllApps")
             val packages = o.strings("m_packageNameList").orEmpty()
             if (packages.size > 1) {
-                warn("App trigger: MacroDroid watched ${packages.size} apps; NexFlow watches one — kept '${packages.first()}'")
+                warn(ImportWarnings.APP_TRIGGER_MULTIPLE, packages.size.toString(), packages.first())
             }
-            if (o.bool("m_launched") == false) {
-                warn("App trigger: MacroDroid fired when the app was *closed*, which NexFlow has no trigger for")
-            }
+            if (o.bool("m_launched") == false) warn(ImportWarnings.APP_TRIGGER_CLOSED)
             packages.firstOrNull()?.let { mapOf("package_name" to it) } ?: emptyMap()
         },
 
@@ -173,7 +173,7 @@ internal object MdrOptionMappers {
         "IncomingSMSTrigger" to MdrOptionMapper { o, warn ->
             o.ignore("m_smsFrom", "m_smsFromList", "m_groupIdList", "m_groupNameList", "subscriptionId", "ignoreCase")
             if (o.bool("m_excludes") == true || o.bool("m_smsNumberExclude") == true) {
-                warn("SMS trigger: MacroDroid's 'exclude' option is not carried over — NexFlow matches, it cannot exclude")
+                warn(ImportWarnings.EXCLUDE_UNSUPPORTED)
             }
             buildMap {
                 o.string("m_smsNumber")?.let { put("sender", it) }
@@ -184,11 +184,9 @@ internal object MdrOptionMappers {
 
         "NotificationTrigger" to MdrOptionMapper { o, warn ->
             o.ignore("m_applicationName", "m_applicationNameList", "m_soundOption", "ignoreCase", "m_supressMultiples", "m_ignoreOngoing")
-            if (o.int("m_option") == 1) {
-                warn("Notification trigger: MacroDroid fired when a notification was *cleared*, which NexFlow has no trigger for")
-            }
+            if (o.int("m_option") == 1) warn(ImportWarnings.NOTIFICATION_CLEARED)
             if (o.bool("m_excludeApps") == true || o.bool("m_excludes") == true) {
-                warn("Notification trigger: MacroDroid's 'exclude' option is not carried over — NexFlow matches, it cannot exclude")
+                warn(ImportWarnings.EXCLUDE_UNSUPPORTED)
             }
             buildMap {
                 (o.string("m_packageName") ?: o.strings("m_packageNameList")?.firstOrNull())
@@ -212,7 +210,7 @@ internal object MdrOptionMappers {
             o.ignore("m_geofenceId", "m_geofenceUpdateRateMinutes", "m_updateRateText", "m_triggerFromUnknown")
             // The macro only references a zone by id; the coordinates live in the file's separate
             // geofenceData block, which is not part of the macro NexFlow imports.
-            warn("Geofence trigger: MacroDroid keeps the coordinates outside the macro, so the area did not come across — set the location and radius in the editor")
+            warn(ImportWarnings.GEOFENCE_COORDINATES)
             mapOf("event" to if (o.bool("m_enterArea") != false) "ENTER" else "EXIT")
         },
 
@@ -287,9 +285,7 @@ internal object MdrOptionMappers {
 
         "SendSMSAction" to MdrOptionMapper { o, warn ->
             o.ignore("m_addToMessageLog", "m_simId", "m_contact")
-            if (o.bool("m_prePopulate") == true) {
-                warn("Send SMS: MacroDroid only pre-filled the message for you to send; NexFlow sends it directly")
-            }
+            if (o.bool("m_prePopulate") == true) warn(ImportWarnings.SMS_PREPOPULATE)
             buildMap {
                 (o.string("m_number") ?: o.obj("m_contact")?.text("m_number"))?.let { put("number", it) }
                 o.string("m_messageContent")?.let { put("message", it) }
@@ -304,13 +300,13 @@ internal object MdrOptionMappers {
         "LaunchActivityAction" to MdrOptionMapper { o, warn ->
             o.ignore("m_activityName", "m_activityToLaunch", "m_applicationName", "m_startNew", "m_excludeFromRecents", "option", "launchByPackageName")
             val pkg = o.string("m_packageToLaunch")
-            if (pkg == null) warn("Open app: no package name in the file — pick the app in the editor")
+            if (pkg == null) warn(ImportWarnings.OPEN_APP_NO_PACKAGE)
             buildMap { pkg?.let { put("package_name", it) } }
         },
 
         "LaunchShortcutAction" to MdrOptionMapper { o, warn ->
             o.ignore("m_intent", "m_intentEncoded", "m_serializedExtras", "m_appName")
-            warn("Launch shortcut: the shortcut itself is a device-specific intent and cannot be imported — pick the shortcut again in the editor")
+            warn(ImportWarnings.SHORTCUT_NOT_PORTABLE)
             buildMap { o.string("m_name")?.let { put("label", it) } }
         },
 
@@ -318,14 +314,14 @@ internal object MdrOptionMappers {
             o.ignore("m_SSID", "m_networkId")
             // 0/1/2 line up with NexFlow; 3 = connect to a network, 4 = forget one, neither exists here.
             val state = toggleState(o.int("m_state"))
-            if (state == null) warn("Wi-Fi action: 'connect to'/'forget network' has no NexFlow equivalent — the action was left unset")
+            if (state == null) warn(ImportWarnings.TOGGLE_OPTION_UNSUPPORTED)
             buildMap { state?.let { put("state", it) } }
         },
 
         "SetBluetoothAction" to MdrOptionMapper { o, warn ->
             o.ignore("m_deviceName", "m_deviceAddress")
             val state = toggleState(o.int("m_state"))
-            if (state == null) warn("Bluetooth action: connecting to a specific device has no NexFlow equivalent — the action was left unset")
+            if (state == null) warn(ImportWarnings.TOGGLE_OPTION_UNSUPPORTED)
             buildMap { state?.let { put("state", it) } }
         },
 
@@ -336,8 +332,9 @@ internal object MdrOptionMappers {
 
         "SpeakerPhoneAction" to MdrOptionMapper { o, warn ->
             when (val state = toggleState(o.int("m_state"))) {
+                // NexFlow's speakerphone is on or off; MacroDroid also offers a toggle.
                 "TOGGLE" -> {
-                    warn("Speakerphone: MacroDroid's toggle has no NexFlow equivalent — set on or off in the editor")
+                    warn(ImportWarnings.TOGGLE_OPTION_UNSUPPORTED)
                     emptyMap()
                 }
                 null -> emptyMap()
@@ -366,7 +363,7 @@ internal object MdrOptionMappers {
             o.ignore("m_pathUri", "m_pathName", "m_temporaryPathName", "overwrite")
             // NexFlow's write action always replaces the file; MacroDroid could add to it.
             if (o.bool("m_append") == true || o.bool("m_prepend") == true) {
-                warn("Write to file: MacroDroid appended to the file; NexFlow overwrites it")
+                warn(ImportWarnings.WRITE_FILE_APPEND)
             }
             buildMap {
                 val dir = o.string("m_path")?.trimEnd('/')
@@ -385,7 +382,7 @@ internal object MdrOptionMappers {
                 "pause" -> mapOf("action" to "PAUSE")
                 "play/pause", "playpause", null -> mapOf("action" to "TOGGLE")
                 else -> {
-                    warn("Media action: '$option' has no NexFlow equivalent — imported as play/pause")
+                    warn(ImportWarnings.MEDIA_OPTION_UNKNOWN, option)
                     mapOf("action" to "TOGGLE")
                 }
             }
@@ -394,13 +391,10 @@ internal object MdrOptionMappers {
         // Everything lives in a nested config object here, unlike every other action.
         "HttpRequestAction" to MdrOptionMapper { o, warn ->
             val request = o.obj("requestConfig")
-            if (request?.get("headerParams")?.let { it.toString() != "[]" } == true ||
-                request?.get("queryParams")?.let { it.toString() != "[]" } == true
-            ) {
-                warn("HTTP request: headers and query parameters are not carried over — add them to the URL or the body")
-            }
-            if (request?.text("basicAuthEnabled") == "true") {
-                warn("HTTP request: basic authentication is not carried over")
+            val hasParams = listOf("headerParams", "queryParams")
+                .any { request?.get(it)?.toString()?.let { v -> v != "[]" && v != "null" } == true }
+            if (hasParams || request?.text("basicAuthEnabled") == "true") {
+                warn(ImportWarnings.HTTP_EXTRAS_DROPPED)
             }
             buildMap {
                 request?.text("urlToOpen")?.let { put("url", it) }
@@ -419,7 +413,7 @@ internal object MdrOptionMappers {
                 o.bool("m_intRandom") == true || o.bool("m_intExpression") == true ||
                 o.bool("m_userPrompt") == true
             ) {
-                warn("Set variable: MacroDroid computed the value (increment/random/expression/prompt) — only a plain value was imported")
+                warn(ImportWarnings.SET_VARIABLE_COMPUTED)
             }
             val name = o.obj("m_variable")?.text("m_name")
             val value = o.string("m_newStringValue")
@@ -434,9 +428,7 @@ internal object MdrOptionMappers {
 
         // m_option 0 = a fixed number of passes; the other modes loop on a condition.
         "LoopAction" to MdrOptionMapper { o, warn ->
-            if (o.int("m_option") != 0) {
-                warn("Repeat: MacroDroid looped on a condition; NexFlow repeats a fixed number of times — check the count")
-            }
+            if (o.int("m_option") != 0) warn(ImportWarnings.LOOP_CONDITIONAL)
             mapOf("count" to (o.int("m_fixedOptionCount") ?: 1).coerceAtLeast(1).toString())
         },
 
@@ -458,7 +450,7 @@ internal object MdrOptionMappers {
                     val x = point?.text("x")
                     val y = point?.text("y")
                     if (x == null || y == null) {
-                        warn("UI interaction: MacroDroid clicked a view by text/id rather than a screen position, which NexFlow cannot do — set coordinates in the editor")
+                        warn(ImportWarnings.UI_CLICK_BY_VIEW)
                         emptyMap()
                     } else {
                         mapOf("x" to x, "y" to y, "duration" to "50")
@@ -470,9 +462,7 @@ internal object MdrOptionMappers {
                     get("endX")?.let { put("x2", it) }
                     get("endY")?.let { put("y2", it) }
                     put("duration", get("durationMs")?.takeIf { it != "0" } ?: "300")
-                    if (get("xyPercentages") == "true") {
-                        warn("Swipe: MacroDroid stored the points as percentages of the screen; NexFlow uses pixels — check the coordinates")
-                    }
+                    if (get("xyPercentages") == "true") warn(ImportWarnings.SWIPE_PERCENTAGES)
                 }
                 else -> emptyMap()
             }
@@ -483,7 +473,7 @@ internal object MdrOptionMappers {
                 "m_imageName", "m_wallpaperUriString", "m_option",
                 "m_liveWallpaperName", "m_liveWallpaperPackage", "m_liveWallpaperClassName",
             )
-            warn("Set wallpaper: the image is a file on the old device and cannot be imported — pick an image in the editor")
+            warn(ImportWarnings.WALLPAPER_NOT_PORTABLE)
             // m_screenOption: 0 = both, 1 = home, 2 = lock.
             mapOf(
                 "target" to when (o.int("m_screenOption")) {
@@ -520,7 +510,7 @@ internal object MdrOptionMappers {
             o.ignore("m_SSIDList")
             buildMap {
                 o.string("m_SSID")?.let { put("ssid", it) }
-                connectionEvent(o.int("m_wifiState"), warn, "Wi-Fi condition")?.let { put("state", it) }
+                connectionEvent(o.int("m_wifiState"), warn)?.let { put("state", it) }
             }
         },
 
@@ -528,7 +518,7 @@ internal object MdrOptionMappers {
             o.ignore("m_deviceAddress", "m_anyDevice")
             buildMap {
                 if (o.bool("m_anyDevice") != true) o.string("m_deviceName")?.let { put("device_name", it) }
-                connectionEvent(o.int("m_btState"), warn, "Bluetooth condition")?.let { put("state", it) }
+                connectionEvent(o.int("m_btState"), warn)?.let { put("state", it) }
             }
         },
 

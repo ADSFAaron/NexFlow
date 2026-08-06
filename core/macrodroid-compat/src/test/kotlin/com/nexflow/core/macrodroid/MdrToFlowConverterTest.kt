@@ -16,6 +16,8 @@
 package com.nexflow.core.macrodroid
 
 import com.nexflow.core.flowschema.ActionJson
+import com.nexflow.core.flowschema.ImportItemKind
+import com.nexflow.core.flowschema.ImportWarnings
 import com.nexflow.core.macrodroid.model.MdrItem
 import com.nexflow.core.macrodroid.model.MdrMacro
 import kotlinx.serialization.json.Json
@@ -73,7 +75,10 @@ class MdrToFlowConverterTest {
             "Unsupported MacroDroid action: SomeFutureAction",
             result.flow.actions[0].value("message"),
         )
-        assertTrue(result.warnings.any { it.contains("SomeFutureAction") }, "got ${result.warnings}")
+        assertTrue(
+            result.warnings.any { it.code == ImportWarnings.UNSUPPORTED_ACTION && it.args == listOf("SomeFutureAction") },
+            "got ${result.warnings}",
+        )
     }
 
     // ------------------------------------------------------------------ tap and swipe
@@ -112,7 +117,7 @@ class MdrToFlowConverterTest {
         val result = convertAction("TouchScreenAction", """{"m_xLocation":1,"m_yLocation":2}""")
 
         assertTrue(
-            result.warnings.any { it.contains("GitHub build") },
+            result.warnings.any { it.code == ImportWarnings.TAP_SWIPE_GITHUB_ONLY },
             "expected a flavor warning, got ${result.warnings}",
         )
     }
@@ -182,7 +187,7 @@ class MdrToFlowConverterTest {
 
         assertEquals("+886900000000", result.flow.actions[0].value("number"))
         assertTrue(
-            result.warnings.any { it.contains("pre-filled") },
+            result.warnings.any { it.code == ImportWarnings.SMS_PREPOPULATE },
             "expected the pre-populate difference to be reported, got ${result.warnings}",
         )
     }
@@ -194,7 +199,7 @@ class MdrToFlowConverterTest {
 
         assertEquals("VOLUME_ADJUST", result.flow.actions[0].type)
         assertTrue(
-            result.warnings.any { it.contains("settings were not") },
+            result.warnings.any { it.code == ImportWarnings.SETTINGS_NOT_MAPPED },
             "expected a settings warning, got ${result.warnings}",
         )
     }
@@ -204,7 +209,7 @@ class MdrToFlowConverterTest {
         val result = convertTrigger("GeofenceTrigger", """{"m_geofenceId":"abc","m_enterArea":true}""")
 
         assertEquals("ENTER", result.flow.triggers[0].config["event"]?.jsonPrimitive?.content)
-        assertTrue(result.warnings.any { it.contains("coordinates") }, "got ${result.warnings}")
+        assertTrue(result.warnings.any { it.code == ImportWarnings.GEOFENCE_COORDINATES }, "got ${result.warnings}")
     }
 
     // ------------------------------------------------------------------ menus
@@ -237,7 +242,7 @@ class MdrToFlowConverterTest {
         val result = convertAction("OptionDialogAction", """{"m_title":"t","m_buttonNames":["A","B"]}""")
 
         assertTrue(
-            result.warnings.any { it.contains("separate MacroDroid macro") },
+            result.warnings.any { it.code == ImportWarnings.MENU_CASES_EMPTY && it.args == listOf("2") },
             "got ${result.warnings}",
         )
     }
@@ -265,10 +270,30 @@ class MdrToFlowConverterTest {
         val result = MdrToFlowConverter.convert(macro)
 
         assertEquals("UNKNOWN", result.flow.conditions[0].type)
-        assertTrue(result.warnings.any { it.contains("will not run") }, "got ${result.warnings}")
+        assertTrue(result.warnings.any { it.code == ImportWarnings.UNSUPPORTED_CONDITION }, "got ${result.warnings}")
     }
 
     // ------------------------------------------------------------------ macro level
+
+    @Test
+    fun `a warning points at the item it is about`() {
+        // What lets the review UI offer "fix now" instead of only naming the problem.
+        val macro = MdrMacro(
+            name = "test",
+            actionList = listOf(
+                action("ToastAction", """{"m_messageText":"ok"}"""),
+                MdrItem(classType = "SomeFutureAction", guid = "action-guid-2"),
+            ),
+        )
+
+        val warning = MdrToFlowConverter.convert(macro).warnings
+            .single { it.code == ImportWarnings.UNSUPPORTED_ACTION }
+
+        assertEquals(ImportItemKind.ACTION, warning.itemKind)
+        assertEquals("action-guid-2", warning.itemId)
+        assertEquals("test", warning.flowName)
+        assertTrue(warning.isFixable, "the UI needs a flow id and an item id to open the item")
+    }
 
     @Test
     fun `a disabled action stays disabled`() {
