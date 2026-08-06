@@ -25,8 +25,11 @@ import android.os.Bundle
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.nexflow.MainActivity
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import com.nexflow.R
 import com.nexflow.core.automation.repository.FlowRepository
@@ -73,8 +76,15 @@ class FlowExecutionService : Service() {
                     ?.let { bundle -> bundle.keySet().associateWith { bundle.getString(it).orEmpty() } }
                     ?: emptyMap()
                 val triggerId = intent.getStringExtra(EXTRA_TRIGGER_ID)
+                val runToken = intent.getStringExtra(EXTRA_RUN_TOKEN)
                 serviceScope.launch {
-                    flowEngine.runNow(flowId, triggerVariables, triggerId)
+                    try {
+                        flowEngine.runNow(flowId, triggerVariables, triggerId)
+                    } finally {
+                        // Always report the end of the run, however it ended: the shortcut host
+                        // window waits on this to dismiss itself.
+                        runToken?.let { _runFinished.tryEmit(it) }
+                    }
                     // Manual runs are allowed while the master switch is off, but the
                     // service must not linger afterwards — run one flow, then leave.
                     if (!ServiceEnabledPrefs.get(this@FlowExecutionService)) stopSelf()
@@ -148,8 +158,22 @@ class FlowExecutionService : Service() {
          */
         const val EXTRA_TRIGGER_ID = "trigger_id"
 
+        /**
+         * Caller-generated id for a single [runFlow] request, echoed on [runFinished] when that
+         * run ends. Used by ShortcutRunActivity, which must stay alive (invisibly) for exactly
+         * as long as its flow runs so that a SHOW_MENU can open a sheet over the home screen.
+         */
+        const val EXTRA_RUN_TOKEN = "run_token"
+
         private val _running = MutableStateFlow(false)
         val running: StateFlow<Boolean> = _running.asStateFlow()
+
+        // Replays recent tokens: a caller that starts a run and only then begins collecting
+        // must not miss the completion of a flow that finished in the meantime.
+        private val _runFinished = MutableSharedFlow<String>(replay = 8)
+
+        /** Emits the [EXTRA_RUN_TOKEN] of each finished run. */
+        val runFinished: SharedFlow<String> = _runFinished.asSharedFlow()
 
         fun start(context: Context) {
             // On Android 12+ a foreground service cannot always be started from the background
@@ -169,19 +193,24 @@ class FlowExecutionService : Service() {
          * restarts it (callers fired from an exact alarm hold the temporary FGS-start
          * exemption). Swallows ForegroundServiceStartNotAllowedException so a missed start
          * never crashes — the flow is simply skipped that cycle.
+         *
+         * @return true when the service accepted the start; false when the system refused it,
+         *   in which case the flow never runs and no [runFinished] token is ever emitted.
          */
         fun runFlow(
             context: Context,
             flowId: String,
             triggerVariables: Map<String, String> = emptyMap(),
             triggerId: String? = null,
-        ) {
+            runToken: String? = null,
+        ): Boolean {
             try {
                 context.startForegroundService(
                     Intent(context, FlowExecutionService::class.java).apply {
                         action = ACTION_RUN_FLOW
                         putExtra(EXTRA_FLOW_ID, flowId)
                         triggerId?.let { putExtra(EXTRA_TRIGGER_ID, it) }
+                        runToken?.let { putExtra(EXTRA_RUN_TOKEN, it) }
                         if (triggerVariables.isNotEmpty()) {
                             putExtra(
                                 EXTRA_TRIGGER_VARS,
@@ -192,8 +221,10 @@ class FlowExecutionService : Service() {
                         }
                     },
                 )
+                return true
             } catch (e: Exception) {
                 android.util.Log.w("FlowExecutionService", "Could not start service to run flow", e)
+                return false
             }
         }
 

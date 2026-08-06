@@ -76,7 +76,7 @@ data class ChatUiState(
     /** True once this conversation saved a flow — later saves update it instead. */
     val hasSavedFlow: Boolean = false,
     /** Non-null while the conversation is scoped to an existing flow the user opened to edit. */
-    val editingFlowName: String? = null,
+    val editingFlow: EditingFlowInfo? = null,
 )
 
 /** Thin screen adapter over [AiChatSession]; the conversation itself outlives this ViewModel. */
@@ -101,15 +101,15 @@ class AiChatViewModel @Inject constructor(
         session.isThinking,
         session.thinkingStep,
         apiKeyMissing,
-        session.editingFlowName,
-    ) { messages, thinking, step, keyMissing, editingName ->
+        session.editingFlow,
+    ) { messages, thinking, step, keyMissing, editing ->
         ChatUiState(
             messages = messages,
             isThinking = thinking,
             thinkingStep = step,
             apiKeyMissing = keyMissing,
             hasSavedFlow = session.savedFlowId != null,
-            editingFlowName = editingName,
+            editingFlow = editing,
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, ChatUiState(apiKeyMissing = apiKeyMissing.value))
 

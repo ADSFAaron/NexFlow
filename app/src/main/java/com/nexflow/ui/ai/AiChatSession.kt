@@ -49,8 +49,8 @@ class AiChatSession @Inject constructor(
     val isThinking = MutableStateFlow(false)
     val thinkingStep = MutableStateFlow<AiChatOrchestrator.Progress?>(null)
 
-    /** Name of the existing flow this conversation is editing, shown under the title. */
-    val editingFlowName = MutableStateFlow<String?>(null)
+    /** The existing flow this conversation is scoped to, or null for a free-form chat. */
+    val editingFlow = MutableStateFlow<EditingFlowInfo?>(null)
 
     /** Flow id already saved from this conversation; later saves update it in place. */
     var savedFlowId: String? = null
@@ -75,7 +75,12 @@ class AiChatSession @Inject constructor(
             }
             // Revisions land on this flow instead of creating a near-duplicate.
             savedFlowId = flowId
-            editingFlowName.value = flow.name
+            editingFlow.value = EditingFlowInfo(
+                name = flow.name,
+                description = flow.description,
+                icon = flow.icon,
+                iconColor = flow.iconColor,
+            )
             draft.value = ""
             orchestrator.startFlowEditing(FlowContextFormatter.format(flow))
             messages.value = listOf(
@@ -123,7 +128,7 @@ class AiChatSession @Inject constructor(
         draft.value = ""
         savedFlowId = null
         editingFlowId = null
-        editingFlowName.value = null
+        editingFlow.value = null
         orchestrator.reset()
     }
 
@@ -135,3 +140,11 @@ class AiChatSession @Inject constructor(
         is GeminiException.Unknown -> context.getString(R.string.ai_error_generic, message ?: "")
     }
 }
+
+/** What the chat header shows about the flow being edited — the flow's own identity. */
+data class EditingFlowInfo(
+    val name: String,
+    val description: String,
+    val icon: String?,
+    val iconColor: String?,
+)

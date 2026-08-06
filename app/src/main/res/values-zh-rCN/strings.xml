@@ -141,7 +141,7 @@
     <string name="ai_step_building_flow">正在生成并验证流程…</string>
     <string name="ai_step_repairing">正在修正验证错误(第 %1$d 次)…</string>
     <string name="ai_new_chat">新对话</string>
-    <string name="ai_editing_flow">编辑中:%1$s</string>
+    <string name="ai_editing_flow_subtitle">用 Gemini 修改这个流程</string>
     <string name="ai_editing_flow_intro">我已载入“%1$s”。告诉我你想怎么调整 — 例如新增一个步骤、改时间,或换成打开另一个 App。</string>
     <string name="ai_update_flow">更新流程</string>
     <string name="ai_save_flow">保存流程</string>

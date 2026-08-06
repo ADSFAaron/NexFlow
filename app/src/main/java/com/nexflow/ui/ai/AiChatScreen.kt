@@ -20,6 +20,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.pm.PackageManager
+import android.text.format.DateUtils
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.LinearEasing
@@ -44,18 +45,21 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.AddComment
 import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.Stop
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -64,12 +68,11 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -107,7 +110,9 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -121,11 +126,14 @@ import com.nexflow.ai.AiChatOrchestrator
 import com.nexflow.core.automation.model.ActionType
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.flowschema.FlowJson
+import com.nexflow.ui.common.FlowIcons
 import com.nexflow.ui.common.GeminiGradientLoop
 import com.nexflow.ui.common.MarkdownText
 import com.nexflow.ui.common.geminiGradientTint
 import com.nexflow.ui.flows.detail.config.configSummary
 import com.nexflow.ui.flows.detail.config.info
+import java.time.Instant
+import java.time.ZoneId
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -206,35 +214,45 @@ fun AiChatScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    val itemCount = uiState.messages.size + if (uiState.isThinking) 1 else 0
+    // Flow-edit mode gets a profile-card header instead of an app bar: the flow's own icon and
+    // name are what identify the conversation, and the card carries the same close / new-chat
+    // actions the bar would have.
+    val editingFlow = uiState.editingFlow
+
+    // The header is a list row too, so it has to be counted or the auto-scroll stops one
+    // message short of the bottom.
+    val itemCount = (if (editingFlow != null) 1 else 0) +
+        uiState.messages.size + if (uiState.isThinking) 1 else 0
     LaunchedEffect(itemCount) {
         if (itemCount > 0) listState.animateScrollToItem(itemCount - 1)
     }
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.ai_chat_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = stringResource(R.string.action_back),
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = { vm.newChat() },
-                        enabled = uiState.messages.isNotEmpty() && !uiState.isThinking,
-                    ) {
-                        Icon(
-                            Icons.Outlined.AddComment,
-                            contentDescription = stringResource(R.string.ai_new_chat),
-                        )
-                    }
-                },
-            )
+            if (editingFlow == null) {
+                TopAppBar(
+                    title = { Text(stringResource(R.string.ai_chat_title)) },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                Icons.AutoMirrored.Outlined.ArrowBack,
+                                contentDescription = stringResource(R.string.action_back),
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(
+                            onClick = { vm.newChat() },
+                            enabled = uiState.messages.isNotEmpty() && !uiState.isThinking,
+                        ) {
+                            Icon(
+                                Icons.Outlined.AddComment,
+                                contentDescription = stringResource(R.string.ai_new_chat),
+                            )
+                        }
+                    },
+                )
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
@@ -262,19 +280,27 @@ fun AiChatScreen(
                     .fillMaxSize()
                     .imePadding(),
             ) {
-            // Entered from a flow's "edit with Gemini" button — name what the conversation is
-            // scoped to, since saving updates that flow in place. It sits below the app bar
-            // rather than inside it: the bar's container height is fixed, so a second line
-            // there would be clipped once the user raises the system font size.
-            uiState.editingFlowName?.let { name ->
-                EditingFlowBanner(name)
+            @Composable
+            fun flowHeader(modifier: Modifier = Modifier) {
+                if (editingFlow == null) return
+                FlowChatHeader(
+                    flow = editingFlow,
+                    onClose = onBack,
+                    onNewChat = { vm.newChat() },
+                    onOpenSettings = onOpenSettings,
+                    newChatEnabled = uiState.messages.isNotEmpty() && !uiState.isThinking,
+                    modifier = modifier,
+                )
             }
 
             when {
-                uiState.apiKeyMissing -> ApiKeyMissingContent(
-                    onOpenSettings = onOpenSettings,
-                    modifier = Modifier.weight(1f),
-                )
+                uiState.apiKeyMissing -> Column(modifier = Modifier.weight(1f)) {
+                    flowHeader(Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
+                    ApiKeyMissingContent(
+                        onOpenSettings = onOpenSettings,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
 
                 uiState.messages.isEmpty() -> GreetingContent(modifier = Modifier.weight(1f))
 
@@ -286,12 +312,22 @@ fun AiChatScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    items(uiState.messages, key = { it.id }) { message ->
+                    // The card scrolls with the transcript rather than pinning to the top:
+                    // pinned, it would eat half the screen the moment the keyboard opens.
+                    if (editingFlow != null) {
+                        item(key = "flow-header") { flowHeader() }
+                    }
+                    itemsIndexed(uiState.messages, key = { _, m -> m.id }) { index, message ->
                         val itemModifier = Modifier.animateItem(
                             fadeInSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
                             placementSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
                             fadeOutSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
                         )
+                        // A day rule opens the transcript and marks every date change after it.
+                        val previous = uiState.messages.getOrNull(index - 1)
+                        if (previous == null || !isSameDay(previous.timestamp, message.timestamp)) {
+                            DaySeparator(message.timestamp)
+                        }
                         when (message) {
                             is ChatMessage.UserText -> MessageBubble(
                                 text = message.text,
@@ -357,6 +393,41 @@ fun AiChatScreen(
                             }
                         },
                         shape = RoundedCornerShape(28.dp),
+                        // The mic lives inside the pill, so the input row reads as one control
+                        // with the send button beside it rather than three floating pieces.
+                        trailingIcon = {
+                            IconButton(
+                                onClick = {
+                                    if (voice.isListening) {
+                                        voice.stop()
+                                    } else if (
+                                        ContextCompat.checkSelfPermission(
+                                            context,
+                                            Manifest.permission.RECORD_AUDIO,
+                                        ) == PackageManager.PERMISSION_GRANTED
+                                    ) {
+                                        voiceBaseline = fieldValue.text
+                                        voice.start()
+                                    } else {
+                                        micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                    }
+                                },
+                                enabled = !uiState.isThinking,
+                            ) {
+                                Icon(
+                                    if (voice.isListening) Icons.Outlined.Stop else Icons.Outlined.Mic,
+                                    contentDescription = stringResource(
+                                        if (voice.isListening) R.string.ai_mic_stop_content_desc
+                                        else R.string.ai_mic_content_desc,
+                                    ),
+                                    tint = if (voice.isListening) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                )
+                            }
+                        },
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                             unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -369,43 +440,6 @@ fun AiChatScreen(
                             .then(if (voice.isListening) Modifier.voiceListeningGlow() else Modifier),
                         maxLines = 4,
                     )
-                    FilledTonalIconButton(
-                        onClick = {
-                            if (voice.isListening) {
-                                voice.stop()
-                            } else if (
-                                ContextCompat.checkSelfPermission(
-                                    context,
-                                    Manifest.permission.RECORD_AUDIO,
-                                ) == PackageManager.PERMISSION_GRANTED
-                            ) {
-                                voiceBaseline = fieldValue.text
-                                voice.start()
-                            } else {
-                                micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                            }
-                        },
-                        enabled = !uiState.isThinking,
-                        // TextField is 56dp with centered text; the 48dp button box needs 4dp
-                        // to line its visual center up with the single-line text baseline row
-                        modifier = Modifier.padding(bottom = 4.dp),
-                        colors = if (voice.isListening) {
-                            IconButtonDefaults.filledTonalIconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            )
-                        } else {
-                            IconButtonDefaults.filledTonalIconButtonColors()
-                        },
-                    ) {
-                        Icon(
-                            if (voice.isListening) Icons.Outlined.Stop else Icons.Outlined.Mic,
-                            contentDescription = stringResource(
-                                if (voice.isListening) R.string.ai_mic_stop_content_desc
-                                else R.string.ai_mic_content_desc,
-                            ),
-                        )
-                    }
                     FilledIconButton(
                         onClick = { vm.sendMessage(fieldValue.text) },
                         enabled = fieldValue.text.isNotBlank() && !uiState.isThinking,
@@ -558,29 +592,138 @@ private fun ApiKeyMissingContent(onOpenSettings: () -> Unit, modifier: Modifier 
     }
 }
 
-/** "Editing: <flow>" strip under the app bar; wraps instead of clipping at large font sizes. */
+/**
+ * Profile-card header for a flow-scoped conversation: the flow's own icon and name stand in
+ * for the "who am I talking about" that an avatar gives a person-to-person chat.
+ *
+ * It replaces the app bar in this mode, so it carries the actions the bar would have had —
+ * close, new chat, and the AI settings the user may need to switch models mid-conversation.
+ */
 @Composable
-private fun EditingFlowBanner(flowName: String) {
+private fun FlowChatHeader(
+    flow: EditingFlowInfo,
+    onClose: () -> Unit,
+    onNewChat: () -> Unit,
+    onOpenSettings: () -> Unit,
+    newChatEnabled: Boolean,
+    modifier: Modifier = Modifier,
+) {
     Surface(
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = RoundedCornerShape(28.dp),
+        modifier = modifier.fillMaxWidth(),
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-        ) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            IconButton(
+                onClick = onClose,
+                modifier = Modifier.align(Alignment.TopEnd),
+            ) {
+                Icon(
+                    Icons.Outlined.Close,
+                    contentDescription = stringResource(R.string.action_back),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(top = 24.dp, bottom = 20.dp),
+            ) {
+                // The flow's icon on its own colour, ringed in a soft tint of that colour —
+                // the same identity mark the flow shows everywhere else in the app.
+                val accent = FlowIcons.color(flow.iconColor) ?: MaterialTheme.colorScheme.primary
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(96.dp)
+                        .background(accent.copy(alpha = 0.18f), CircleShape),
+                ) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(72.dp)
+                            .background(accent, CircleShape),
+                    ) {
+                        Icon(
+                            FlowIcons.vector(flow.icon),
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(36.dp),
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = flow.name,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    // The flow's own description when it has one, otherwise say what this
+                    // screen is — the card must never show an empty second line.
+                    text = flow.description.ifBlank {
+                        stringResource(R.string.ai_editing_flow_subtitle)
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+
+                Spacer(Modifier.height(20.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    HeaderAction(
+                        icon = Icons.Outlined.AddComment,
+                        contentDescription = stringResource(R.string.ai_new_chat),
+                        onClick = onNewChat,
+                        enabled = newChatEnabled,
+                    )
+                    HeaderAction(
+                        icon = Icons.Outlined.Tune,
+                        contentDescription = stringResource(R.string.settings_ai_model),
+                        onClick = onOpenSettings,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** One of the header card's round, raised action buttons. */
+@Composable
+private fun HeaderAction(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+) {
+    Surface(
+        onClick = onClick,
+        enabled = enabled,
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        shadowElevation = 2.dp,
+        modifier = Modifier.size(48.dp),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
             Icon(
-                Icons.Outlined.Edit,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = stringResource(R.string.ai_editing_flow, flowName),
-                style = MaterialTheme.typography.labelLarge,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+                icon,
+                contentDescription = contentDescription,
+                modifier = Modifier.size(22.dp),
+                tint = if (enabled) {
+                    MaterialTheme.colorScheme.onSurface
+                } else {
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                },
             )
         }
     }
@@ -595,8 +738,8 @@ private fun EditingFlowBanner(flowName: String) {
 private fun bubbleMaxWidth(): Dp = 340.dp * LocalDensity.current.fontScale
 
 /**
- * Chat bubble with a long-press menu (copy for all bubbles, edit for the user's own) and a
- * subtle timestamp underneath.
+ * Chat bubble with a long-press menu (copy for all bubbles, edit for the user's own) and the
+ * send time tucked into the bubble's bottom-right corner.
  */
 @Composable
 private fun MessageBubble(
@@ -619,11 +762,15 @@ private fun MessageBubble(
             Surface(
                 color = if (fromUser) MaterialTheme.colorScheme.primaryContainer
                 else MaterialTheme.colorScheme.surfaceContainerHigh,
+                contentColor = if (fromUser) MaterialTheme.colorScheme.onPrimaryContainer
+                else MaterialTheme.colorScheme.onSurface,
+                // A single small corner points the bubble at its sender; the other three stay
+                // generously round.
                 shape = RoundedCornerShape(
-                    topStart = 20.dp,
-                    topEnd = 20.dp,
-                    bottomStart = if (fromUser) 20.dp else 4.dp,
-                    bottomEnd = if (fromUser) 4.dp else 20.dp,
+                    topStart = 22.dp,
+                    topEnd = 22.dp,
+                    bottomStart = if (fromUser) 22.dp else 6.dp,
+                    bottomEnd = if (fromUser) 6.dp else 22.dp,
                 ),
                 modifier = Modifier
                     .widthIn(max = bubbleMaxWidth())
@@ -636,19 +783,13 @@ private fun MessageBubble(
                         )
                     },
             ) {
-                val bubblePadding = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
-                if (renderMarkdown) {
-                    MarkdownText(
-                        markdown = text,
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = bubblePadding,
-                    )
-                } else {
-                    Text(
-                        text = text,
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = bubblePadding,
-                    )
+                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                    if (renderMarkdown) {
+                        MarkdownText(markdown = text, style = MaterialTheme.typography.bodyLarge)
+                    } else {
+                        Text(text = text, style = MaterialTheme.typography.bodyLarge)
+                    }
+                    BubbleTimestamp(timestamp, modifier = Modifier.align(Alignment.End))
                 }
             }
             MessageMenu(
@@ -658,7 +799,6 @@ private fun MessageBubble(
                 onEdit = onEdit,
             )
         }
-        Timestamp(timestamp)
     }
 }
 
@@ -671,7 +811,7 @@ private fun ErrorBubble(text: String, modifier: Modifier = Modifier) {
     Box(modifier = modifier) {
         Surface(
             color = MaterialTheme.colorScheme.errorContainer,
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(22.dp),
             modifier = Modifier
                 .widthIn(max = bubbleMaxWidth())
                 // Error text is what users paste into bug reports — make it copyable too
@@ -688,7 +828,7 @@ private fun ErrorBubble(text: String, modifier: Modifier = Modifier) {
                 text = text,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onErrorContainer,
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             )
         }
         MessageMenu(
@@ -729,17 +869,57 @@ private fun MessageMenu(
 }
 
 @Composable
-private fun Timestamp(timestamp: Long) {
+private fun BubbleTimestamp(timestamp: Long, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val timeText = remember(timestamp) {
         android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date(timestamp))
     }
     Text(
         text = timeText,
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+        style = MaterialTheme.typography.labelSmall,
+        // Reads as a footnote on whatever the bubble\'s content colour is, so it works on both
+        // the tinted outgoing bubble and the neutral incoming one.
+        color = LocalContentColor.current.copy(alpha = 0.6f),
+        modifier = modifier.padding(top = 2.dp),
     )
+}
+
+/**
+ * "Today" / "Yesterday" / a date, drawn between two rules — the separator that tells a chat
+ * transcript where one day ends. [DateUtils] gives the localized wording for free.
+ */
+@Composable
+private fun DaySeparator(timestamp: Long) {
+    val label = remember(timestamp) {
+        DateUtils.getRelativeTimeSpanString(
+            timestamp,
+            System.currentTimeMillis(),
+            DateUtils.DAY_IN_MILLIS,
+            DateUtils.FORMAT_ABBREV_RELATIVE,
+        ).toString()
+    }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+    ) {
+        HorizontalDivider(modifier = Modifier.weight(1f))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 12.dp),
+        )
+        HorizontalDivider(modifier = Modifier.weight(1f))
+    }
+}
+
+/** Same calendar day in the device's zone — what a chat's day separator actually means. */
+private fun isSameDay(first: Long, second: Long): Boolean {
+    val zone = ZoneId.systemDefault()
+    return Instant.ofEpochMilli(first).atZone(zone).toLocalDate() ==
+        Instant.ofEpochMilli(second).atZone(zone).toLocalDate()
 }
 
 private fun copyToClipboard(context: Context, text: String) {

@@ -18,119 +18,52 @@ package com.nexflow.ui.menu
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
 import com.nexflow.ui.theme.NexFlowTheme
-import kotlinx.coroutines.launch
 
 /**
- * Transparent trampoline activity that hosts a Material 3 ModalBottomSheet for
- * the SHOW_MENU action. Delivers the user's selection (or null on dismiss) to
- * MenuPickerBridge and then finishes immediately.
+ * Transparent trampoline that hosts the SHOW_MENU bottom sheet when nothing else can — i.e.
+ * when the flow runs with no NexFlow window on screen. Reads the pending menu straight from
+ * [MenuPickerBridge], delivers the user's selection (or null on dismiss) and finishes.
+ *
+ * Runs from a home-screen shortcut are served by ShortcutRunActivity instead: it is already
+ * visible, so it renders the sheet inline and this activity is never started.
  */
 class MenuPickerActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val title = intent.getStringExtra(EXTRA_TITLE) ?: ""
-        val options = intent.getStringArrayListExtra(EXTRA_OPTIONS) ?: arrayListOf()
 
         setContent {
             NexFlowTheme {
-                MenuPickerSheet(
-                    title = title,
-                    options = options,
-                    onSelect = { choice ->
-                        MenuPickerBridge.deliver(choice)
-                        finish()
-                    },
-                    onDismiss = {
-                        MenuPickerBridge.deliver(null)
-                        finish()
-                    },
-                )
-            }
-        }
-    }
-
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
-        MenuPickerBridge.deliver(null)
-        @Suppress("DEPRECATION")
-        super.onBackPressed()
-    }
-
-    companion object {
-        const val EXTRA_TITLE = "title"
-        const val EXTRA_OPTIONS = "options"
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun MenuPickerSheet(
-    title: String,
-    options: List<String>,
-    onSelect: (String) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var visible by remember { mutableStateOf(true) }
-    val scope = rememberCoroutineScope()
-
-    if (visible) {
-        ModalBottomSheet(
-            onDismissRequest = {
-                visible = false
-                onDismiss()
-            },
-            sheetState = sheetState,
-            scrimColor = Color.Transparent,
-        ) {
-            if (title.isNotBlank()) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                )
-            }
-            LazyColumn {
-                items(options) { option ->
-                    ListItem(
-                        headlineContent = { Text(option) },
-                        modifier = Modifier.clickable {
-                            scope.launch {
-                                sheetState.hide()
-                                visible = false
-                                onSelect(option)
-                            }
+                val request by MenuPickerBridge.request.collectAsState()
+                val menu = request
+                if (menu == null) {
+                    // Answered elsewhere (or already gone) — nothing left to show.
+                    LaunchedEffect(Unit) { finish() }
+                } else {
+                    MenuPickerSheet(
+                        request = menu,
+                        onSelect = { choice ->
+                            MenuPickerBridge.deliver(choice)
+                            finish()
+                        },
+                        onDismiss = {
+                            MenuPickerBridge.deliver(null)
+                            finish()
                         },
                     )
                 }
-                item { Spacer(Modifier.height(16.dp)) }
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // Back (gesture or button) dismisses the sheet, which already answers the bridge; this
+        // only covers the activity being torn down some other way with a menu still pending.
+        if (isFinishing && MenuPickerBridge.request.value != null) MenuPickerBridge.deliver(null)
     }
 }

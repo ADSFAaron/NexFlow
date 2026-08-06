@@ -297,6 +297,19 @@
             android:excludeFromRecents="true"
             android:theme="@style/Theme.NexFlow.Transparent" />
 
+        <!-- What a home-screen / long-press shortcut opens: runs the flow without showing the
+             app, and hosts the SHOW_MENU sheet over the launcher (see ShortcutRunActivity).
+             exported: the launcher starts it; it accepts nothing but a flow id, the same as
+             MainActivity's RUN_FLOW filter already did.
+             configChanges: a rotation must not tear down the host and re-run the flow. -->
+        <activity
+            android:name=".shortcut.ShortcutRunActivity"
+            android:exported="true"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode|density|locale|layoutDirection|fontScale"
+            android:theme="@style/Theme.NexFlow.Transparent" />
+
         <!-- AppCompat per-app locale persistence for API 30–32 (autoStoreLocales).
              On Android 13+ the platform LocaleManager stores the selection instead. -->
         <service

@@ -43,12 +43,11 @@ class MenuActionExecutor @Inject constructor(
 
         if (options.isEmpty()) return ActionResult.Failure("SHOW_MENU has no options")
 
-        val choice = MenuPickerBridge.awaitChoice {
-            val intent = Intent(context, MenuPickerActivity::class.java).apply {
-                putExtra(MenuPickerActivity.EXTRA_TITLE, title)
-                putStringArrayListExtra(MenuPickerActivity.EXTRA_OPTIONS, ArrayList(options))
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
+        // When a NexFlow window is already up (a shortcut run's transparent host, or the app
+        // itself) it renders the sheet inline; only otherwise do we start the trampoline.
+        val choice = MenuPickerBridge.awaitChoice(MenuPickerBridge.Request(title, options)) {
+            val intent = Intent(context, MenuPickerActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
         }
 

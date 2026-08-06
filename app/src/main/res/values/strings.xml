@@ -142,7 +142,7 @@
     <string name="ai_step_building_flow">Building and validating the flow…</string>
     <string name="ai_step_repairing">Fixing validation errors (attempt %1$d)…</string>
     <string name="ai_new_chat">New chat</string>
-    <string name="ai_editing_flow">Editing: %1$s</string>
+    <string name="ai_editing_flow_subtitle">Editing this flow with Gemini</string>
     <string name="ai_editing_flow_intro">I\'ve loaded \"%1$s\". Tell me what you\'d like to change — for example add a step, change a time, or swap the app it opens.</string>
     <string name="ai_update_flow">Update flow</string>
     <string name="ai_save_flow">Save flow</string>

@@ -20,7 +20,6 @@ import android.content.Intent
 import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
-import com.nexflow.MainActivity
 import com.nexflow.core.automation.model.Flow
 import com.nexflow.service.FlowExecutionService
 
@@ -35,11 +34,16 @@ object PinShortcutHelper {
 
     fun shortcutId(flowId: String): String = "flow_$flowId"
 
+    /**
+     * Tapping a shortcut runs the flow where the user is — on the launcher. [ShortcutRunActivity]
+     * shows nothing, so the app is never brought to the front; a flow with a SHOW_MENU pops its
+     * bottom sheet straight over the home screen.
+     */
     fun buildIntent(context: Context, flowId: String): Intent =
-        Intent(context, MainActivity::class.java).apply {
+        Intent(context, ShortcutRunActivity::class.java).apply {
             action = FlowExecutionService.ACTION_RUN_FLOW
             putExtra(FlowExecutionService.EXTRA_FLOW_ID, flowId)
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
 
     fun isSupported(context: Context): Boolean =
