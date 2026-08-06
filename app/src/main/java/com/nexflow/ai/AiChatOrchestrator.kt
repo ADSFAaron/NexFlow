@@ -66,6 +66,23 @@ class AiChatOrchestrator @Inject constructor(
 
     fun reset() = history.clear()
 
+    /**
+     * Starts a conversation about an existing flow (the "edit with Gemini" entry point).
+     *
+     * The flow travels as the first user turn plus a canned model acknowledgement, so from the
+     * model's side this is indistinguishable from a flow it built earlier in the conversation —
+     * which is exactly the case the system instruction's "call create_flow again with the
+     * COMPLETE revised flow" rule already covers.
+     */
+    fun startFlowEditing(flowContext: String) {
+        history.clear()
+        history += GeminiContent(role = "user", parts = listOf(GeminiPart(text = flowContext)))
+        history += GeminiContent(
+            role = "model",
+            parts = listOf(GeminiPart(text = "Understood — I have the current flow. What would you like to change?")),
+        )
+    }
+
     suspend fun sendUserMessage(
         text: String,
         onProgress: (Progress) -> Unit = {},

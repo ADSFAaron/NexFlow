@@ -52,6 +52,7 @@
     <string name="fd_flow_skipped">スキップしました — 条件が成立していません</string>
     <string name="fd_export_flow">フローをエクスポート</string>
     <string name="fd_export">エクスポート</string>
+    <string name="fd_edit_with_ai">Gemini で編集</string>
     <string name="fd_section_when">トリガー</string>
     <string name="fd_section_only_if">条件</string>
     <string name="fd_section_then">アクション</string>
@@ -140,6 +141,8 @@
     <string name="ai_step_building_flow">フローを生成・検証中…</string>
     <string name="ai_step_repairing">検証エラーを修正中(%1$d 回目)…</string>
     <string name="ai_new_chat">新しいチャット</string>
+    <string name="ai_editing_flow">編集中:%1$s</string>
+    <string name="ai_editing_flow_intro">「%1$s」を読み込みました。変更したい内容を教えてください — 例えばステップの追加、時刻の変更、開くアプリの変更などです。</string>
     <string name="ai_update_flow">フローを更新</string>
     <string name="ai_save_flow">フローを保存</string>
     <string name="ai_flow_saved">保存済み</string>

@@ -16,6 +16,7 @@
 package com.nexflow.ui.ai
 
 import android.content.Context
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexflow.ai.AiChatOrchestrator
@@ -74,11 +75,14 @@ data class ChatUiState(
     val apiKeyMissing: Boolean = false,
     /** True once this conversation saved a flow — later saves update it instead. */
     val hasSavedFlow: Boolean = false,
+    /** Non-null while the conversation is scoped to an existing flow the user opened to edit. */
+    val editingFlowName: String? = null,
 )
 
 /** Thin screen adapter over [AiChatSession]; the conversation itself outlives this ViewModel. */
 @HiltViewModel
 class AiChatViewModel @Inject constructor(
+    savedStateHandle: SavedStateHandle,
     private val session: AiChatSession,
     private val repository: FlowRepository,
     @param:ApplicationContext private val context: Context,
@@ -86,18 +90,26 @@ class AiChatViewModel @Inject constructor(
 
     private val apiKeyMissing = MutableStateFlow(AiPrefs.getApiKey(context) == null)
 
+    init {
+        // Entered from a flow's "edit with Gemini" button: scope the conversation to that flow.
+        savedStateHandle.get<String>(ARG_FLOW_ID)?.takeIf { it.isNotBlank() }
+            ?.let { session.startFlowEdit(it) }
+    }
+
     val uiState: StateFlow<ChatUiState> = combine(
         session.messages,
         session.isThinking,
         session.thinkingStep,
         apiKeyMissing,
-    ) { messages, thinking, step, keyMissing ->
+        session.editingFlowName,
+    ) { messages, thinking, step, keyMissing, editingName ->
         ChatUiState(
             messages = messages,
             isThinking = thinking,
             thinkingStep = step,
             apiKeyMissing = keyMissing,
             hasSavedFlow = session.savedFlowId != null,
+            editingFlowName = editingName,
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, ChatUiState(apiKeyMissing = apiKeyMissing.value))
 
@@ -132,5 +144,10 @@ class AiChatViewModel @Inject constructor(
             session.markSaved(message.id, flowId)
             _navigateToFlow.tryEmit(flowId)
         }
+    }
+
+    companion object {
+        /** Optional nav argument: the existing flow this chat should edit. */
+        const val ARG_FLOW_ID = "flowId"
     }
 }

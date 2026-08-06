@@ -18,7 +18,9 @@ package com.nexflow.ui.ai
 import android.content.Context
 import com.nexflow.R
 import com.nexflow.ai.AiChatOrchestrator
+import com.nexflow.ai.FlowContextFormatter
 import com.nexflow.ai.GeminiException
+import com.nexflow.core.automation.repository.FlowRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -37,6 +39,7 @@ import kotlinx.coroutines.launch
 @Singleton
 class AiChatSession @Inject constructor(
     private val orchestrator: AiChatOrchestrator,
+    private val flowRepository: FlowRepository,
     @param:ApplicationContext private val context: Context,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -46,8 +49,40 @@ class AiChatSession @Inject constructor(
     val isThinking = MutableStateFlow(false)
     val thinkingStep = MutableStateFlow<AiChatOrchestrator.Progress?>(null)
 
+    /** Name of the existing flow this conversation is editing, shown under the title. */
+    val editingFlowName = MutableStateFlow<String?>(null)
+
     /** Flow id already saved from this conversation; later saves update it in place. */
     var savedFlowId: String? = null
+
+    /** Flow id this conversation was opened to edit — guards re-seeding on re-entry. */
+    private var editingFlowId: String? = null
+
+    /**
+     * Opens (or resumes) a conversation about an existing flow. Re-entering the same flow keeps
+     * the transcript; opening a different one starts over, because the model's history would
+     * otherwise still describe the previous flow.
+     */
+    fun startFlowEdit(flowId: String) {
+        if (editingFlowId == flowId || isThinking.value) return
+        // Claimed before the suspending load so a second entry can't seed the chat twice.
+        editingFlowId = flowId
+        scope.launch {
+            val flow = flowRepository.getById(flowId)
+            if (flow == null) {
+                editingFlowId = null
+                return@launch
+            }
+            // Revisions land on this flow instead of creating a near-duplicate.
+            savedFlowId = flowId
+            editingFlowName.value = flow.name
+            draft.value = ""
+            orchestrator.startFlowEditing(FlowContextFormatter.format(flow))
+            messages.value = listOf(
+                ChatMessage.AssistantText(context.getString(R.string.ai_editing_flow_intro, flow.name)),
+            )
+        }
+    }
 
     fun send(text: String) {
         val trimmed = text.trim()
@@ -87,6 +122,8 @@ class AiChatSession @Inject constructor(
         messages.value = emptyList()
         draft.value = ""
         savedFlowId = null
+        editingFlowId = null
+        editingFlowName.value = null
         orchestrator.reset()
     }
 

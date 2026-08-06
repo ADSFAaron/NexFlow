@@ -52,6 +52,7 @@
     <string name="fd_flow_skipped">已跳過 — 限制條件不成立</string>
     <string name="fd_export_flow">匯出流程</string>
     <string name="fd_export">匯出</string>
+    <string name="fd_edit_with_ai">用 Gemini 修改</string>
     <string name="fd_section_when">觸發</string>
     <string name="fd_section_only_if">限制條件</string>
     <string name="fd_section_then">動作</string>
@@ -140,6 +141,8 @@
     <string name="ai_step_building_flow">正在產生並驗證流程…</string>
     <string name="ai_step_repairing">正在修正驗證錯誤(第 %1$d 次)…</string>
     <string name="ai_new_chat">新對話</string>
+    <string name="ai_editing_flow">編輯中:%1$s</string>
+    <string name="ai_editing_flow_intro">我已載入「%1$s」。告訴我你想怎麼調整 — 例如新增一個步驟、改時間,或換成開啟另一個 App。</string>
     <string name="ai_update_flow">更新流程</string>
     <string name="ai_save_flow">儲存流程</string>
     <string name="ai_flow_saved">已儲存</string>

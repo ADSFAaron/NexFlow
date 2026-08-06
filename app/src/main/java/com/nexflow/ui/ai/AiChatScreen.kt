@@ -121,6 +121,7 @@ import com.nexflow.core.automation.model.ActionType
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.flowschema.FlowJson
 import com.nexflow.ui.common.GeminiGradientLoop
+import com.nexflow.ui.common.MarkdownText
 import com.nexflow.ui.common.geminiGradientTint
 import com.nexflow.ui.flows.detail.config.configSummary
 import com.nexflow.ui.flows.detail.config.info
@@ -212,7 +213,22 @@ fun AiChatScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.ai_chat_title)) },
+                title = {
+                    Column {
+                        Text(stringResource(R.string.ai_chat_title))
+                        // Entered from a flow's "edit with Gemini" button — name what the
+                        // conversation is scoped to, since saving updates that flow in place.
+                        uiState.editingFlowName?.let { name ->
+                            Text(
+                                text = stringResource(R.string.ai_editing_flow, name),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -296,6 +312,9 @@ fun AiChatScreen(
                                 text = message.text,
                                 timestamp = message.timestamp,
                                 fromUser = false,
+                                // Gemini answers in markdown; render it instead of showing
+                                // raw ** and - characters.
+                                renderMarkdown = true,
                                 modifier = itemModifier,
                             )
 
@@ -488,7 +507,7 @@ private fun GreetingContent(modifier: Modifier = Modifier) {
             Spacer(Modifier.height(16.dp))
             Text(
                 text = stringResource(R.string.ai_greeting),
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -514,12 +533,12 @@ private fun ApiKeyMissingContent(onOpenSettings: () -> Unit, modifier: Modifier 
             Spacer(Modifier.height(16.dp))
             Text(
                 text = stringResource(R.string.ai_key_missing_title),
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleLarge,
             )
             Spacer(Modifier.height(8.dp))
             Text(
                 text = stringResource(R.string.ai_key_missing_body),
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(16.dp))
@@ -555,6 +574,7 @@ private fun MessageBubble(
     timestamp: Long,
     fromUser: Boolean,
     onEdit: (() -> Unit)? = null,
+    renderMarkdown: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -576,7 +596,7 @@ private fun MessageBubble(
                     bottomEnd = if (fromUser) 4.dp else 20.dp,
                 ),
                 modifier = Modifier
-                    .widthIn(max = 320.dp)
+                    .widthIn(max = 340.dp)
                     .pointerInput(text) {
                         detectTapGestures(
                             onLongPress = {
@@ -586,11 +606,20 @@ private fun MessageBubble(
                         )
                     },
             ) {
-                Text(
-                    text = text,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                )
+                val bubblePadding = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+                if (renderMarkdown) {
+                    MarkdownText(
+                        markdown = text,
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = bubblePadding,
+                    )
+                } else {
+                    Text(
+                        text = text,
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = bubblePadding,
+                    )
+                }
             }
             MessageMenu(
                 expanded = menuOpen,
@@ -614,7 +643,7 @@ private fun ErrorBubble(text: String, modifier: Modifier = Modifier) {
             color = MaterialTheme.colorScheme.errorContainer,
             shape = RoundedCornerShape(20.dp),
             modifier = Modifier
-                .widthIn(max = 320.dp)
+                .widthIn(max = 340.dp)
                 // Error text is what users paste into bug reports — make it copyable too
                 .pointerInput(text) {
                     detectTapGestures(
@@ -627,7 +656,7 @@ private fun ErrorBubble(text: String, modifier: Modifier = Modifier) {
         ) {
             Text(
                 text = text,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onErrorContainer,
                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
             )
@@ -677,7 +706,7 @@ private fun Timestamp(timestamp: Long) {
     }
     Text(
         text = timeText,
-        style = MaterialTheme.typography.labelSmall,
+        style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
     )
@@ -709,7 +738,7 @@ private fun ThinkingBubble(step: AiChatOrchestrator.Progress?) {
             Column {
                 Text(
                     text = stringResource(R.string.ai_thinking),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 val stepText = when (step) {
@@ -723,7 +752,7 @@ private fun ThinkingBubble(step: AiChatOrchestrator.Progress?) {
                 if (stepText != null) {
                     Text(
                         text = stepText,
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
                     )
                 }
@@ -748,12 +777,12 @@ private fun FlowPreviewCard(
         modifier = modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = flow.name, style = MaterialTheme.typography.titleMedium)
+            Text(text = flow.name, style = MaterialTheme.typography.titleLarge)
             if (flow.description.isNotBlank()) {
                 Spacer(Modifier.height(4.dp))
                 Text(
                     text = flow.description,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -782,7 +811,7 @@ private fun FlowPreviewCard(
             Spacer(Modifier.height(12.dp))
             Text(
                 text = stringResource(R.string.ai_flow_disabled_note),
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(8.dp))
@@ -813,11 +842,11 @@ private fun PreviewRow(icon: @Composable () -> Unit, label: String, summary: Str
     ) {
         icon()
         Spacer(Modifier.width(8.dp))
-        Text(text = label, style = MaterialTheme.typography.bodyMedium)
+        Text(text = label, style = MaterialTheme.typography.bodyLarge)
         Spacer(Modifier.width(8.dp))
         Text(
             text = summary,
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

@@ -81,6 +81,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.ArrowDropDown
 import androidx.compose.material.icons.outlined.Code
@@ -202,6 +203,7 @@ import com.nexflow.service.AllTriggersGate
 import com.nexflow.ui.common.AppPickerDialog
 import com.nexflow.ui.common.FlowIconPickerDialog
 import com.nexflow.ui.common.FlowIcons
+import com.nexflow.ui.common.geminiGradientTint
 import com.nexflow.ui.common.PermissionSetupDialogs
 import com.nexflow.ui.common.ShortcutPickerDialog
 import com.nexflow.core.automation.model.Variable
@@ -231,6 +233,7 @@ import java.util.UUID
 fun FlowDetailScreen(
     vm: FlowDetailViewModel = hiltViewModel(),
     onBack: () -> Unit,
+    onEditWithAi: () -> Unit = {},
 ) {
     val flow by vm.flow.collectAsState()
 
@@ -248,7 +251,7 @@ fun FlowDetailScreen(
                 LoadingIndicator()
             }
         } else {
-            FlowDetailContent(f = loaded, vm = vm, onBack = onBack)
+            FlowDetailContent(f = loaded, vm = vm, onBack = onBack, onEditWithAi = onEditWithAi)
         }
     }
 }
@@ -259,6 +262,7 @@ private fun FlowDetailContent(
     f: Flow,
     vm: FlowDetailViewModel,
     onBack: () -> Unit,
+    onEditWithAi: () -> Unit,
 ) {
     val isRunning by vm.isRunning.collectAsState()
     val currentActionId by vm.currentActionId.collectAsState()
@@ -451,6 +455,7 @@ private fun FlowDetailContent(
                 isRunning = isRunning,
                 onToggle = { vm.setEnabled(it) },
                 onShare = onShare,
+                onEditWithAi = onEditWithAi,
                 onRun = {
                     vm.runNow()
                     scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.fd_flow_started)) }
@@ -982,6 +987,7 @@ private fun FlowControlsBar(
     isRunning: Boolean,
     onToggle: (Boolean) -> Unit,
     onShare: () -> Unit,
+    onEditWithAi: () -> Unit,
     onRun: () -> Unit,
     onStop: () -> Unit,
 ) {
@@ -1012,6 +1018,16 @@ private fun FlowControlsBar(
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = onShare) {
                     Icon(Icons.Outlined.Share, contentDescription = stringResource(R.string.fd_export))
+                }
+                // Hands this flow to the AI chat as context so the user can ask for changes
+                // in words. Same gradient-tinted mark as the Flows list' AI entry point.
+                IconButton(onClick = onEditWithAi) {
+                    Icon(
+                        Icons.Outlined.AutoAwesome,
+                        contentDescription = stringResource(R.string.fd_edit_with_ai),
+                        tint = Color.White,
+                        modifier = Modifier.geminiGradientTint(),
+                    )
                 }
                 Spacer(Modifier.width(4.dp))
                 // The icon already crossfades; animate the container/content colors on the

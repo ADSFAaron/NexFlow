@@ -48,11 +48,14 @@ import com.nexflow.R
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.navArgument
 import com.nexflow.ui.about.AboutScreen
 import com.nexflow.ui.ai.AiChatScreen
+import com.nexflow.ui.ai.AiChatViewModel
 import com.nexflow.ui.flows.FlowsScreen
 import com.nexflow.ui.flows.detail.FlowDetailScreen
 import com.nexflow.ui.globalvars.GlobalVariablesScreen
@@ -72,7 +75,8 @@ sealed class Screen(
 
 val bottomNavScreens = listOf(Screen.Flows, Screen.Logs, Screen.Settings)
 
-private const val AI_CHAT_ROUTE = "ai_chat"
+/** Route pattern — `flowId` is optional and only set by a flow's "edit with Gemini" button. */
+private const val AI_CHAT_ROUTE = "ai_chat?flowId={flowId}"
 
 private data class NavItem(val screen: Screen, val selected: Boolean, val label: String)
 
@@ -151,8 +155,14 @@ fun NexFlowNavHost(navController: NavHostController, modifier: Modifier = Modifi
                 onGlobalVariablesClick = { navController.navigate("global_variables") },
             )
         }
-        composable("flows/{flowId}") {
-            FlowDetailScreen(onBack = { navController.popBackStack() })
+        composable("flows/{flowId}") { entry ->
+            FlowDetailScreen(
+                onBack = { navController.popBackStack() },
+                onEditWithAi = {
+                    val flowId = entry.arguments?.getString("flowId") ?: return@FlowDetailScreen
+                    navController.navigate("ai_chat?flowId=$flowId")
+                },
+            )
         }
         composable("about") {
             AboutScreen(onBack = { navController.popBackStack() })
@@ -162,6 +172,13 @@ fun NexFlowNavHost(navController: NavHostController, modifier: Modifier = Modifi
         }
         composable(
             AI_CHAT_ROUTE,
+            arguments = listOf(
+                navArgument(AiChatViewModel.ARG_FLOW_ID) {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+            ),
             // AI reveal, not a lateral page slide: the chat rises up from the bottom while fading
             // in — a single, smooth spatial+effects pairing that reads as "a new surface appears".
             enterTransition = {
