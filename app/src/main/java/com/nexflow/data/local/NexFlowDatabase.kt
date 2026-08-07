@@ -18,10 +18,12 @@ package com.nexflow.data.local
 import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import com.nexflow.data.local.dao.AiConversationDao
 import com.nexflow.data.local.dao.ExecutionLogDao
 import com.nexflow.data.local.dao.FlowDao
 import com.nexflow.data.local.dao.GlobalVariableDao
 import com.nexflow.data.local.dao.VariableDao
+import com.nexflow.data.local.entity.AiConversationEntity
 import com.nexflow.data.local.entity.ExecutionLogEntity
 import com.nexflow.data.local.entity.FlowEntity
 import com.nexflow.data.local.entity.GlobalVariableEntity
@@ -33,13 +35,16 @@ import com.nexflow.data.local.entity.VariableEntity
         ExecutionLogEntity::class,
         VariableEntity::class,
         GlobalVariableEntity::class,
+        AiConversationEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
         // v3 adds the global_variables table; a pure table addition is auto-migratable.
         AutoMigration(from = 2, to = 3),
+        // v4 adds ai_conversations, likewise a pure table addition.
+        AutoMigration(from = 3, to = 4),
     ],
 )
 abstract class NexFlowDatabase : RoomDatabase() {
@@ -47,4 +52,5 @@ abstract class NexFlowDatabase : RoomDatabase() {
     abstract fun executionLogDao(): ExecutionLogDao
     abstract fun variableDao(): VariableDao
     abstract fun globalVariableDao(): GlobalVariableDao
+    abstract fun aiConversationDao(): AiConversationDao
 }

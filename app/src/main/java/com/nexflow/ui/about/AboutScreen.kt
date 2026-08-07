@@ -230,7 +230,7 @@ fun AboutScreen(onBack: () -> Unit) {
                             context.startActivity(
                                 Intent(
                                     Intent.ACTION_VIEW,
-                                    Uri.parse("https://github.com/ADSFAaron/NexFlow/blob/main/TERMS.md"),
+                                    Uri.parse("https://github.com/ADSFAaron/NexFlow/blob/master/TERMS.md"),
                                 ),
                             )
                         },
@@ -246,7 +246,7 @@ fun AboutScreen(onBack: () -> Unit) {
                             context.startActivity(
                                 Intent(
                                     Intent.ACTION_VIEW,
-                                    Uri.parse("https://github.com/ADSFAaron/NexFlow/blob/main/PRIVACY.md"),
+                                    Uri.parse("https://github.com/ADSFAaron/NexFlow/blob/master/PRIVACY.md"),
                                 ),
                             )
                         },

@@ -24,6 +24,7 @@
     <string name="action_ok">OK</string>
     <string name="action_cancel">キャンセル</string>
     <string name="action_back">戻る</string>
+    <string name="action_close">閉じる</string>
     <string name="action_grant">許可</string>
     <string name="action_enable">有効にする</string>
     <string name="action_save">保存</string>
@@ -134,14 +135,30 @@
     <string name="ai_greeting">作りたい自動化を説明してください — 例:「イヤホンを接続したら、メディア音量を 80% にして Spotify を開く」</string>
     <string name="ai_input_hint">自動化の内容を入力…</string>
     <string name="ai_send">送信</string>
+    <string name="ai_stop">停止</string>
+    <string name="ai_stopped_note">停止しました</string>
+    <string name="ai_jump_to_latest">最新へ</string>
+    <string name="ai_diff_added">追加</string>
+    <string name="ai_diff_removed">削除</string>
+    <string name="ai_diff_changed">変更</string>
+    <string name="ai_diff_no_changes">変更はありません — 現在のフローと同じです。</string>
+    <string name="ai_diff_field_change">%1$s：%2$s → %3$s</string>
+    <string name="ai_flow_updated">フローを更新しました</string>
+    <string name="ai_view_flow">表示</string>
+    <string name="ai_tokens_used">%1$d トークン使用</string>
+    <string name="ai_suggestions_dismiss">候補を隠す</string>
+    <string name="ai_retry">再試行</string>
     <string name="ai_key_get">無料で API キーを取得</string>
     <string name="ai_thinking">考え中…</string>
     <string name="ai_step_contacting">Gemini と通信中…</string>
     <string name="ai_step_searching_apps">インストール済みアプリを検索中…</string>
+    <string name="ai_step_searching_shortcuts">アプリのショートカットを検索中…</string>
     <string name="ai_step_building_flow">フローを生成・検証中…</string>
     <string name="ai_step_repairing">検証エラーを修正中(%1$d 回目)…</string>
     <string name="ai_new_chat">新しいチャット</string>
     <string name="ai_editing_flow_subtitle">Gemini でこのフローを編集</string>
+    <string name="ai_flow_header_expand">フロー情報を表示</string>
+    <string name="ai_flow_header_collapse">フロー情報を隠す</string>
     <string name="ai_editing_flow_intro">「%1$s」を読み込みました。変更したい内容を教えてください — 例えばステップの追加、時刻の変更、開くアプリの変更などです。</string>
     <string name="ai_update_flow">フローを更新</string>
     <string name="ai_save_flow">フローを保存</string>
@@ -759,4 +776,17 @@
     <string name="log_status_success">成功</string>
     <string name="log_status_fail">失敗</string>
     <string name="log_status_skipped">スキップ</string>
+
+    <!-- Prompt chips: the blank-page problem is the main reason people bounce off a chat UI -->
+    <string-array name="ai_suggestions_edit">
+        <item>ステップを追加</item>
+        <item>時刻を変更</item>
+        <item>別のアプリを開く</item>
+        <item>このフローは何をしますか？</item>
+    </string-array>
+    <string-array name="ai_suggestions_new">
+        <item>毎朝8時に通知して</item>
+        <item>イヤホンを挿したら Spotify を開く</item>
+        <item>職場ではマナーモードにする</item>
+    </string-array>
 </resources>

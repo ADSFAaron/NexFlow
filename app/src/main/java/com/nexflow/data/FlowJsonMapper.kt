@@ -22,7 +22,11 @@ import com.nexflow.core.automation.model.Flow as AutomationFlow
 import com.nexflow.core.automation.model.Trigger
 import com.nexflow.core.automation.model.TriggerLogic
 import com.nexflow.core.automation.model.TriggerType
+import com.nexflow.core.flowschema.ActionJson
+import com.nexflow.core.flowschema.ConditionJson
 import com.nexflow.core.flowschema.FlowJson
+import com.nexflow.core.flowschema.TriggerJson
+import com.nexflow.core.flowschema.VariableJson
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -85,7 +89,40 @@ fun FlowJson.toDomain(forceDisabled: Boolean = true): AutomationFlow {
     )
 }
 
+/**
+ * domain → FlowJson, the inverse of [toDomain]. Used by export and by the AI assistant's diff,
+ * which has to compare a stored flow against the one the model just proposed.
+ *
+ * Global variable declarations are the caller's job: which globals a flow references is an
+ * export concern, and the diff doesn't care.
+ */
+fun AutomationFlow.toFlowJson(): FlowJson = FlowJson(
+    schemaVersion = schemaVersion,
+    id = id,
+    name = name,
+    description = description,
+    author = author,
+    icon = icon,
+    iconColor = iconColor,
+    tags = tags,
+    enabled = enabled,
+    createdAt = java.time.Instant.ofEpochMilli(createdAt).toString(),
+    updatedAt = java.time.Instant.ofEpochMilli(updatedAt).toString(),
+    triggers = triggers.map { TriggerJson(it.id, it.type.name, it.config.toJsonObject()) },
+    triggerLogic = triggerLogic.name,
+    conditions = conditions.map {
+        ConditionJson(it.id, it.type, it.config.toJsonObject(), it.negate)
+    },
+    actions = actions.map {
+        ActionJson(it.id, it.type.name, it.config.toJsonObject(), it.order, it.enabled)
+    },
+    variables = variables.map { VariableJson(it.name, it.type.name, JsonPrimitive(it.defaultValue)) },
+)
+
 // Non-primitive values (e.g. a real JSON array for SHOW_MENU options) keep their JSON text,
 // matching how the editor stores them.
 private fun JsonObject.toStringMap(): Map<String, String> =
     entries.associate { (k, v) -> k to ((v as? JsonPrimitive)?.contentOrNull ?: v.toString()) }
+
+private fun Map<String, String>.toJsonObject(): JsonObject =
+    JsonObject(mapValues { (_, v) -> JsonPrimitive(v) })

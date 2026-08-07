@@ -49,6 +49,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -57,7 +58,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
@@ -66,6 +70,7 @@ import com.nexflow.R
 import com.nexflow.core.automation.interpreter.FlowInterpreter
 import com.nexflow.core.automation.model.GlobalVariable
 import com.nexflow.core.automation.model.VariableType
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -193,6 +198,21 @@ private fun GlobalVariableDialog(
     var type by remember { mutableStateOf(variable.type) }
     var defaultValue by remember { mutableStateOf(variable.defaultValue) }
 
+    // Same as the new-flow dialog: a dialog opened to type in should already be waiting for
+    // typing. The delay is what makes it stick — the dialog's own window has to be attached
+    // before it can take focus, so an immediate request is dropped on the floor.
+    val nameFocusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    LaunchedEffect(isNew) {
+        // Only when creating: opening an existing variable to read its value shouldn't shove
+        // the keyboard over half the dialog.
+        if (isNew) {
+            delay(100)
+            nameFocusRequester.requestFocus()
+            keyboardController?.show()
+        }
+    }
+
     val trimmedName = name.trim()
     val nameTaken = trimmedName != variable.name && trimmedName in existingNames
     // Global names live in a {{g:name}} token, so keep them token-safe (no braces / colons / spaces).
@@ -221,7 +241,9 @@ private fun GlobalVariableDialog(
                             },
                         )
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(nameFocusRequester),
                 )
                 TypeDropdown(selected = type, onSelected = { type = it })
                 OutlinedTextField(

@@ -20,6 +20,7 @@ import androidx.room.Room
 import com.nexflow.data.local.NexFlowDatabase
 import com.nexflow.data.local.dao.ExecutionLogDao
 import com.nexflow.data.local.dao.FlowDao
+import com.nexflow.data.local.dao.AiConversationDao
 import com.nexflow.data.local.dao.GlobalVariableDao
 import com.nexflow.data.local.dao.VariableDao
 import dagger.Module
@@ -53,4 +54,7 @@ object DatabaseModule {
 
     @Provides
     fun provideGlobalVariableDao(db: NexFlowDatabase): GlobalVariableDao = db.globalVariableDao()
+
+    @Provides
+    fun provideAiConversationDao(db: NexFlowDatabase): AiConversationDao = db.aiConversationDao()
 }

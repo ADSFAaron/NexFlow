@@ -19,19 +19,26 @@ import android.util.Log
 import com.nexflow.BuildConfig
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpRequestTimeoutException
+import io.ktor.client.plugins.HttpTimeoutConfig
 import io.ktor.client.plugins.timeout
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
+import io.ktor.client.request.preparePost
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import io.ktor.utils.io.readUTF8Line
 import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -90,6 +97,58 @@ class GeminiClient @Inject constructor(
         json.decodeFromString(GenerateContentResponse.serializer(), body)
     }
 
+    /**
+     * Same turn as [generateContent], but the response arrives in pieces so the UI can show the
+     * answer forming instead of a spinner that sits there for half a minute.
+     *
+     * Server-sent events, per the API docs: `:streamGenerateContent?alt=sse`, one
+     * `GenerateContentResponse` per `data:` line. Parsed by hand rather than with
+     * `ktor-client-sse` — the format is three lines of code and this avoids a dependency whose
+     * POST-with-body support we'd have to verify anyway.
+     *
+     * Failures are thrown, not wrapped in [Result]: a stream can fail after the first chunk, so
+     * the caller has to handle mid-flight errors regardless.
+     */
+    fun streamGenerateContent(
+        apiKey: String,
+        model: String,
+        request: GenerateContentRequest,
+    ): Flow<GenerateContentResponse> = flow {
+        val requestBody = json.encodeToString(GenerateContentRequest.serializer(), request)
+        Log.d(TAG, "streamGenerateContent → model=$model, ${request.contents.size} contents")
+        logLongDebug("streamGenerateContent request", requestBody)
+        val statement = httpClient.preparePost("$BASE_URL/models/$model:streamGenerateContent") {
+            parameter("alt", "sse")
+            header(API_KEY_HEADER, apiKey)
+            contentType(ContentType.Application.Json)
+            setBody(requestBody)
+            timeout {
+                // A long answer can legitimately stream for minutes, so the overall request
+                // budget goes away and the socket timeout — time between bytes — takes over.
+                requestTimeoutMillis = HttpTimeoutConfig.INFINITE_TIMEOUT_MS
+                socketTimeoutMillis = 90_000
+            }
+        }
+        try {
+            statement.execute { response ->
+                if (response.status.value !in 200..299) {
+                    val body = response.bodyAsText()
+                    Log.e(TAG, "streamGenerateContent HTTP ${response.status.value} (model=$model): $body")
+                    throw mapHttpError(response.status.value, body)
+                }
+                val channel = response.bodyAsChannel()
+                while (true) {
+                    val line = channel.readUTF8Line() ?: break
+                    parseSseLine(line)?.let { emit(it) }
+                }
+            }
+        } catch (e: Exception) {
+            if (e is GeminiException || e is CancellationException) throw e
+            Log.e(TAG, "streamGenerateContent transport failure (model=$model)", e)
+            throw e.asNetworkOrRethrow()
+        }
+    }
+
     suspend fun listModels(apiKey: String): Result<List<GeminiModelInfo>> = runCatching {
         val models = mutableListOf<GeminiModelInfo>()
         var pageToken: String? = null
@@ -114,6 +173,24 @@ class GeminiClient @Inject constructor(
             pageToken = page.nextPageToken?.takeIf { it.isNotBlank() }
         } while (pageToken != null)
         models
+    }
+
+    /**
+     * One line of the SSE body → one chunk, or null for everything that isn't a chunk: the blank
+     * lines that separate events, comment/keep-alive lines, and the non-JSON terminator some
+     * proxies append. A line we can't read is skipped rather than allowed to kill a turn that
+     * has already streamed half an answer.
+     */
+    internal fun parseSseLine(line: String): GenerateContentResponse? {
+        if (!line.startsWith(SSE_DATA_PREFIX)) return null
+        val payload = line.removePrefix(SSE_DATA_PREFIX).trim()
+        if (payload.isEmpty()) return null
+        return runCatching {
+            json.decodeFromString(GenerateContentResponse.serializer(), payload)
+        }.getOrElse {
+            Log.w(TAG, "unparseable SSE payload skipped: ${payload.take(120)}")
+            null
+        }
     }
 
     private fun HttpResponse.toGeminiException(body: String): GeminiException =
@@ -160,6 +237,7 @@ class GeminiClient @Inject constructor(
         private const val TAG = "GeminiClient"
         private const val BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
         private const val API_KEY_HEADER = "x-goog-api-key"
+        private const val SSE_DATA_PREFIX = "data: "
 
         // Special-purpose variants that also report generateContent but can't drive the chat
         // (image generation, TTS, native audio, Live API, embeddings).

@@ -35,18 +35,12 @@ import com.nexflow.permissions.PermissionReminder
 import com.nexflow.permissions.PermissionSetup
 import com.nexflow.permissions.PermissionSetupManager
 import com.nexflow.permissions.PermissionSetupResult
-import com.nexflow.core.flowschema.ActionJson
-import com.nexflow.core.flowschema.ConditionJson
-import com.nexflow.core.flowschema.FlowJson
+import com.nexflow.data.toFlowJson
 import com.nexflow.core.flowschema.GlobalVariableJson
-import com.nexflow.core.flowschema.TriggerJson
-import com.nexflow.core.flowschema.VariableJson
 import com.nexflow.service.FlowEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -335,33 +329,8 @@ class FlowDetailViewModel @Inject constructor(
 
     fun exportAsJson(): String? {
         val f = flow.value ?: return null
-        val now = java.time.Instant.ofEpochMilli(f.createdAt).toString()
         val json = Json { prettyPrint = true }
-        val flowJson = FlowJson(
-            schemaVersion = f.schemaVersion,
-            id = f.id,
-            name = f.name,
-            description = f.description,
-            author = f.author,
-            icon = f.icon,
-            iconColor = f.iconColor,
-            tags = f.tags,
-            enabled = f.enabled,
-            createdAt = now,
-            updatedAt = java.time.Instant.ofEpochMilli(f.updatedAt).toString(),
-            triggers = f.triggers.map { t ->
-                TriggerJson(t.id, t.type.name, JsonObject(t.config.mapValues { JsonPrimitive(it.value) }))
-            },
-            triggerLogic = f.triggerLogic.name,
-            conditions = f.conditions.map { c ->
-                ConditionJson(c.id, c.type, JsonObject(c.config.mapValues { JsonPrimitive(it.value) }), c.negate)
-            },
-            actions = f.actions.map { a ->
-                ActionJson(a.id, a.type.name, JsonObject(a.config.mapValues { JsonPrimitive(it.value) }), a.order, a.enabled)
-            },
-            variables = f.variables.map { v ->
-                VariableJson(v.name, v.type.name, JsonPrimitive(v.defaultValue))
-            },
+        val flowJson = f.toFlowJson().copy(
             // Declare the globals this flow uses so it still runs after import elsewhere;
             // only the declaration travels, never this device's live value.
             globalVariables = referencedGlobals(f).map { g ->

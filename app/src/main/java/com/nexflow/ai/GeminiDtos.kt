@@ -90,11 +90,23 @@ data class GeminiFunctionCallingConfig(
 data class GenerateContentResponse(
     val candidates: List<GeminiCandidate> = emptyList(),
     val promptFeedback: GeminiPromptFeedback? = null,
+    val usageMetadata: GeminiUsageMetadata? = null,
 ) {
     /** Parts of the first candidate, or empty when the prompt was blocked. */
     val parts: List<GeminiPart>
         get() = candidates.firstOrNull()?.content?.parts.orEmpty()
 }
+
+/**
+ * Token accounting for one request. The user pays for their own API key, so the app has no
+ * business hiding what a conversation costs.
+ */
+@Serializable
+data class GeminiUsageMetadata(
+    val promptTokenCount: Int = 0,
+    val candidatesTokenCount: Int = 0,
+    val totalTokenCount: Int = 0,
+)
 
 @Serializable
 data class GeminiCandidate(

@@ -25,6 +25,7 @@
     <string name="action_ok">OK</string>
     <string name="action_cancel">Cancel</string>
     <string name="action_back">Back</string>
+    <string name="action_close">Close</string>
     <string name="action_grant">Grant</string>
     <string name="action_enable">Enable</string>
     <string name="action_save">Save</string>
@@ -135,14 +136,30 @@
     <string name="ai_greeting">Describe the automation you want — for example: \"When I plug in headphones, set media volume to 80% and open Spotify.\"</string>
     <string name="ai_input_hint">Describe your automation…</string>
     <string name="ai_send">Send</string>
+    <string name="ai_stop">Stop</string>
+    <string name="ai_stopped_note">Stopped</string>
+    <string name="ai_jump_to_latest">Latest</string>
+    <string name="ai_diff_added">Added</string>
+    <string name="ai_diff_removed">Removed</string>
+    <string name="ai_diff_changed">Changed</string>
+    <string name="ai_diff_no_changes">Nothing changed — this is the flow you already have.</string>
+    <string name="ai_diff_field_change">%1$s: %2$s → %3$s</string>
+    <string name="ai_flow_updated">Flow updated</string>
+    <string name="ai_view_flow">View</string>
+    <string name="ai_tokens_used">%1$d tokens used</string>
+    <string name="ai_suggestions_dismiss">Hide suggestions</string>
+    <string name="ai_retry">Retry</string>
     <string name="ai_key_get">Get a free API key</string>
     <string name="ai_thinking">Thinking…</string>
     <string name="ai_step_contacting">Contacting Gemini…</string>
     <string name="ai_step_searching_apps">Searching installed apps…</string>
+    <string name="ai_step_searching_shortcuts">Searching app shortcuts…</string>
     <string name="ai_step_building_flow">Building and validating the flow…</string>
     <string name="ai_step_repairing">Fixing validation errors (attempt %1$d)…</string>
     <string name="ai_new_chat">New chat</string>
     <string name="ai_editing_flow_subtitle">Editing this flow with Gemini</string>
+    <string name="ai_flow_header_expand">Show flow details</string>
+    <string name="ai_flow_header_collapse">Hide flow details</string>
     <string name="ai_editing_flow_intro">I\'ve loaded \"%1$s\". Tell me what you\'d like to change — for example add a step, change a time, or swap the app it opens.</string>
     <string name="ai_update_flow">Update flow</string>
     <string name="ai_save_flow">Save flow</string>
@@ -770,4 +787,17 @@
     <string name="log_status_success">Success</string>
     <string name="log_status_fail">Failed</string>
     <string name="log_status_skipped">Skipped</string>
+
+    <!-- Prompt chips: the blank-page problem is the main reason people bounce off a chat UI -->
+    <string-array name="ai_suggestions_edit">
+        <item>Add a step</item>
+        <item>Change the time</item>
+        <item>Open a different app</item>
+        <item>What does this flow do?</item>
+    </string-array>
+    <string-array name="ai_suggestions_new">
+        <item>Remind me every morning at 8</item>
+        <item>Open Spotify when I plug in headphones</item>
+        <item>Silence my phone at work</item>
+    </string-array>
 </resources>

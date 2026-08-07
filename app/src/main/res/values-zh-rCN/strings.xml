@@ -24,6 +24,7 @@
     <string name="action_ok">确定</string>
     <string name="action_cancel">取消</string>
     <string name="action_back">返回</string>
+    <string name="action_close">关闭</string>
     <string name="action_grant">授予</string>
     <string name="action_enable">启用</string>
     <string name="action_save">保存</string>
@@ -134,14 +135,30 @@
     <string name="ai_greeting">描述您想要的自动化 — 例如:"插上耳机时,把媒体音量调到 80% 并打开 Spotify。"</string>
     <string name="ai_input_hint">描述您的自动化…</string>
     <string name="ai_send">发送</string>
+    <string name="ai_stop">停止</string>
+    <string name="ai_stopped_note">已停止</string>
+    <string name="ai_jump_to_latest">回到最新</string>
+    <string name="ai_diff_added">新增</string>
+    <string name="ai_diff_removed">删除</string>
+    <string name="ai_diff_changed">修改</string>
+    <string name="ai_diff_no_changes">没有变动 — 跟你现在的流程一样。</string>
+    <string name="ai_diff_field_change">%1$s：%2$s → %3$s</string>
+    <string name="ai_flow_updated">流程已更新</string>
+    <string name="ai_view_flow">查看流程</string>
+    <string name="ai_tokens_used">已用 %1$d tokens</string>
+    <string name="ai_suggestions_dismiss">隐藏建议</string>
+    <string name="ai_retry">重试</string>
     <string name="ai_key_get">免费获取 API 密钥</string>
     <string name="ai_thinking">思考中…</string>
     <string name="ai_step_contacting">正在与 Gemini 通信…</string>
     <string name="ai_step_searching_apps">正在搜索已安装的应用…</string>
+    <string name="ai_step_searching_shortcuts">正在搜索应用快捷方式…</string>
     <string name="ai_step_building_flow">正在生成并验证流程…</string>
     <string name="ai_step_repairing">正在修正验证错误(第 %1$d 次)…</string>
     <string name="ai_new_chat">新对话</string>
     <string name="ai_editing_flow_subtitle">用 Gemini 修改这个流程</string>
+    <string name="ai_flow_header_expand">显示流程信息</string>
+    <string name="ai_flow_header_collapse">收起流程信息</string>
     <string name="ai_editing_flow_intro">我已载入“%1$s”。告诉我你想怎么调整 — 例如新增一个步骤、改时间,或换成打开另一个 App。</string>
     <string name="ai_update_flow">更新流程</string>
     <string name="ai_save_flow">保存流程</string>
@@ -759,4 +776,17 @@
     <string name="log_status_success">成功</string>
     <string name="log_status_fail">失败</string>
     <string name="log_status_skipped">已跳过</string>
+
+    <!-- Prompt chips: the blank-page problem is the main reason people bounce off a chat UI -->
+    <string-array name="ai_suggestions_edit">
+        <item>加一个步骤</item>
+        <item>改时间</item>
+        <item>换成打开另一个 App</item>
+        <item>这个流程在做什么？</item>
+    </string-array>
+    <string-array name="ai_suggestions_new">
+        <item>每天早上 8 点提醒我</item>
+        <item>接上耳机就打开 Spotify</item>
+        <item>到公司自动静音</item>
+    </string-array>
 </resources>

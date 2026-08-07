@@ -109,6 +109,18 @@ class AiCatalogTest {
         assertTrue(AiCatalog.capturableKeys(displayOnly).isEmpty())
     }
 
+    // Without the label/package companions the mapper rejects them as unknown keys, so a
+    // shortcut Gemini resolved correctly would still fail validation.
+    @Test
+    fun `LAUNCH_SHORTCUT exposes all three shortcut keys and points at the lookup tool`() {
+        val fields = ActionType.LAUNCH_SHORTCUT.info(context).fields
+        assertEquals(
+            setOf("intent_uri", "label", "package_name"),
+            AiCatalog.capturableKeys(fields),
+        )
+        assertTrue(AiTools.SEARCH_APP_SHORTCUTS in AiCatalog.systemInstruction(context))
+    }
+
     @Test
     fun `allowedValues resolves dropdowns, toggles and unit sliders`() {
         val wifi = ActionType.WIFI_TOGGLE.info(context).fields

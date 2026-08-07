@@ -23,10 +23,11 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 
-/** The two function declarations exposed to Gemini. */
+/** The function declarations exposed to Gemini. */
 object AiTools {
     const val CREATE_FLOW = "create_flow"
     const val SEARCH_INSTALLED_APPS = "search_installed_apps"
+    const val SEARCH_APP_SHORTCUTS = "search_app_shortcuts"
 
     fun tools(): List<GeminiTool> = listOf(
         GeminiTool(
@@ -50,6 +51,26 @@ object AiTools {
                             }
                         }
                         putJsonArray("required") { add("query") }
+                    },
+                ),
+                GeminiFunctionDeclaration(
+                    name = SEARCH_APP_SHORTCUTS,
+                    description = "List the launchable shortcuts an installed app publishes — the same " +
+                        "entries a launcher shows on long-press, e.g. a payment app's \"Pay\" code screen. " +
+                        "Returns {label, intent_uri} entries; pass an intent_uri straight to a " +
+                        "LAUNCH_SHORTCUT action. Required before setting any intent_uri config value.",
+                    parameters = buildJsonObject {
+                        put("type", "object")
+                        putJsonObject("properties") {
+                            putJsonObject("package_name") {
+                                put("type", "string")
+                                put(
+                                    "description",
+                                    "Package name of the app to inspect, as returned by search_installed_apps",
+                                )
+                            }
+                        }
+                        putJsonArray("required") { add("package_name") }
                     },
                 ),
             ),

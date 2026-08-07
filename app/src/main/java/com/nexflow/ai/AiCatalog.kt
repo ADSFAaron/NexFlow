@@ -44,6 +44,7 @@ object AiCatalog {
             |- Control flow is a FLAT ordered action list with balanced markers: IF_BLOCK … optional ELSE_BLOCK … END_IF; REPEAT_BLOCK … END_REPEAT; SHOW_MENU, then for each option a MENU_CASE (config.option = the option text) followed by its actions, then END_MENU.
             |- Text values may reference variables as {{name}}. IF_BLOCK expression example: {{battery}} < 20.
             |- Whenever a config key needs an app package name (OPEN_APP, APP_LAUNCH, NOTIFICATION_RECEIVED), you MUST call search_installed_apps first and use a returned package_name. Never guess package names.
+            |- When the user wants a specific screen INSIDE an app (a payment/QR code, "new message", a saved place) rather than the app's home screen, use LAUNCH_SHORTCUT: call search_installed_apps for the package, then search_app_shortcuts for it, and copy one returned intent_uri verbatim. Never invent an intent_uri. If it returns no usable shortcut, fall back to OPEN_APP and say in your summary that the app publishes no launchable shortcut, so the flow opens the app itself.
             |- enum config values must match the listed values exactly (uppercase). Numbers must stay inside the listed range.
             |- Optional keys may be omitted. Keys marked "leave empty" cannot be filled by you — omit them and tell the user to complete that field in the editor.
             |- After create_flow succeeds, summarize in one or two sentences what the flow does and mention that it was saved in a disabled state so the user can review it, grant any permissions, and enable it.
@@ -97,7 +98,10 @@ object AiCatalog {
         is ConfigField.Slider -> "${field.key}:int[${field.min}..${field.max}]"
         is ConfigField.TimePicker -> "${field.key}:time\"HH:mm\""
         is ConfigField.AppPicker -> "${field.key}:package (resolve via search_installed_apps)"
-        is ConfigField.ShortcutPicker -> "${field.key}: leave empty (user picks the shortcut in the editor)"
+        is ConfigField.ShortcutPicker ->
+            "${field.key}:intent-uri (resolve via search_app_shortcuts; copy the returned intent_uri " +
+                "verbatim) + ${field.labelKey}:text (the returned label) + " +
+                "${field.packageKey}:package (the app it belongs to)"
         is ConfigField.DayPicker -> "${field.key}:days\"MON,TUE,WED,THU,FRI,SAT,SUN\" comma-separated"
         is ConfigField.WifiSsidInput -> "${field.key}:text"
         is ConfigField.NfcTagScan -> "${field.key}: leave empty (user scans the tag in the editor)"
@@ -122,6 +126,11 @@ object AiCatalog {
                 is ConfigField.UnitSlider -> {
                     add(field.key)
                     add(field.unitKey)
+                }
+                is ConfigField.ShortcutPicker -> {
+                    add(field.key)
+                    add(field.labelKey)
+                    add(field.packageKey)
                 }
                 else -> add(field.key)
             }

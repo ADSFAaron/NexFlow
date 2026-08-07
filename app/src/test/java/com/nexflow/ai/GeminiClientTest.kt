@@ -19,6 +19,7 @@ import io.ktor.client.HttpClient
 import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -150,5 +151,35 @@ class GeminiClientTest {
         )
         assertEquals(listOf("gemini-3.5-flash"), filtered.map { it.modelId })
         assertTrue(filtered.none { "gemma" in it.modelId })
+    }
+
+    // --- SSE stream parsing --------------------------------------------------
+
+    @Test
+    fun `a data line becomes one chunk`() {
+        val line = """data: {"candidates":[{"content":{"role":"model","parts":[{"text":"Hi"}]}}]}"""
+        assertEquals("Hi", client.parseSseLine(line)?.parts?.single()?.text)
+    }
+
+    @Test
+    fun `blank lines, comments and keep-alives are not chunks`() {
+        // Event separators and comment lines are part of the SSE format, not model output
+        assertNull(client.parseSseLine(""))
+        assertNull(client.parseSseLine(": keep-alive"))
+        assertNull(client.parseSseLine("event: message"))
+        assertNull(client.parseSseLine("data: "))
+    }
+
+    @Test
+    fun `an unreadable payload is skipped instead of killing the stream`() {
+        // Half an answer already streamed; a garbage line must not throw it away
+        assertNull(client.parseSseLine("data: [DONE]"))
+        assertNull(client.parseSseLine("""data: {"candidates":"""))
+    }
+
+    @Test
+    fun `usage metadata rides along on the chunk that carries it`() {
+        val line = """data: {"candidates":[],"usageMetadata":{"totalTokenCount":1234}}"""
+        assertEquals(1234, client.parseSseLine(line)?.usageMetadata?.totalTokenCount)
     }
 }

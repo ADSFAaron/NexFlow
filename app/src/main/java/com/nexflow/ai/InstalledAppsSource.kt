@@ -20,6 +20,8 @@ import android.content.Intent
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Answers Gemini's `search_installed_apps` calls locally. Same launcher-intent query as
@@ -32,7 +34,13 @@ class InstalledAppsSource @Inject constructor(
 ) {
     data class AppEntry(val label: String, val packageName: String)
 
-    fun search(query: String, limit: Int = 20): List<AppEntry> {
+    /**
+     * Off the main thread, like [AppShortcutsSource.shortcutsFor]: this enumerates every
+     * launchable activity on the device and then reads a label per package, each of which opens
+     * that app's resources. On a phone with a couple of hundred apps it is hundreds of
+     * milliseconds — a visible freeze if it runs where the UI lives.
+     */
+    suspend fun search(query: String, limit: Int = 20): List<AppEntry> = withContext(Dispatchers.IO) {
         val pm = context.packageManager
         val launchablePackages = pm.queryIntentActivities(
             Intent(Intent.ACTION_MAIN).also { it.addCategory(Intent.CATEGORY_LAUNCHER) },
@@ -40,7 +48,7 @@ class InstalledAppsSource @Inject constructor(
         ).map { it.activityInfo.packageName }.toSet()
 
         val trimmed = query.trim()
-        return launchablePackages
+        launchablePackages
             .mapNotNull { pkg ->
                 runCatching {
                     AppEntry(
