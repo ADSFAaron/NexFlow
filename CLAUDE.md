@@ -65,11 +65,43 @@ core/macrodroid-compat/     # MacroDroid .mdr 格式解析
 
   - instrumented 測試用 `com.nexflow.HiltTestRunner`（HiltTestApplication），新的 Hilt 測試直接標 `@HiltAndroidTest` 即可
 
+#### 實機驗證（手動）
+
+實機是使用者的私人手機，上面有真實流程：**不要啟用或執行既有流程，不要儲存 AI 對既有流程的修改**。
+
+- 先確認前景與螢幕狀態：`adb shell dumpsys activity activities | grep mResumedActivity`、`adb shell dumpsys power | grep mWakefulness`
+- **保留資料升級**（驗 Room migration 的唯一方法）：`adb install -r`，但 flavor 與簽章必須與裝置上的一致。先確認裝的是什麼：
+
+  ```bash
+  adb shell dumpsys package com.adsf.nexflow | grep -E "versionName|pkgFlags"   # pkgFlags 有 DEBUGGABLE 即 debug 版
+  adb shell dumpsys package com.adsf.nexflow | grep RECEIVE_SMS                  # 有 = github flavor
+  ```
+
+  debug 與 release 簽章不同，**互蓋會失敗，只能先解除安裝 → 使用者資料全毀**。
+- **Room 是 WAL 模式**：`run-as cat databases/nexflow.db` 只拿得到已 checkpoint 的內容，剛寫入的資料會「查不到」而讓人誤判成沒寫進去。必須連 `nexflow.db-wal` 一起拉。裝置上沒有 `sqlite3`，要拉回電腦查。
+- `adb shell input text` 在注音 IME 下會被當成組字輸入（英數也一樣），文字進不了欄位。要嘛點候選字提交，要嘛換測試路徑。
+- 截圖用 `adb exec-out screencap -p`；`screenrecord` 遇到螢幕休眠會直接中斷。
+
 ### 4. Git 規則
 
 - **`**/build/` 不進 repo** — .gitignore 已設定
 - `*.dex`, `*.bin`, `*.class`, `*.jar`, `*.apk`, `*.aab`, `*.jks` 都不進 repo
 - Commit 前先 `git ls-files | grep "/build/"` 確認是否乾淨
+- **預設分支是 `master`，不是 `main`** —— App 內連向 GitHub 的網址要寫 `blob/master/`。曾經因為寫成 `main`，導致「關於」頁的隱私權政策與服務條款連結雙雙 404
+
+### 5. 發布到 Google Play
+
+- **簽章設定在 `app/keystore.properties`（不是 repo 根目錄）**，金鑰為 `app/upload-keystore.jks`，兩者都在 .gitignore。看不到就以為「這台機器不能出正式版」是錯的，先確認路徑
+- 簽過章的 release 是 **V2 scheme**，`META-INF/` 底下不會有 `.RSA`／`.SF`。要判斷有沒有簽必須用：
+
+  ```bash
+  $ANDROID_HOME/build-tools/*/apksigner verify --print-certs <apk>
+  ```
+
+- 上架產物：`./gradlew :app:bundlePlayRelease`（AAB）。`assemblePlayRelease` 出的是 APK，Play 不收
+- **沒有** gradle-play-publisher / fastlane，上傳是 Play Console 的人工步驟，不要嘗試自動化
+- Play Console 端的聲明（無障礙使用聲明、背景定位示範影片與表單、Data safety、隱私權政策 URL）**在 1.1.0 首次上架時就已完成並過審**，不是待辦事項。隱私權政策用公開 repo 的 GitHub blob URL 即可，Play 接受
+- Gemini 助手自 **1.1.0** 起就會把資料送到 Google，「對外傳輸」不是後來才新增的。只有在**傳輸內容的範圍**改變時（例如 1.3.0 開始把既有流程的完整設定值送出）才需要重新評估 Data safety 表單，而那是使用者才看得到的東西
 
 ---
 
