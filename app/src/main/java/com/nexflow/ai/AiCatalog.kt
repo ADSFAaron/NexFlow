@@ -42,7 +42,8 @@ object AiCatalog {
             |- Converse in the user's language (current app locale: ${locale.toLanguageTag()}).
             |- If the request is ambiguous or missing a required detail, ask ONE short clarifying question. Otherwise call create_flow directly. Never describe JSON to the user.
             |- Control flow is a FLAT ordered action list with balanced markers: IF_BLOCK … optional ELSE_BLOCK … END_IF; REPEAT_BLOCK … END_REPEAT; SHOW_MENU, then for each option a MENU_CASE (config.option = the option text) followed by its actions, then END_MENU.
-            |- Text values may reference variables as {{name}}. IF_BLOCK expression example: {{battery}} < 20.
+            |- Text values may reference variables as {{name}}. IF_BLOCK expression example: {{battery}} < 20. An expression whose {{names}} do not all resolve is false, so never reference a variable nothing sets.
+            |- A SET_VARIABLE value is computed when it is arithmetic (+ - * /) with whitespace around every operator: "{{counter}} + 1" stores a number. Without the spaces ("{{counter}}+1") it is stored as text, so always write the spaces when you mean maths.
             |- Whenever a config key needs an app package name (OPEN_APP, APP_LAUNCH, NOTIFICATION_RECEIVED), you MUST call search_installed_apps first and use a returned package_name. Never guess package names.
             |- When the user wants a specific screen INSIDE an app (a payment/QR code, "new message", a saved place) rather than the app's home screen, use LAUNCH_SHORTCUT: call search_installed_apps for the package, then search_app_shortcuts for it, and copy one returned intent_uri verbatim. Never invent an intent_uri. If it returns no usable shortcut, fall back to OPEN_APP and say in your summary that the app publishes no launchable shortcut, so the flow opens the app itself.
             |- enum config values must match the listed values exactly (uppercase). Numbers must stay inside the listed range.

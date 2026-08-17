@@ -294,7 +294,9 @@ fun ActionType.info(context: Context): ActionInfo = when (this) {
         context.getString(R.string.act_set_variable_label), Icons.Outlined.Code, context.getString(R.string.act_set_variable_desc),
         listOf(
             ConfigField.VariableNameInput("variable_name", context.getString(R.string.cfg_variable_name), hint = "counter / g:global_name"),
-            ConfigField.TextInput("value", context.getString(R.string.cfg_value)),
+            // The hint doubles as the only place arithmetic is discoverable; it is an example, not
+            // prose, so it needs no translation.
+            ConfigField.TextInput("value", context.getString(R.string.cfg_value), hint = "{{counter}} + 1"),
             ConfigField.InfoText(
                 "_setvar_global_info",
                 context.getString(R.string.cfg_info_note_label),
