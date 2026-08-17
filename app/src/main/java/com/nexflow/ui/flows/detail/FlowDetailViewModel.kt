@@ -38,6 +38,7 @@ import com.nexflow.permissions.PermissionSetupResult
 import com.nexflow.data.toFlowJson
 import com.nexflow.core.flowschema.GlobalVariableJson
 import com.nexflow.service.FlowEngine
+import com.nexflow.shortcut.ShortcutSyncManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -62,6 +63,7 @@ class FlowDetailViewModel @Inject constructor(
     private val globalVariableRepository: GlobalVariableRepository,
     private val flowEngine: FlowEngine,
     private val permissionChecker: FlowPermissionChecker,
+    private val shortcutSyncManager: ShortcutSyncManager,
 ) : ViewModel() {
 
     private val flowId: String = checkNotNull(savedStateHandle["flowId"])
@@ -321,11 +323,13 @@ class FlowDetailViewModel @Inject constructor(
         }
     }
 
-    fun updateDetails(name: String, description: String, icon: String?, iconColor: String?) = edit {
-        copy(name = name, description = description, icon = icon, iconColor = iconColor)
-    }
+    fun updateDetails(name: String, description: String, icon: String?, iconColor: String?) =
+        editAndRefreshShortcut {
+            copy(name = name, description = description, icon = icon, iconColor = iconColor)
+        }
 
-    fun setIcon(icon: String?, iconColor: String?) = edit { copy(icon = icon, iconColor = iconColor) }
+    fun setIcon(icon: String?, iconColor: String?) =
+        editAndRefreshShortcut { copy(icon = icon, iconColor = iconColor) }
 
     fun exportAsJson(): String? {
         val f = flow.value ?: return null
@@ -356,6 +360,20 @@ class FlowDetailViewModel @Inject constructor(
         val current = flow.value ?: return
         val updated = current.transform().copy(updatedAt = System.currentTimeMillis())
         viewModelScope.launch { repository.save(updated) }
+    }
+
+    /**
+     * [edit] for the name and icon — the two fields a launcher shortcut also displays. The
+     * background sync that pushes them out only runs while the engine service is alive, so refresh
+     * here too, or a rename made with the master switch off never reaches the home screen.
+     */
+    private fun editAndRefreshShortcut(transform: Flow.() -> Flow) {
+        val current = flow.value ?: return
+        val updated = current.transform().copy(updatedAt = System.currentTimeMillis())
+        viewModelScope.launch {
+            repository.save(updated)
+            shortcutSyncManager.refreshShortcut(updated)
+        }
     }
 
     private companion object {

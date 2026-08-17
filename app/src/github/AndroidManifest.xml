@@ -23,6 +23,16 @@
     <!-- Call phone action -->
     <uses-permission android:name="android.permission.CALL_PHONE" />
 
+    <!--
+      The SMS and call permissions above imply telephony hardware, which the Play Store treats as
+      a hard requirement unless it is declared optional — that would leave the app unavailable on
+      tablets and ChromeOS, where every other trigger and action still works. Only the SMS and
+      call features are unavailable there, and each is already permission-gated at run time.
+    -->
+    <uses-feature
+        android:name="android.hardware.telephony"
+        android:required="false" />
+
     <application>
 
         <!-- SMS trigger receiver — exempt from background start restrictions -->
