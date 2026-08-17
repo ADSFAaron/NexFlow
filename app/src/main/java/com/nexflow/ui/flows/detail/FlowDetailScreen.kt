@@ -169,6 +169,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.nexflow.R
 import com.nexflow.executor.HttpActionExecutor
@@ -541,9 +542,10 @@ private fun FlowDetailContent(
             if (f.triggerLogic == TriggerLogic.ALL && f.triggers.size > 1) {
                 item {
                     Text(
-                        stringResource(
-                            R.string.fd_logic_all_hint,
-                            AllTriggersGate.DEFAULT_WINDOW_MS / 60_000,
+                        pluralStringResource(
+                            R.plurals.fd_logic_all_hint,
+                            (AllTriggersGate.DEFAULT_WINDOW_MS / 60_000).toInt(),
+                            (AllTriggersGate.DEFAULT_WINDOW_MS / 60_000).toInt(),
                         ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,

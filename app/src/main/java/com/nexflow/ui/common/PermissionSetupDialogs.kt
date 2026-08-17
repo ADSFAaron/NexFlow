@@ -40,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
@@ -159,7 +160,7 @@ fun PermissionSetupDialogs(
                     val more = current.remaining.size - 1
                     if (more > 0) {
                         Text(
-                            text = stringResource(R.string.flows_perm_setup_remaining, more),
+                            text = pluralStringResource(R.plurals.flows_perm_setup_remaining, more, more),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

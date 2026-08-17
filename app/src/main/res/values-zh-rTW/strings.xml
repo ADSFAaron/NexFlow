@@ -78,7 +78,9 @@
     <string name="fd_disabled">已停用</string>
     <string name="fd_logic_any">任一</string>
     <string name="fd_logic_all">全部</string>
-    <string name="fd_logic_all_hint">ALL：所有觸發器都要在 %1$d 分鐘內響應，流程才會執行。</string>
+    <plurals name="fd_logic_all_hint">
+        <item quantity="other">ALL：所有觸發器都要在 %1$d 分鐘內響應，流程才會執行。</item>
+    </plurals>
     <string name="fd_clear_search">清除搜尋</string>
     <string name="fd_nothing_matches">找不到符合「%1$s」的項目</string>
     <string name="fd_no_config_needed">此類型不需要設定。</string>
@@ -145,7 +147,9 @@
     <string name="ai_diff_field_change">%1$s：%2$s → %3$s</string>
     <string name="ai_flow_updated">流程已更新</string>
     <string name="ai_view_flow">查看流程</string>
-    <string name="ai_tokens_used">已用 %1$d tokens</string>
+    <plurals name="ai_tokens_used">
+        <item quantity="other">已用 %1$d tokens</item>
+    </plurals>
     <string name="ai_suggestions_dismiss">隱藏建議</string>
     <string name="ai_retry">重試</string>
     <string name="ai_key_get">免費取得 API 金鑰</string>
@@ -360,7 +364,13 @@
     <string name="log_retention_standard">標準</string>
     <string name="log_retention_full">完整</string>
     <string name="log_retention_extended">延長</string>
-    <string name="log_retention_detail">%1$d 天 · %2$d 筆</string>
+    <string name="log_retention_detail">%1$s · %2$s</string>
+    <plurals name="log_retention_days">
+        <item quantity="other">%1$d 天</item>
+    </plurals>
+    <plurals name="log_retention_entries">
+        <item quantity="other">%1$d 筆</item>
+    </plurals>
 
     <!-- Logs -->
     <string name="logs_title">執行日誌</string>
@@ -413,7 +423,9 @@
     <string name="sp_configurable_hint">會開啟該 App 自己的設定畫面</string>
     <string name="sp_empty">此 App 未提供可存取的捷徑</string>
     <string name="sp_empty_hint">動態捷徑因系統限制無法讀取</string>
-    <string name="sp_hidden_count">已隱藏 %1$d 個捷徑——其目標僅能由桌面啟動</string>
+    <plurals name="sp_hidden_count">
+        <item quantity="other">已隱藏 %1$d 個捷徑——其目標僅能由桌面啟動</item>
+    </plurals>
     <string name="sp_unsupported_result">不支援此捷徑格式</string>
     <string name="act_open_url_label">開啟網址</string>
     <string name="act_open_url_desc">在瀏覽器開啟連結</string>
@@ -766,7 +778,9 @@
     <string name="flows_perm_setup_start">開始設定</string>
     <string name="flows_perm_setup_title">授予權限</string>
     <string name="flows_perm_setup_current">接下來：啟用「%1$s」</string>
-    <string name="flows_perm_setup_remaining">之後還有 %1$d 項</string>
+    <plurals name="flows_perm_setup_remaining">
+        <item quantity="other">之後還有 %1$d 項</item>
+    </plurals>
     <string name="flows_perm_setup_skip">略過此項</string>
     <string name="flows_perm_setup_done">「%1$s」已可執行</string>
     <string name="flows_perm_setup_incomplete">「%1$s」仍缺少權限，尚未啟用</string>

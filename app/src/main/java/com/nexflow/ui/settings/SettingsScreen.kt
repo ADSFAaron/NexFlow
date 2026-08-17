@@ -98,6 +98,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
@@ -274,7 +275,7 @@ fun SettingsScreen(
                     headlineContent = { Text(stringResource(option.displayNameRes)) },
                     supportingContent = {
                         Text(
-                            text = stringResource(R.string.log_retention_detail, option.days, option.maxCount),
+                            text = logRetentionDetail(option.days, option.maxCount),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     },
@@ -808,7 +809,7 @@ fun SettingsScreen(
                     supportingContent = {
                         Text(
                             stringResource(logRetention.displayNameRes) + " — " +
-                                stringResource(R.string.log_retention_detail, logRetention.days, logRetention.maxCount),
+                                logRetentionDetail(logRetention.days, logRetention.maxCount),
                         )
                     },
                     leadingContent = {
@@ -835,6 +836,17 @@ fun SettingsScreen(
         }
     }
 }
+
+/**
+ * "30 days · 500 entries" — two counts, so two plurals joined by a format string rather than one
+ * plurals resource, which can only agree with a single quantity.
+ */
+@Composable
+private fun logRetentionDetail(days: Int, entries: Int): String = stringResource(
+    R.string.log_retention_detail,
+    pluralStringResource(R.plurals.log_retention_days, days, days),
+    pluralStringResource(R.plurals.log_retention_entries, entries, entries),
+)
 
 @Composable
 private fun SectionHeader(title: String) {

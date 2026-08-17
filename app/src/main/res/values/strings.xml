@@ -80,7 +80,10 @@
     <string name="fd_disabled">Disabled</string>
     <string name="fd_logic_any">ANY</string>
     <string name="fd_logic_all">ALL</string>
-    <string name="fd_logic_all_hint">ALL: every trigger must fire within %1$d minutes of each other.</string>
+    <plurals name="fd_logic_all_hint">
+        <item quantity="one">ALL: every trigger must fire within %1$d minute of each other.</item>
+        <item quantity="other">ALL: every trigger must fire within %1$d minutes of each other.</item>
+    </plurals>
     <string name="fd_clear_search">Clear search</string>
     <string name="fd_nothing_matches">Nothing matches “%1$s”</string>
     <string name="fd_no_config_needed">No configuration needed for this type.</string>
@@ -147,7 +150,10 @@
     <string name="ai_diff_field_change">%1$s: %2$s → %3$s</string>
     <string name="ai_flow_updated">Flow updated</string>
     <string name="ai_view_flow">View</string>
-    <string name="ai_tokens_used">%1$d tokens used</string>
+    <plurals name="ai_tokens_used">
+        <item quantity="one">%1$d token used</item>
+        <item quantity="other">%1$d tokens used</item>
+    </plurals>
     <string name="ai_suggestions_dismiss">Hide suggestions</string>
     <string name="ai_retry">Retry</string>
     <string name="ai_key_get">Get a free API key</string>
@@ -362,7 +368,15 @@
     <string name="log_retention_standard">Standard</string>
     <string name="log_retention_full">Full</string>
     <string name="log_retention_extended">Extended</string>
-    <string name="log_retention_detail">%1$d days · %2$d entries</string>
+    <string name="log_retention_detail">%1$s · %2$s</string>
+    <plurals name="log_retention_days">
+        <item quantity="one">%1$d day</item>
+        <item quantity="other">%1$d days</item>
+    </plurals>
+    <plurals name="log_retention_entries">
+        <item quantity="one">%1$d entry</item>
+        <item quantity="other">%1$d entries</item>
+    </plurals>
 
     <!-- Logs -->
     <string name="logs_title">Execution Logs</string>
@@ -418,7 +432,10 @@
     <string name="sp_configurable_hint">Opens the app\u2019s own setup screen</string>
     <string name="sp_empty">This app offers no accessible shortcuts</string>
     <string name="sp_empty_hint">Dynamic shortcuts cannot be read due to system restrictions</string>
-    <string name="sp_hidden_count">%1$d shortcuts hidden — their targets can only be launched from the home screen</string>
+    <plurals name="sp_hidden_count">
+        <item quantity="one">%1$d shortcut hidden — its target can only be launched from the home screen</item>
+        <item quantity="other">%1$d shortcuts hidden — their targets can only be launched from the home screen</item>
+    </plurals>
     <string name="sp_unsupported_result">This shortcut format is not supported</string>
     <string name="act_open_url_label">Open URL</string>
     <string name="act_open_url_desc">Open a link in the browser</string>
@@ -778,7 +795,10 @@
     <string name="flows_perm_setup_start">Set up</string>
     <string name="flows_perm_setup_title">Grant permissions</string>
     <string name="flows_perm_setup_current">Next: enable \"%1$s\"</string>
-    <string name="flows_perm_setup_remaining">%1$d more after this</string>
+    <plurals name="flows_perm_setup_remaining">
+        <item quantity="one">%1$d more after this</item>
+        <item quantity="other">%1$d more after this</item>
+    </plurals>
     <string name="flows_perm_setup_skip">Skip this</string>
     <string name="flows_perm_setup_done">\"%1$s\" is ready to run</string>
     <string name="flows_perm_setup_incomplete">\"%1$s\" still needs some permissions and was left off</string>
