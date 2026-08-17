@@ -56,7 +56,10 @@ class MenuActionExecutor @Inject constructor(
             variables["__menu_choice_index__"] = options.indexOf(choice).toString()
             ActionResult.Success
         } else {
-            ActionResult.Failure("Menu dismissed by user")
+            // Dismissing a menu is the user declining, not an error. Reporting it as a failure
+            // put a red FAIL and an English error string in the log for the ordinary act of
+            // changing your mind; the interpreter stops the run either way.
+            ActionResult.Skipped
         }
     }
 }

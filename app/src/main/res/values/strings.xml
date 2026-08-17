@@ -845,4 +845,5 @@
     </plurals>
     <string name="settings_detailed_log">Detailed execution log</string>
     <string name="settings_detailed_log_desc">Also record what each action’s settings came out as — the address actually called, the text actually sent. Stored on this device, and it will include whatever your flows handle.</string>
+    <string name="run_step_menu_cancelled">Closed without choosing</string>
 </resources>

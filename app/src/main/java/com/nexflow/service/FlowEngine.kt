@@ -280,10 +280,12 @@ class FlowEngine @Inject constructor(
                 InterpreterResult.Failure("Unexpected error in flow '${flow.name}': ${e.message}", e)
             }
             val durationMs = System.currentTimeMillis() - startMs
-            val status = if (result is InterpreterResult.Success) {
-                ExecutionStatus.SUCCESS
-            } else {
-                ExecutionStatus.FAIL
+            val status = when (result) {
+                is InterpreterResult.Success -> ExecutionStatus.SUCCESS
+                // The user closed a menu without picking. Nothing failed, and the steps up to
+                // the menu did run, so it is neither SUCCESS nor FAIL.
+                is InterpreterResult.Cancelled -> ExecutionStatus.SKIPPED
+                is InterpreterResult.Failure -> ExecutionStatus.FAIL
             }
 
             val logId = UUID.randomUUID().toString()

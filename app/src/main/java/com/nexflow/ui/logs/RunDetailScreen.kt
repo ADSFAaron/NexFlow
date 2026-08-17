@@ -421,6 +421,8 @@ private fun noteText(context: Context, step: ExecutionStep, repeatRounds: Int): 
         note == FlowInterpreter.NOTE_DISABLED -> context.getString(R.string.run_step_disabled)
         note == FlowInterpreter.NOTE_IF_TRUE -> context.getString(R.string.run_step_if_true)
         note == FlowInterpreter.NOTE_IF_FALSE -> context.getString(R.string.run_step_if_false)
+        note == FlowInterpreter.NOTE_MENU_CANCELLED ->
+            context.getString(R.string.run_step_menu_cancelled)
         note.startsWith(FlowInterpreter.NOTE_REPEAT) ->
             context.resources.getQuantityString(R.plurals.run_step_repeat, repeatRounds, repeatRounds)
         note.startsWith(FlowInterpreter.NOTE_MENU) ->

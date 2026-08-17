@@ -215,10 +215,10 @@ class FlowInterpreter(
                     if (conditionMet) {
                         val blockEnd = if (elseIndex != -1) elseIndex else endIfIndex
                         val result = executeBlock(actions, variables, i + 1, blockEnd, knownGlobals, onActionStart, onGlobalVariableSet, sink, depth + 1, iteration)
-                        if (result is InterpreterResult.Failure) return result
+                        if (result !is InterpreterResult.Success) return result
                     } else if (elseIndex != -1) {
                         val result = executeBlock(actions, variables, elseIndex + 1, endIfIndex, knownGlobals, onActionStart, onGlobalVariableSet, sink, depth + 1, iteration)
-                        if (result is InterpreterResult.Failure) return result
+                        if (result !is InterpreterResult.Success) return result
                     }
                     i = endIfIndex + 1
                 }
@@ -247,7 +247,7 @@ class FlowInterpreter(
                         // The round number rides down with the block: it is what lets the log
                         // group a loop's steps by pass instead of listing count × body rows flat.
                         val result = executeBlock(actions, variables, i + 1, endRepeatIndex, knownGlobals, onActionStart, onGlobalVariableSet, sink, depth + 1, round)
-                        if (result is InterpreterResult.Failure) return result
+                        if (result !is InterpreterResult.Success) return result
                     }
                     i = endRepeatIndex + 1
                 }
@@ -325,6 +325,23 @@ class FlowInterpreter(
                     if (result is ActionResult.Failure) {
                         return reportFailure(sink, action, depth, iteration, startedAt, result.message, result.cause)
                     }
+                    if (result is ActionResult.Skipped) {
+                        // Dismissed without choosing. Recorded so the log still shows the menu
+                        // appeared and how long it waited — "nothing happened" and "the user
+                        // changed their mind" are the two readings this has to separate.
+                        sink?.emit(
+                            StepReport(
+                                actionId = action.id,
+                                actionType = action.type,
+                                depth = depth,
+                                iteration = iteration,
+                                status = ExecutionStatus.SKIPPED,
+                                note = NOTE_MENU_CANCELLED,
+                                durationMs = startedAt.elapsedNow().inWholeMilliseconds,
+                            ),
+                        )
+                        return InterpreterResult.Cancelled
+                    }
                     val choice = variables["__menu_choice__"] ?: ""
                     val endMenuIndex = findMatchingEndMenu(actions, i)
                     val caseIndex = findMenuCase(actions, i, endMenuIndex, choice)
@@ -344,7 +361,7 @@ class FlowInterpreter(
                     if (caseIndex != -1) {
                         val nextBoundary = findNextMenuCaseOrEnd(actions, caseIndex + 1, endMenuIndex)
                         val blockResult = executeBlock(actions, variables, caseIndex + 1, nextBoundary, knownGlobals, onActionStart, onGlobalVariableSet, sink, depth + 1, iteration)
-                        if (blockResult is InterpreterResult.Failure) return blockResult
+                        if (blockResult !is InterpreterResult.Success) return blockResult
                     }
                     i = endMenuIndex + 1
                 }
@@ -504,10 +521,18 @@ class FlowInterpreter(
         const val NOTE_IF_FALSE = "if_false"
         const val NOTE_REPEAT = "repeat:"
         const val NOTE_MENU = "menu:"
+        const val NOTE_MENU_CANCELLED = "menu_cancelled"
     }
 }
 
 sealed class InterpreterResult {
     data object Success : InterpreterResult()
     data class Failure(val message: String, val cause: Throwable? = null) : InterpreterResult()
+
+    /**
+     * The user closed a menu without choosing. The run stops here — the menu is a branch point,
+     * and with no branch taken there is nothing sensible to carry on with — but it is not a
+     * failure: nothing went wrong, the user said "never mind".
+     */
+    data object Cancelled : InterpreterResult()
 }

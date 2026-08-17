@@ -825,4 +825,5 @@
     </plurals>
     <string name="settings_detailed_log">詳細執行紀錄</string>
     <string name="settings_detailed_log_desc">連每個動作的設定代入變數後的結果一起記下來——實際呼叫的網址、實際送出的文字。只存在這台裝置上，內容會包含你的流程處理到的任何資料。</string>
+    <string name="run_step_menu_cancelled">沒有選擇就關閉</string>
 </resources>
