@@ -171,6 +171,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import com.nexflow.R
+import com.nexflow.executor.HttpActionExecutor
 import com.nexflow.shortcut.PinShortcutHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -365,6 +366,16 @@ private fun FlowDetailContent(
             f.variables.map { it.name } +
                 f.actions.filter { it.type == ActionType.SET_VARIABLE }
                     .mapNotNull { it.config["variable_name"]?.takeIf { n -> n.isNotBlank() } } +
+                // What an HTTP request stores: the variable the user named for the response, plus
+                // the status code every request publishes. Branching on an API reply is the point
+                // of the action, and without these the Save gate would reject the {{ref}} for it.
+                f.actions.filter { it.type == ActionType.HTTP_REQUEST }
+                    .flatMap { action ->
+                        listOfNotNull(
+                            action.config["response_var"]?.trim()?.takeIf { n -> n.isNotBlank() },
+                            HttpActionExecutor.STATUS_VARIABLE,
+                        )
+                    } +
                 // Global (cross-flow) variables, referenced as {{g:name}}.
                 globalVariableRefs +
                 // What this flow's triggers report about the event, as {{trigger.name}} —

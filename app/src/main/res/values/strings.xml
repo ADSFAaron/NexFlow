@@ -575,6 +575,11 @@
     <string name="cfg_url">URL</string>
     <string name="cfg_method">Method</string>
     <string name="cfg_body_optional">Body (optional)</string>
+    <string name="cfg_http_headers">Headers (optional)</string>
+    <string name="cfg_http_response_var">Store response in variable (optional)</string>
+    <string name="cfg_http_json_path">JSON field (optional)</string>
+    <string name="cfg_http_response_info_label">Using the response</string>
+    <string name="cfg_http_response_info_body">Name a variable and the response is stored there, ready to use as {{name}} in later actions. Leave the JSON field empty to store the whole response, or give a dot path such as main.temp or items.0.name to store just that field. The status code is always available as {{__http_status__}} — an error status does not stop the flow, so test it with an If action.</string>
     <string name="cfg_value">Value</string>
     <string name="cfg_variable_name">Variable name</string>
     <string name="cfg_content">Content</string>

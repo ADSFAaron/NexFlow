@@ -568,6 +568,11 @@
     <string name="cfg_url">網址</string>
     <string name="cfg_method">方法</string>
     <string name="cfg_body_optional">內文（選填）</string>
+    <string name="cfg_http_headers">標頭（選填）</string>
+    <string name="cfg_http_response_var">將回應存入變數（選填）</string>
+    <string name="cfg_http_json_path">JSON 欄位（選填）</string>
+    <string name="cfg_http_response_info_label">使用回應內容</string>
+    <string name="cfg_http_response_info_body">填入變數名稱，回應就會存進該變數，後續動作可用 {{名稱}} 取用。JSON 欄位留空會存入整份回應；填入像 main.temp 或 items.0.name 這樣的路徑，則只存那一個欄位。狀態碼一律可用 {{__http_status__}} 取得——錯誤狀態不會中止流程，請用「如果」動作自行判斷。</string>
     <string name="cfg_value">值</string>
     <string name="cfg_variable_name">變數名稱</string>
     <string name="cfg_content">內容</string>

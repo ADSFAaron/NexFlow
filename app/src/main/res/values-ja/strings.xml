@@ -568,6 +568,11 @@
     <string name="cfg_url">URL</string>
     <string name="cfg_method">メソッド</string>
     <string name="cfg_body_optional">本文（任意）</string>
+    <string name="cfg_http_headers">ヘッダー（任意）</string>
+    <string name="cfg_http_response_var">レスポンスを変数に保存（任意）</string>
+    <string name="cfg_http_json_path">JSON フィールド（任意）</string>
+    <string name="cfg_http_response_info_label">レスポンスの使い方</string>
+    <string name="cfg_http_response_info_body">変数名を入力すると、レスポンスがその変数に保存され、後続のアクションで {{名前}} として使えます。JSON フィールドを空にするとレスポンス全体を、main.temp や items.0.name のようなパスを入れるとそのフィールドだけを保存します。ステータスコードは常に {{__http_status__}} で取得できます——エラーステータスでもフローは止まらないので、「条件」アクションで判定してください。</string>
     <string name="cfg_value">値</string>
     <string name="cfg_variable_name">変数名</string>
     <string name="cfg_content">内容</string>

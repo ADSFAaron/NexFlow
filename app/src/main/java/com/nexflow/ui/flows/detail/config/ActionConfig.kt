@@ -241,7 +241,22 @@ fun ActionType.info(context: Context): ActionInfo = when (this) {
         listOf(
             ConfigField.TextInput("url", context.getString(R.string.cfg_url), hint = "https://api.example.com/endpoint"),
             ConfigField.Dropdown("method", context.getString(R.string.cfg_method), httpMethods),
+            ConfigField.TextInput(
+                "headers",
+                context.getString(R.string.cfg_http_headers),
+                hint = "Authorization: Bearer abc123",
+                multiline = true,
+            ),
             ConfigField.TextInput("body", context.getString(R.string.cfg_body_optional), multiline = true),
+            // Plain text, not VariableNameInput: that field validates `g:` names as globals, and a
+            // global is exactly what HttpActionExecutor cannot write.
+            ConfigField.TextInput("response_var", context.getString(R.string.cfg_http_response_var), hint = "weather"),
+            ConfigField.TextInput("json_path", context.getString(R.string.cfg_http_json_path), hint = "main.temp"),
+            ConfigField.InfoText(
+                "_response",
+                context.getString(R.string.cfg_http_response_info_label),
+                context.getString(R.string.cfg_http_response_info_body),
+            ),
         ),
     )
     ActionType.BRIGHTNESS_ADJUST -> ActionInfo(
