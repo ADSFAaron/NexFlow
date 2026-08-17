@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Card face in the widget-picker preview. Fixed colors, not theme attributes: the launcher
+     inflates this layout in its own process, where the app's theme does not apply. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#2B2930" />
+    <corners android:radius="18dp" />
+</shape>

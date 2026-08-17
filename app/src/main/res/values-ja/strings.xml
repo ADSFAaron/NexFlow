@@ -826,4 +826,8 @@
     <string name="settings_detailed_log">詳細な実行ログ</string>
     <string name="settings_detailed_log_desc">各アクションの設定が変数を展開した後どうなったか——実際に呼び出したアドレス、実際に送った文——も記録します。この端末内にのみ保存され、フローが扱うあらゆる内容が含まれます。</string>
     <string name="run_step_menu_cancelled">選ばずに閉じました</string>
+    <string name="widget_preview_flow_a">おはようルーティン</string>
+    <string name="widget_preview_flow_b">通勤モード</string>
+    <string name="widget_preview_flow_c">集中モード</string>
+    <string name="widget_preview_flow_d">おやすみモード</string>
 </resources>

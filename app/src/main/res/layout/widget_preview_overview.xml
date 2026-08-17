@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Preview layout for widget picker (API 31+). Uses View system, not Glance.
-     Sets previewLayout so launcher renders real content instead of a monochrome app icon. -->
+<!-- Preview layout for the widget picker (API 31+). Uses the View system, not Glance, and is
+     inflated by the launcher in its own process — so every color is literal and every string
+     comes from resources, or a non-Chinese user sees Chinese sample text in the picker. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -20,7 +21,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="NexFlow"
+            android:text="@string/app_name"
             android:textColor="#E6E1E5"
             android:textSize="13sp"
             android:textStyle="bold" />
@@ -28,83 +29,170 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="5/5"
+            android:text="@string/widget_preview_count"
             android:textColor="#78DBD9"
             android:textSize="11sp" />
     </LinearLayout>
 
-    <!-- Flow row 1 -->
+    <!-- Card row 1 -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:layout_marginBottom="6dp">
-        <TextView
+        android:layout_marginBottom="8dp">
+
+        <LinearLayout
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
-            android:text="早安日常自動化"
-            android:textColor="#CAC4D0"
-            android:textSize="12sp"
-            android:singleLine="true"
-            android:ellipsize="end" />
-        <ImageView
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            android:background="@drawable/bg_widget_play_btn"
-            android:src="@android:drawable/ic_media_play"
-            android:padding="7dp"
-            android:tint="#1C1B1F" />
+            android:orientation="vertical"
+            android:background="@drawable/bg_widget_preview_card"
+            android:padding="10dp">
+            <ImageView
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:background="@drawable/bg_widget_badge_blue"
+                android:src="@drawable/ic_play"
+                android:padding="7dp"
+                android:contentDescription="@null" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/widget_preview_flow_a"
+                android:textColor="#E6E1E5"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:maxLines="2"
+                android:ellipsize="end" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/trg_time_label"
+                android:textColor="#CAC4D0"
+                android:textSize="10sp"
+                android:singleLine="true"
+                android:ellipsize="end" />
+        </LinearLayout>
+
+        <Space
+            android:layout_width="8dp"
+            android:layout_height="match_parent" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:background="@drawable/bg_widget_preview_card"
+            android:padding="10dp">
+            <ImageView
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:background="@drawable/bg_widget_badge_red"
+                android:src="@drawable/ic_play"
+                android:padding="7dp"
+                android:contentDescription="@null" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/widget_preview_flow_b"
+                android:textColor="#E6E1E5"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:maxLines="2"
+                android:ellipsize="end" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/trg_manual_label"
+                android:textColor="#CAC4D0"
+                android:textSize="10sp"
+                android:singleLine="true"
+                android:ellipsize="end" />
+        </LinearLayout>
     </LinearLayout>
 
-    <!-- Flow row 2 -->
+    <!-- Card row 2 -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:layout_marginBottom="6dp">
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="螢幕喚醒記錄"
-            android:textColor="#CAC4D0"
-            android:textSize="12sp"
-            android:singleLine="true"
-            android:ellipsize="end" />
-        <ImageView
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            android:background="@drawable/bg_widget_play_btn"
-            android:src="@android:drawable/ic_media_play"
-            android:padding="7dp"
-            android:tint="#1C1B1F" />
-    </LinearLayout>
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="horizontal">
 
-    <!-- Flow row 3 -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
-        <TextView
+        <LinearLayout
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
-            android:text="變數與控制流測試"
-            android:textColor="#CAC4D0"
-            android:textSize="12sp"
-            android:singleLine="true"
-            android:ellipsize="end" />
-        <ImageView
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            android:background="@drawable/bg_widget_play_btn"
-            android:src="@android:drawable/ic_media_play"
-            android:padding="7dp"
-            android:tint="#1C1B1F" />
+            android:orientation="vertical"
+            android:background="@drawable/bg_widget_preview_card"
+            android:padding="10dp">
+            <ImageView
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:background="@drawable/bg_widget_badge_green"
+                android:src="@drawable/ic_play"
+                android:padding="7dp"
+                android:contentDescription="@null" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/widget_preview_flow_c"
+                android:textColor="#E6E1E5"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:maxLines="2"
+                android:ellipsize="end" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/trg_battery_label"
+                android:textColor="#CAC4D0"
+                android:textSize="10sp"
+                android:singleLine="true"
+                android:ellipsize="end" />
+        </LinearLayout>
+
+        <Space
+            android:layout_width="8dp"
+            android:layout_height="match_parent" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:background="@drawable/bg_widget_preview_card"
+            android:padding="10dp">
+            <ImageView
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:background="@drawable/bg_widget_badge_amber"
+                android:src="@drawable/ic_play"
+                android:padding="7dp"
+                android:contentDescription="@null" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/widget_preview_flow_d"
+                android:textColor="#E6E1E5"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:maxLines="2"
+                android:ellipsize="end" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/trg_manual_label"
+                android:textColor="#CAC4D0"
+                android:textSize="10sp"
+                android:singleLine="true"
+                android:ellipsize="end" />
+        </LinearLayout>
     </LinearLayout>
 
 </LinearLayout>

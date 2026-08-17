@@ -846,4 +846,9 @@
     <string name="settings_detailed_log">Detailed execution log</string>
     <string name="settings_detailed_log_desc">Also record what each action’s settings came out as — the address actually called, the text actually sent. Stored on this device, and it will include whatever your flows handle.</string>
     <string name="run_step_menu_cancelled">Closed without choosing</string>
+    <string name="widget_preview_count" translatable="false">4/6</string>
+    <string name="widget_preview_flow_a">Morning routine</string>
+    <string name="widget_preview_flow_b">Commute mode</string>
+    <string name="widget_preview_flow_c">Focus time</string>
+    <string name="widget_preview_flow_d">Bedtime</string>
 </resources>
