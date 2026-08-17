@@ -33,6 +33,9 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.add
@@ -139,6 +142,50 @@ class AiChatOrchestratorTest {
         val toolReply = history.last().parts.mapNotNull { it.functionResponse }
         assertEquals(AiTools.SEARCH_INSTALLED_APPS, toolReply.single().name)
         assertTrue("com.spotify.music" in toolReply.single().response.toString())
+    }
+
+    /**
+     * A label alone only identifies apps the model already knows; what the device can say about an
+     * app's purpose has to reach it. Fields the device does not have must be left out rather than
+     * sent empty, so they cost nothing on the overwhelming majority of apps that declare none.
+     */
+    @Test
+    fun `search_installed_apps forwards the category, roles and description it has`() = runTest {
+        coEvery { installedApps.search("music") } returns listOf(
+            InstalledAppsSource.AppEntry(
+                label = "Fictional Player",
+                packageName = "com.example.player",
+                category = "AUDIO",
+                roles = listOf("MUSIC"),
+                description = "Plays your offline library.",
+            ),
+            InstalledAppsSource.AppEntry(label = "Bare App", packageName = "com.example.bare"),
+        )
+
+        val secondRequest = slot<GenerateContentRequest>()
+        every { client.streamGenerateContent(any(), any(), capture(secondRequest)) } returns
+            chunks(
+                functionCallResponse(
+                    AiTools.SEARCH_INSTALLED_APPS,
+                    buildJsonObject { put("query", "music") },
+                ),
+            ) andThen chunks(textResponse("Done."))
+
+        orchestrator().sendUserMessage("open a music app")
+
+        val apps = secondRequest.captured.contents.last().parts
+            .mapNotNull { it.functionResponse }.single()
+            .response["apps"]!!.jsonArray
+        val enriched = apps[0].jsonObject
+        assertEquals("AUDIO", enriched["category"]?.jsonPrimitive?.content)
+        assertEquals(listOf("MUSIC"), enriched["roles"]!!.jsonArray.map { it.jsonPrimitive.content })
+        assertEquals("Plays your offline library.", enriched["description"]?.jsonPrimitive?.content)
+
+        val bare = apps[1].jsonObject
+        assertEquals("com.example.bare", bare["package_name"]?.jsonPrimitive?.content)
+        assertFalse("category" in bare)
+        assertFalse("roles" in bare)
+        assertFalse("description" in bare)
     }
 
     @Test

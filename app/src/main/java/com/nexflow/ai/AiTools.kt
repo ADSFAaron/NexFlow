@@ -40,14 +40,29 @@ object AiTools {
                 ),
                 GeminiFunctionDeclaration(
                     name = SEARCH_INSTALLED_APPS,
-                    description = "Search the apps installed on this device by name. Returns matching " +
-                        "{label, package_name} entries. Required before setting any package_name config value.",
+                    description = "Search the apps installed on this device by name, or by the kind " +
+                        "of app when the user did not name one. Returns entries of {label, " +
+                        "package_name} plus, when the device knows them, \"category\" (one of GAME, " +
+                        "AUDIO, VIDEO, IMAGE, SOCIAL, NEWS, MAPS, PRODUCTIVITY, ACCESSIBILITY), " +
+                        "\"roles\" the app declares about itself (BROWSER, CALCULATOR, CALENDAR, " +
+                        "CONTACTS, EMAIL, FILES, GALLERY, MAPS, MARKET, MESSAGING, MUSIC, WEATHER, " +
+                        "FITNESS) and the app's own \"description\". Use those to tell apps apart " +
+                        "and to identify an app whose name means nothing to you. They are absent for " +
+                        "most apps — absence says nothing about what the app does, so never rule an " +
+                        "app out because it has no category or role. " +
+                        "Required before setting any package_name config value.",
                     parameters = buildJsonObject {
                         put("type", "object")
                         putJsonObject("properties") {
                             putJsonObject("query") {
                                 put("type", "string")
-                                put("description", "App name or partial name, e.g. \"spotify\"")
+                                put(
+                                    "description",
+                                    "App name or partial name, e.g. \"spotify\"; or a category or " +
+                                        "role name to list apps of that kind, e.g. \"MUSIC\" for " +
+                                        "\"open a music app\". Matches labels, package names, " +
+                                        "categories and roles.",
+                                )
                             }
                         }
                         putJsonArray("required") { add("query") }

@@ -383,6 +383,13 @@ class AiChatOrchestrator @Inject constructor(
                             buildJsonObject {
                                 put("label", app.label)
                                 put("package_name", app.packageName)
+                                // Omitted rather than sent as null/empty: most apps supply none of
+                                // these, and blank keys would be prompt noise on every entry.
+                                app.category?.let { put("category", it) }
+                                if (app.roles.isNotEmpty()) {
+                                    putJsonArray("roles") { app.roles.forEach { add(it) } }
+                                }
+                                app.description?.let { put("description", it) }
                             },
                         )
                     }
