@@ -22,6 +22,8 @@ import com.nexflow.core.automation.model.Flow as AutomationFlow
 import com.nexflow.core.automation.model.Trigger
 import com.nexflow.core.automation.model.TriggerLogic
 import com.nexflow.core.automation.model.TriggerType
+import com.nexflow.core.automation.model.Variable
+import com.nexflow.core.automation.model.VariableType
 import com.nexflow.core.flowschema.ActionJson
 import com.nexflow.core.flowschema.ConditionJson
 import com.nexflow.core.flowschema.FlowJson
@@ -85,7 +87,17 @@ fun FlowJson.toDomain(forceDisabled: Boolean = true): AutomationFlow {
                 enabled = aj.enabled,
             )
         },
-        variables = emptyList(),
+        variables = variables.map { vj ->
+            Variable(
+                name = vj.name,
+                type = runCatching { VariableType.valueOf(vj.type) }.getOrDefault(VariableType.STRING),
+                // default_value is typed in the file (5, "5", true), but a flow variable holds
+                // text, so unwrap a primitive to its content rather than its JSON spelling —
+                // otherwise a string default arrives still wrapped in its quotes.
+                defaultValue = (vj.defaultValue as? JsonPrimitive)?.contentOrNull
+                    ?: vj.defaultValue.toString(),
+            )
+        },
     )
 }
 
