@@ -794,4 +794,21 @@
         <item>イヤホンを挿したら Spotify を開く</item>
         <item>職場ではマナーモードにする</item>
     </string-array>
+
+    <!-- 1 回の実行を手順ごとに記録したもの。履歴一覧から開く -->
+    <string name="run_detail_title">実行の詳細</string>
+    <string name="run_detail_gone">この実行はすでに保存されていません。</string>
+    <string name="run_no_steps">この実行は手順の記録が導入される前のもので、結果だけが残っています。</string>
+    <string name="run_step_disabled">オフのためスキップ</string>
+    <string name="run_step_if_true">条件を満たしました</string>
+    <string name="run_step_if_false">条件を満たしませんでした</string>
+    <plurals name="run_step_repeat">
+        <item quantity="other">%1$d 回繰り返し</item>
+    </plurals>
+    <string name="run_step_menu">「%1$s」を選択</string>
+    <plurals name="run_steps_truncated">
+        <item quantity="other">ほかに %1$d 件の手順が実行されましたが、記録されていません。</item>
+    </plurals>
+    <string name="settings_detailed_log">詳細な実行ログ</string>
+    <string name="settings_detailed_log_desc">各アクションの設定が変数を展開した後どうなったか——実際に呼び出したアドレス、実際に送った文——も記録します。この端末内にのみ保存され、フローが扱うあらゆる内容が含まれます。</string>
 </resources>

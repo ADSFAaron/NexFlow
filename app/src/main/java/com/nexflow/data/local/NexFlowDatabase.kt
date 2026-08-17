@@ -20,11 +20,13 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import com.nexflow.data.local.dao.AiConversationDao
 import com.nexflow.data.local.dao.ExecutionLogDao
+import com.nexflow.data.local.dao.ExecutionStepDao
 import com.nexflow.data.local.dao.FlowDao
 import com.nexflow.data.local.dao.GlobalVariableDao
 import com.nexflow.data.local.dao.VariableDao
 import com.nexflow.data.local.entity.AiConversationEntity
 import com.nexflow.data.local.entity.ExecutionLogEntity
+import com.nexflow.data.local.entity.ExecutionStepEntity
 import com.nexflow.data.local.entity.FlowEntity
 import com.nexflow.data.local.entity.GlobalVariableEntity
 import com.nexflow.data.local.entity.VariableEntity
@@ -33,11 +35,12 @@ import com.nexflow.data.local.entity.VariableEntity
     entities = [
         FlowEntity::class,
         ExecutionLogEntity::class,
+        ExecutionStepEntity::class,
         VariableEntity::class,
         GlobalVariableEntity::class,
         AiConversationEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
@@ -45,11 +48,14 @@ import com.nexflow.data.local.entity.VariableEntity
         AutoMigration(from = 2, to = 3),
         // v4 adds ai_conversations, likewise a pure table addition.
         AutoMigration(from = 3, to = 4),
+        // v5 adds execution_steps — a new table, foreign key included, so still auto-migratable.
+        AutoMigration(from = 4, to = 5),
     ],
 )
 abstract class NexFlowDatabase : RoomDatabase() {
     abstract fun flowDao(): FlowDao
     abstract fun executionLogDao(): ExecutionLogDao
+    abstract fun executionStepDao(): ExecutionStepDao
     abstract fun variableDao(): VariableDao
     abstract fun globalVariableDao(): GlobalVariableDao
     abstract fun aiConversationDao(): AiConversationDao

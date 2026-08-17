@@ -58,6 +58,7 @@ import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Public
+import androidx.compose.material.icons.outlined.Troubleshoot
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.AlertDialog
@@ -108,6 +109,7 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.nexflow.prefs.AiPrefs
 import com.nexflow.prefs.AutoStartPrefs
+import com.nexflow.prefs.DetailedLogPrefs
 import com.nexflow.prefs.ExecutionFeedbackPrefs
 import com.nexflow.ui.common.PermissionStatusIcon
 import com.nexflow.ui.flowimport.ImportReviewDialog
@@ -126,6 +128,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     var autoStart by remember { mutableStateOf(AutoStartPrefs.get(context)) }
     var executionToast by remember { mutableStateOf(ExecutionFeedbackPrefs.isToastEnabled(context)) }
+    var detailedLog by remember { mutableStateOf(DetailedLogPrefs.isEnabled(context)) }
     var logRetention by remember { mutableStateOf(LogRetentionPrefs.get(context)) }
     var showLogRetentionDialog by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
@@ -774,6 +777,26 @@ fun SettingsScreen(
                         onValueChange = { value ->
                             executionToast = value
                             ExecutionFeedbackPrefs.setToastEnabled(context, value)
+                        },
+                    ),
+                )
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.settings_detailed_log)) },
+                    supportingContent = { Text(stringResource(R.string.settings_detailed_log_desc)) },
+                    leadingContent = {
+                        Icon(Icons.Outlined.Troubleshoot, contentDescription = null)
+                    },
+                    trailingContent = {
+                        Switch(checked = detailedLog, onCheckedChange = null)
+                    },
+                    modifier = Modifier.toggleable(
+                        value = detailedLog,
+                        role = Role.Switch,
+                        onValueChange = { value ->
+                            detailedLog = value
+                            DetailedLogPrefs.setEnabled(context, value)
                         },
                     ),
                 )

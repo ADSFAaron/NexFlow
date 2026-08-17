@@ -20,6 +20,7 @@ import com.nexflow.core.automation.model.ActionType
 import com.nexflow.core.automation.model.Condition
 import com.nexflow.core.automation.model.ExecutionLog
 import com.nexflow.core.automation.model.ExecutionStatus
+import com.nexflow.core.automation.model.ExecutionStep
 import com.nexflow.core.automation.model.Flow as AutomationFlow
 import com.nexflow.core.automation.model.Trigger
 import com.nexflow.core.automation.model.TriggerLogic
@@ -32,8 +33,10 @@ import com.nexflow.core.flowschema.ConditionJson
 import com.nexflow.core.flowschema.TriggerJson
 import com.nexflow.core.flowschema.VariableJson
 import com.nexflow.data.local.dao.ExecutionLogDao
+import com.nexflow.data.local.dao.ExecutionStepDao
 import com.nexflow.data.local.dao.FlowDao
 import com.nexflow.data.local.entity.ExecutionLogEntity
+import com.nexflow.data.local.entity.ExecutionStepEntity
 import com.nexflow.data.local.entity.FlowEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -48,6 +51,7 @@ import javax.inject.Inject
 class FlowRepositoryImpl @Inject constructor(
     private val flowDao: FlowDao,
     private val logDao: ExecutionLogDao,
+    private val stepDao: ExecutionStepDao,
 ) : FlowRepository {
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
@@ -73,8 +77,10 @@ class FlowRepositoryImpl @Inject constructor(
         flowDao.setEnabled(id, enabled, System.currentTimeMillis())
     }
 
-    override suspend fun saveExecutionLog(log: ExecutionLog) {
+    override suspend fun saveExecutionLog(log: ExecutionLog, steps: List<ExecutionStep>) {
+        // Parent first: the steps carry a foreign key to it, so the reverse order fails the insert.
         logDao.insert(log.toEntity())
+        if (steps.isNotEmpty()) stepDao.insertAll(steps.map { it.toEntity() })
     }
 
     override fun observeLogsForFlow(flowId: String): Flow<List<ExecutionLog>> =
@@ -82,6 +88,12 @@ class FlowRepositoryImpl @Inject constructor(
 
     override fun observeRecentLogs(limit: Int): Flow<List<ExecutionLog>> =
         logDao.observeRecent(limit).map { list -> list.map { it.toDomain() } }
+
+    override fun observeLog(logId: String): Flow<ExecutionLog?> =
+        logDao.observeById(logId).map { it?.toDomain() }
+
+    override fun observeStepsForLog(logId: String): Flow<List<ExecutionStep>> =
+        stepDao.observeForLog(logId).map { list -> list.map { it.toDomain() } }
 
     override suspend fun deleteOldLogs(keepCount: Int, olderThanMs: Long) {
         logDao.trimToCount(keepCount)
@@ -163,7 +175,37 @@ class FlowRepositoryImpl @Inject constructor(
         executionDurationMs = executionDurationMs,
     )
 
+    private fun ExecutionStepEntity.toDomain() = ExecutionStep(
+        logId = logId,
+        seq = seq,
+        actionId = actionId,
+        // A row whose type this build no longer knows is history, not a crash: fall back to a
+        // harmless type so the rest of the run's log still renders.
+        actionType = runCatching { ActionType.valueOf(actionType) }.getOrDefault(ActionType.TOAST),
+        depth = depth,
+        iteration = iteration,
+        status = runCatching { ExecutionStatus.valueOf(status) }.getOrDefault(ExecutionStatus.FAIL),
+        errorMessage = errorMessage,
+        note = note,
+        resolvedConfig = resolvedConfig,
+        durationMs = durationMs,
+    )
+
     // --- Domain → Entity ---
+
+    private fun ExecutionStep.toEntity() = ExecutionStepEntity(
+        logId = logId,
+        seq = seq,
+        actionId = actionId,
+        actionType = actionType.name,
+        depth = depth,
+        iteration = iteration,
+        status = status.name,
+        errorMessage = errorMessage,
+        note = note,
+        resolvedConfig = resolvedConfig,
+        durationMs = durationMs,
+    )
 
     private fun AutomationFlow.toEntity() = FlowEntity(
         id = id,

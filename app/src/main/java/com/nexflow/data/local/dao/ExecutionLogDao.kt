@@ -31,6 +31,10 @@ interface ExecutionLogDao {
     @Query("SELECT * FROM execution_logs WHERE flow_id = :flowId ORDER BY triggered_at DESC")
     fun observeByFlowId(flowId: String): Flow<List<ExecutionLogEntity>>
 
+    /** Emits null once the pruner (or "clear all") removes the run being viewed. */
+    @Query("SELECT * FROM execution_logs WHERE id = :logId")
+    fun observeById(logId: String): Flow<ExecutionLogEntity?>
+
     @Query("SELECT COUNT(*) FROM execution_logs")
     suspend fun totalCount(): Int
 

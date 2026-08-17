@@ -16,6 +16,7 @@
 package com.nexflow.core.automation.repository
 
 import com.nexflow.core.automation.model.ExecutionLog
+import com.nexflow.core.automation.model.ExecutionStep
 import com.nexflow.core.automation.model.Flow
 import kotlinx.coroutines.flow.Flow as KFlow
 
@@ -26,9 +27,21 @@ interface FlowRepository {
     suspend fun save(flow: Flow)
     suspend fun delete(id: String)
     suspend fun setEnabled(id: String, enabled: Boolean)
-    suspend fun saveExecutionLog(log: ExecutionLog)
+
+    /**
+     * Writes a finished run: the summary and, in the same transaction, the per-action steps it
+     * was made of. Together — a summary saved without its steps would render as an empty build
+     * log with no way to tell that from a run that genuinely recorded nothing.
+     */
+    suspend fun saveExecutionLog(log: ExecutionLog, steps: List<ExecutionStep> = emptyList())
     fun observeLogsForFlow(flowId: String): KFlow<List<ExecutionLog>>
     fun observeRecentLogs(limit: Int = 100): KFlow<List<ExecutionLog>>
+
+    /** One run's summary; null once it is pruned or cleared while being viewed. */
+    fun observeLog(logId: String): KFlow<ExecutionLog?>
+
+    /** The steps of one run, in execution order. Empty for runs recorded before v1.3. */
+    fun observeStepsForLog(logId: String): KFlow<List<ExecutionStep>>
     suspend fun deleteOldLogs(keepCount: Int, olderThanMs: Long)
     suspend fun deleteAllLogs()
 }
