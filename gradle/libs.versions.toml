@@ -31,6 +31,11 @@ junit5Platform = "1.10.0"
 mockk = "1.13.10"
 turbine = "1.1.0"
 kotlinxCoroutines = "1.8.0"
+# Robolectric 4.16.x knows Android SDKs up to 36 (Baklava); app/src/test/resources/robolectric.properties
+# pins the level the tests actually run at, since compileSdk 37 has no Robolectric image.
+robolectric = "4.16.1"
+# Compose Preview Screenshot Testing. Plugin and validation API are versioned together.
+screenshot = "0.0.1-alpha16"
 
 [libraries]
 # AndroidX Core
@@ -55,6 +60,7 @@ androidx-compose-material3-adaptive-navigation-suite = { group = "androidx.compo
 
 # Navigation
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
+androidx-navigation-testing = { group = "androidx.navigation", name = "navigation-testing", version.ref = "navigationCompose" }
 
 # Hilt
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
@@ -68,6 +74,7 @@ hilt-compiler-work = { group = "androidx.hilt", name = "hilt-compiler", version.
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+room-testing = { group = "androidx.room", name = "room-testing", version.ref = "room" }
 
 # Serialization
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
@@ -76,6 +83,7 @@ kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 ktor-client-android = { group = "io.ktor", name = "ktor-client-android", version.ref = "ktor" }
 ktor-client-content-negotiation = { group = "io.ktor", name = "ktor-client-content-negotiation", version.ref = "ktor" }
 ktor-serialization-kotlinx-json = { group = "io.ktor", name = "ktor-serialization-kotlinx-json", version.ref = "ktor" }
+ktor-client-mock = { group = "io.ktor", name = "ktor-client-mock", version.ref = "ktor" }
 
 # WorkManager
 androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workmanager" }
@@ -95,6 +103,11 @@ junit = { group = "junit", name = "junit", version.ref = "junit" }
 junit5-api = { group = "org.junit.jupiter", name = "junit-jupiter-api", version.ref = "junit5" }
 junit5-engine = { group = "org.junit.jupiter", name = "junit-jupiter-engine", version.ref = "junit5" }
 junit5-platform-launcher = { group = "org.junit.platform", name = "junit-platform-launcher", version.ref = "junit5Platform" }
+# Robolectric and the Compose test rules are JUnit 4; this engine is what lets them run under
+# the useJUnitPlatform() runner the rest of the suite uses. Version must track junit5.
+junit5-vintage-engine = { group = "org.junit.vintage", name = "junit-vintage-engine", version.ref = "junit5" }
+robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
+screenshot-validation-api = { group = "com.android.tools.screenshot", name = "screenshot-validation-api", version.ref = "screenshot" }
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
@@ -114,3 +127,4 @@ kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", versi
 hilt-android = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 room = { id = "androidx.room", version.ref = "room" }
+compose-screenshot = { id = "com.android.compose.screenshot", version.ref = "screenshot" }

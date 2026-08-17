@@ -39,6 +39,12 @@ import org.junit.runner.RunWith
 /**
  * Renders the real ConfigDialog for every trigger and action type selectable in
  * the Flows UI, asserting that each declared field's component actually appears.
+ *
+ * Runs on Robolectric rather than a device: it needs real string resources and a Compose
+ * runtime but nothing a physical phone provides, so it belongs in the fast pre-merge layer
+ * where a broken dialog shows up in seconds. It is also flavor-sensitive — running under both
+ * testGithubDebugUnitTest and testPlayDebugUnitTest is a bonus the androidTest source set
+ * could not give, since CI only boots one flavor's emulator.
  */
 @RunWith(AndroidJUnit4::class)
 class ConfigDialogRenderTest {

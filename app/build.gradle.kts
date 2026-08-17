@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.ksp)
     alias(libs.plugins.room)
+    alias(libs.plugins.compose.screenshot)
 }
 
 // Release signing — values live in app/keystore.properties (git-ignored).
@@ -81,6 +82,9 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+    // Paired with android.experimental.enableScreenshotTest in gradle.properties.
+    experimentalProperties["android.experimental.enableScreenshotTest"] = true
+
     buildFeatures {
         compose = true
         // BuildConfig.DEBUG gates verbose Gemini request/response logging in GeminiClient.
@@ -90,6 +94,56 @@ android {
         // android.util.Log used in GeminiClient/AiChatOrchestrator becomes a no-op in JVM
         // unit tests instead of throwing "not mocked".
         unitTests.isReturnDefaultValues = true
+
+        // Robolectric needs the merged resources/manifest to inflate real strings and themes.
+        unitTests.isIncludeAndroidResources = true
+
+        // Emulators CI can boot on its own, so connected tests stop depending on someone
+        // having a phone plugged in. ATD ("automated test device") images ship without the
+        // launcher and most system apps — they boot far faster and are the image type Google
+        // recommends for headless instrumentation runs.
+        managedDevices {
+            localDevices {
+                // minSdk floor. Most of the platform behaviour NexFlow leans on (scoped
+                // storage, exact alarms, notification listeners) is at its oldest here.
+                create("api30") {
+                    device = "Pixel 2"
+                    apiLevel = 30
+                    systemImageSource = "aosp-atd"
+                }
+                // Newest ATD image available; there is no aosp-atd for API 37 yet, so this is
+                // as close to compileSdk as a managed device gets.
+                create("api36") {
+                    device = "Pixel 6"
+                    apiLevel = 36
+                    systemImageSource = "aosp-atd"
+                }
+            }
+            groups {
+                create("ci") {
+                    targetDevices.add(localDevices.getByName("api30"))
+                    targetDevices.add(localDevices.getByName("api36"))
+                }
+            }
+        }
+    }
+
+    lint {
+        // Lint runs as a CI gate, so a regression has to break the build instead of scrolling
+        // past in the log. Pre-existing findings are parked in lint-baseline.xml; delete
+        // entries from it as they get fixed, never regenerate it to silence something new.
+        abortOnError = true
+        // checkDependencies pulls :core:* into the same run — otherwise the core modules,
+        // which have no lint task wired into CI of their own, would never be checked.
+        checkDependencies = true
+        baseline = file("lint-baseline.xml")
+        warningsAsErrors = false
+        // These three query the network for newer artifact versions, so their findings change
+        // whenever an upstream release happens rather than when this repo does. Baselining
+        // them would mean a baseline that rots on its own; leaving them on would mean lint
+        // needs network in CI. Dependency freshness is a deliberate decision here anyway —
+        // see the KSP/Kotlin version note in libs.versions.toml.
+        disable += setOf("NewerVersionAvailable", "GradleDependency", "AndroidGradlePluginVersion")
     }
 }
 
@@ -178,15 +232,30 @@ dependencies {
     testImplementation(libs.junit5.api)
     testRuntimeOnly(libs.junit5.engine)
     testRuntimeOnly(libs.junit5.platform.launcher)
+    testRuntimeOnly(libs.junit5.vintage.engine)
     testImplementation(libs.mockk)
     testImplementation(libs.turbine)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.ktor.client.mock)
+    // Robolectric layer: Compose UI and navigation tests that need an Android runtime but no
+    // device. See app/src/test/resources/robolectric.properties for the SDK level they run at.
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.junit)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
+    testImplementation(libs.androidx.navigation.testing)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.hilt.android.testing)
+    // MigrationTestHelper. The Room Gradle plugin's schemaDirectory feeds app/schemas into
+    // androidTest assets, which is where the helper looks for the exported schema JSON.
+    androidTestImplementation(libs.room.testing)
     kspAndroidTest(libs.hilt.android.compiler)
+    // Compose Preview screenshot tests — see app/src/screenshotTest.
+    screenshotTestImplementation(libs.screenshot.validation.api)
+    screenshotTestImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

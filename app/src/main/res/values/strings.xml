@@ -1,5 +1,6 @@
 <resources>
-    <string name="app_name">NexFlow</string>
+    <!-- Product name: the same in every language, so translators never see it. -->
+    <string name="app_name" translatable="false">NexFlow</string>
     <string name="accessibility_service_description">NexFlow uses the Accessibility Service for three automation features: capturing a screenshot when a flow\'s screenshot action runs, performing a tap gesture at coordinates you specify when a flow runs a simulated-tap action, and detecting which app is brought to the foreground so your \"App Launched\" triggers can fire. It only reads the package name of the app in front; it does not read screen content, text, or passwords, and it does not send any data to a server. It runs only after you manually enable it.</string>
 
     <!-- Widgets -->
@@ -133,7 +134,7 @@
     <string name="settings_ai_model_load_failed">Couldn\'t load the model list</string>
     <string name="action_retry">Retry</string>
     <string name="ai_chat_title">AI assistant</string>
-    <string name="ai_greeting">Describe the automation you want — for example: \"When I plug in headphones, set media volume to 80% and open Spotify.\"</string>
+    <string name="ai_greeting" formatted="false">Describe the automation you want — for example: \"When I plug in headphones, set media volume to 80% and open Spotify.\"</string>
     <string name="ai_input_hint">Describe your automation…</string>
     <string name="ai_send">Send</string>
     <string name="ai_stop">Stop</string>

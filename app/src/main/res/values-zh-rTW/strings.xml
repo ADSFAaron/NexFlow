@@ -132,7 +132,7 @@
     <string name="settings_ai_model_load_failed">無法載入模型清單</string>
     <string name="action_retry">重試</string>
     <string name="ai_chat_title">AI 助手</string>
-    <string name="ai_greeting">描述您想要的自動化 — 例如:「插上耳機時,把媒體音量調到 80% 並打開 Spotify。」</string>
+    <string name="ai_greeting" formatted="false">描述您想要的自動化 — 例如:「插上耳機時,把媒體音量調到 80% 並打開 Spotify。」</string>
     <string name="ai_input_hint">描述您的自動化…</string>
     <string name="ai_send">傳送</string>
     <string name="ai_stop">停止</string>

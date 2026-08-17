@@ -132,7 +132,7 @@
     <string name="settings_ai_model_load_failed">モデル一覧を読み込めませんでした</string>
     <string name="action_retry">再試行</string>
     <string name="ai_chat_title">AI アシスタント</string>
-    <string name="ai_greeting">作りたい自動化を説明してください — 例:「イヤホンを接続したら、メディア音量を 80% にして Spotify を開く」</string>
+    <string name="ai_greeting" formatted="false">作りたい自動化を説明してください — 例:「イヤホンを接続したら、メディア音量を 80% にして Spotify を開く」</string>
     <string name="ai_input_hint">自動化の内容を入力…</string>
     <string name="ai_send">送信</string>
     <string name="ai_stop">停止</string>
