@@ -21,6 +21,7 @@ import android.graphics.Canvas
 import android.graphics.Matrix
 import android.graphics.Paint
 import androidx.compose.ui.graphics.Color
+import androidx.core.graphics.createBitmap
 import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -76,7 +77,7 @@ object FlowShortcutIcon {
         // uses; filling more makes the circle read as a solid blob at widget sizes.
         val glyphPx = sizePx * 0.55f
 
-        val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+        val bitmap = createBitmap(sizePx, sizePx)
         val canvas = Canvas(bitmap)
         val radius = sizePx / 2f
         canvas.drawCircle(

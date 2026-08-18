@@ -3,6 +3,7 @@
      inflated by the launcher in its own process — so every color is literal and every string
      comes from resources, or a non-Chinese user sees Chinese sample text in the picker. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -40,13 +41,16 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:orientation="horizontal"
-        android:layout_marginBottom="8dp">
+        android:baselineAligned="false"
+        android:layout_marginBottom="8dp"
+        tools:ignore="NestedWeights">
 
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:orientation="vertical"
+            android:layout_marginEnd="8dp"
             android:background="@drawable/bg_widget_preview_card"
             android:padding="10dp">
             <ImageView
@@ -71,14 +75,11 @@
                 android:layout_height="wrap_content"
                 android:text="@string/trg_time_label"
                 android:textColor="#CAC4D0"
-                android:textSize="10sp"
+                android:textSize="11sp"
                 android:singleLine="true"
                 android:ellipsize="end" />
         </LinearLayout>
 
-        <Space
-            android:layout_width="8dp"
-            android:layout_height="match_parent" />
 
         <LinearLayout
             android:layout_width="0dp"
@@ -109,7 +110,7 @@
                 android:layout_height="wrap_content"
                 android:text="@string/trg_manual_label"
                 android:textColor="#CAC4D0"
-                android:textSize="10sp"
+                android:textSize="11sp"
                 android:singleLine="true"
                 android:ellipsize="end" />
         </LinearLayout>
@@ -120,13 +121,16 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        android:baselineAligned="false"
+        tools:ignore="NestedWeights">
 
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:orientation="vertical"
+            android:layout_marginEnd="8dp"
             android:background="@drawable/bg_widget_preview_card"
             android:padding="10dp">
             <ImageView
@@ -151,14 +155,11 @@
                 android:layout_height="wrap_content"
                 android:text="@string/trg_battery_label"
                 android:textColor="#CAC4D0"
-                android:textSize="10sp"
+                android:textSize="11sp"
                 android:singleLine="true"
                 android:ellipsize="end" />
         </LinearLayout>
 
-        <Space
-            android:layout_width="8dp"
-            android:layout_height="match_parent" />
 
         <LinearLayout
             android:layout_width="0dp"
@@ -189,7 +190,7 @@
                 android:layout_height="wrap_content"
                 android:text="@string/trg_manual_label"
                 android:textColor="#CAC4D0"
-                android:textSize="10sp"
+                android:textSize="11sp"
                 android:singleLine="true"
                 android:ellipsize="end" />
         </LinearLayout>

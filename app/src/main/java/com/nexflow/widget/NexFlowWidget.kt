@@ -159,7 +159,7 @@ class NexFlowWidget : GlanceAppWidget() {
                         isForegroundService = true,
                     ),
                 )
-                .padding(12.dp),
+                .padding(10.dp),
         ) {
             Image(
                 provider = ImageProvider(
@@ -170,7 +170,7 @@ class NexFlowWidget : GlanceAppWidget() {
                 contentDescription = null,
                 modifier = GlanceModifier.size(BADGE_DP.dp),
             )
-            Spacer(modifier = GlanceModifier.height(10.dp))
+            Spacer(modifier = GlanceModifier.height(6.dp))
             Text(
                 text = flow.name,
                 style = TextStyle(
@@ -218,7 +218,7 @@ class NexFlowWidget : GlanceAppWidget() {
         private val CARD_GAP = 8.dp
 
         /** Badge diameter; also the size its bitmap is rasterised at. */
-        private const val BADGE_DP = 36f
+        private const val BADGE_DP = 32f
 
         private val json = Json { ignoreUnknownKeys = true }
 
