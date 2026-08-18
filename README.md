@@ -190,12 +190,14 @@ flowchart LR
 
 | 項目 | 版本 |
 |------|------|
-| Kotlin | 2.2.10（KSP，無 kapt） |
-| AGP / Gradle | 9.2.1 / 9.5 |
-| UI | Jetpack Compose（BOM 2026.02.01）+ Material 3（含 Expressive alpha） |
-| DI | Hilt 2.59.2 |
-| 資料庫 | Room 2.7.1 |
-| 其他 | Navigation Compose、kotlinx.serialization、Ktor、WorkManager、Glance（桌面小工具）、play-services-location（地理圍欄） |
+| Kotlin | 2.4.10（KSP 2.3.11，無 kapt） |
+| AGP / Gradle | 9.3.1 / 9.7.0 |
+| UI | Jetpack Compose（BOM 2026.08.00）+ Material 3 1.5.0-alpha26（含 Expressive API） |
+| DI | Hilt 2.60.1 |
+| 資料庫 | Room 2.8.4 |
+| 網路 | Ktor 3.5.2、kotlinx.serialization 1.11.0 |
+| 其他 | Navigation Compose 2.9.8、WorkManager 2.11.2、Glance 1.1.1（桌面小工具）、Coil 3.5.0、play-services-location 21.4.0（地理圍欄） |
+| 測試 | JUnit 5.14.4、Robolectric 4.16.1、MockK 1.14.11、Turbine 1.2.1、Compose Preview 截圖測試 |
 | SDK | minSdk 30（Android 11）／ targetSdk 37 |
 
 ## Module 結構

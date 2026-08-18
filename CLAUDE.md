@@ -43,6 +43,7 @@ core/macrodroid-compat/     # MacroDroid .mdr 格式解析
 | `SwipeToDismissBoxState.requireOffset()` | composition 時 offset=NaN，直接 crash | 用 `dismissState.dismissDirection` |
 | `SwipeToDismissBoxState.targetValue` 做背景 | 預設 threshold 50%，要滑很遠才顯示 | `positionalThreshold = { it * 0.15f }` + `dismissDirection` |
 | `HorizontalFloatingToolbar(expanded=...)` | M3 Expressive alpha，`expanded` 改變時收合會蓋掉子 view | 改用 `Column` + `FloatingActionButton` |
+| M3 `MenuAnchorType` / `ExposedDropdownMenu` | 1.5.0-alpha26 把 `MenuAnchorType` 改名為 `ExposedDropdownMenuAnchorType`；`ExposedDropdownMenu` 從 scope member 變成 top-level extension，舊 member 是 HIDDEN 級 deprecated，症狀是「`MenuAnchorType` 找不到」連帶讓整個 `ExposedDropdownMenuBox` lambda 推導失敗，錯誤訊息會指向無關的行 | 改用新名字，並**明確 import** `androidx.compose.material3.ExposedDropdownMenu` |
 | `sh.calvin.reorderable` v3.x `draggableHandle` | v3 改成 `ReorderableItemScope` member，不能 top-level import | 在 `ReorderableItem { }` lambda 內直接用，不 import |
 | `Regex("""\{\{([^}]+)}}""")` | 某些 Android regex engine 對 `))}}` 報 syntax error | 改為 `\}\}` 明確 escape |
 | `AccessibilityService.dispatchGesture()` | 沒在 accessibility-service XML 宣告 `android:canPerformGestures="true"` 就只會回 `false`，不丟例外、不寫 log，模擬點擊／滑動整個靜默失效 | `nexflow_accessibility_config.xml` 一定要有 `android:canPerformGestures="true"` |
