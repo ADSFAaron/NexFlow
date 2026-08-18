@@ -852,4 +852,8 @@
     <string name="widget_preview_flow_c">Focus time</string>
     <string name="widget_preview_flow_d">Bedtime</string>
     <string name="run_detail_copied">Copied to clipboard</string>
+    <plurals name="cfg_volume_device_steps">
+        <item quantity="one">%1$d of %2$d step on this device</item>
+        <item quantity="other">%1$d of %2$d steps on this device</item>
+    </plurals>
 </resources>

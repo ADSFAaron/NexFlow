@@ -214,6 +214,7 @@ import androidx.compose.ui.graphics.Color
 import com.nexflow.ui.flows.detail.config.ActionInfo
 import com.nexflow.ui.flows.detail.config.ConfigField
 import com.nexflow.ui.flows.detail.config.NEGATE_KEY
+import com.nexflow.ui.flows.detail.config.normalizeConfigForEditing
 import com.nexflow.ui.flows.detail.config.CoordinatePickerDialog
 import com.nexflow.ui.flows.detail.config.pointFrom
 import com.nexflow.ui.flows.detail.config.TriggerInfo
@@ -956,7 +957,7 @@ private fun FlowDetailContent(
                     else -> ConfigDialog(
                         title = action.type.info(context).label,
                         fields = action.type.info(context).fields,
-                        initialValues = action.config,
+                        initialValues = normalizeConfigForEditing(action.type, action.config),
                         availableVariables = flowVariables,
                         onConfirm = { values ->
                             vm.updateAction(action.copy(config = values))
@@ -1758,6 +1759,15 @@ internal fun ConfigDialog(
                                         valueRange = field.min.toFloat()..field.max.toFloat(),
                                         steps = 0,
                                     )
+                                    // What the number lands on here, for a value whose meaning
+                                    // depends on the device rather than on the flow.
+                                    field.describe?.invoke(context, values)?.let { detail ->
+                                        Text(
+                                            detail,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
                                 }
                             }
 

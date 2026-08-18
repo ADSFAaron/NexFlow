@@ -831,4 +831,7 @@
     <string name="widget_preview_flow_c">專注時段</string>
     <string name="widget_preview_flow_d">睡前模式</string>
     <string name="run_detail_copied">已複製到剪貼簿</string>
+    <plurals name="cfg_volume_device_steps">
+        <item quantity="other">這台裝置上為 %2$d 段中的第 %1$d 段</item>
+    </plurals>
 </resources>

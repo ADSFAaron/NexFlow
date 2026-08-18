@@ -16,6 +16,7 @@
 package com.nexflow.ui.flows.detail.config
 
 import android.content.Context
+import android.media.AudioManager
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AirplanemodeActive
@@ -51,6 +52,7 @@ import androidx.compose.material.icons.outlined.Wallpaper
 import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.nexflow.R
+import com.nexflow.executor.VolumeActionExecutor
 import com.nexflow.core.automation.model.ActionType
 import com.nexflow.executor.NotificationActionExecutor
 
@@ -119,6 +121,24 @@ private fun wallpaperTargets(context: Context) = listOf(
 
 // HTTP verbs are protocol tokens, not localizable.
 private val httpMethods = listOf("GET" to "GET", "POST" to "POST", "PUT" to "PUT", "DELETE" to "DELETE", "PATCH" to "PATCH")
+
+/**
+ * The config as the editor should present it, for keys whose meaning has changed since a flow
+ * may have been written.
+ *
+ * VOLUME_ADJUST stored an absolute step under `level`, chosen on a slider that only ever reached
+ * 15 — so a saved 15 meant "all the way up" regardless of what the device's real maximum was.
+ * Converting on that basis is the only reading the old editor supports, and it is what keeps a
+ * flow the user merely opens and re-saves from dropping to a fraction of its intended volume.
+ * The legacy key is dropped in the same breath so the two cannot disagree afterwards.
+ */
+fun normalizeConfigForEditing(type: ActionType, config: Map<String, String>): Map<String, String> {
+    if (type != ActionType.VOLUME_ADJUST) return config
+    if (config.containsKey(VolumeActionExecutor.PERCENT_KEY)) return config
+    val legacy = config[VolumeActionExecutor.LEGACY_LEVEL_KEY]?.toIntOrNull() ?: return config
+    val percent = (legacy * 100 / VolumeActionExecutor.LEGACY_SLIDER_MAX).coerceIn(0, 100)
+    return config - VolumeActionExecutor.LEGACY_LEVEL_KEY + (VolumeActionExecutor.PERCENT_KEY to percent.toString())
+}
 
 fun ActionType.info(context: Context): ActionInfo = when (this) {
     ActionType.TOAST -> ActionInfo(
@@ -194,7 +214,31 @@ fun ActionType.info(context: Context): ActionInfo = when (this) {
                     "NOTIFICATION" to context.getString(R.string.opt_notification),
                 ),
             ),
-            ConfigField.Slider("level", context.getString(R.string.cfg_volume_level), 0, 15),
+            ConfigField.Slider(
+                VolumeActionExecutor.PERCENT_KEY,
+                context.getString(R.string.cfg_volume_level),
+                min = 0,
+                max = 100,
+                unit = "%",
+                // Volume scales are per-device and per-stream — media has 30 steps on one phone
+                // and 15 on another — so the percentage is what gets stored and this line says
+                // what it works out to here, where the user can hear it.
+                describe = { ctx, values ->
+                    val am = ctx.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+                    am?.let {
+                        val max = it.getStreamMaxVolume(VolumeActionExecutor.streamOf(values["stream"]))
+                        val percent = values[VolumeActionExecutor.PERCENT_KEY]?.toIntOrNull() ?: 0
+                        // Pluralised on the device's maximum, since that is the noun "steps"
+                        // has to agree with; the current step is just an argument.
+                        ctx.resources.getQuantityString(
+                            R.plurals.cfg_volume_device_steps,
+                            max,
+                            VolumeActionExecutor.stepsFor(percent, max),
+                            max,
+                        )
+                    }
+                },
+            ),
         ),
     )
     ActionType.OPEN_APP -> ActionInfo(
