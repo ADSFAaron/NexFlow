@@ -830,4 +830,5 @@
     <string name="widget_preview_flow_b">通勤モード</string>
     <string name="widget_preview_flow_c">集中モード</string>
     <string name="widget_preview_flow_d">おやすみモード</string>
+    <string name="run_detail_copied">クリップボードにコピーしました</string>
 </resources>

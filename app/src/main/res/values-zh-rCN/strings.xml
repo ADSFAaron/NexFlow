@@ -830,4 +830,5 @@
     <string name="widget_preview_flow_b">通勤模式</string>
     <string name="widget_preview_flow_c">专注时段</string>
     <string name="widget_preview_flow_d">睡前模式</string>
+    <string name="run_detail_copied">已复制到剪贴板</string>
 </resources>

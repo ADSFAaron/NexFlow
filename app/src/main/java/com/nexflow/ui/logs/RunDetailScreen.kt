@@ -15,6 +15,8 @@
  */
 package com.nexflow.ui.logs
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.text.format.DateFormat
 import androidx.compose.animation.AnimatedVisibility
@@ -31,6 +33,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -41,6 +44,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.RemoveCircle
 import androidx.compose.material3.CircularProgressIndicator
@@ -49,6 +53,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -57,6 +63,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -81,6 +88,7 @@ import com.nexflow.core.automation.model.ExecutionStep
 import com.nexflow.ui.flows.detail.config.info
 import java.text.SimpleDateFormat
 import java.util.Date
+import kotlinx.coroutines.launch
 
 /**
  * One run, step by step — the screen a failing flow sends the user to.
@@ -102,9 +110,20 @@ fun RunDetailScreen(
     // recomposition but not the screen: a fresh visit starts collapsed, which is the reading order.
     val expandedRepeats = remember { mutableStateMapOf<String, Boolean>() }
     val expandedSteps = remember { mutableStateMapOf<Int, Boolean>() }
+    val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val copiedMessage = stringResource(R.string.run_detail_copied)
+    // Android only confirms a copy itself from API 33; minSdk here is 30, so the screen says so.
+    val copy: (String) -> Unit = { text ->
+        (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
+            .setPrimaryClip(ClipData.newPlainText("NexFlow run", text))
+        scope.launch { snackbarHostState.showSnackbar(copiedMessage) }
+    }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -120,6 +139,19 @@ fun RunDetailScreen(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.action_back),
                         )
+                    }
+                },
+                actions = {
+                    // The whole run as text, which is what gets pasted into a bug report or a
+                    // message — copying rows one at a time loses the order that explains it.
+                    if (detail.log != null) {
+                        val transcript = transcriptOf(context, detail)
+                        IconButton(onClick = { copy(transcript) }) {
+                            Icon(
+                                Icons.Filled.ContentCopy,
+                                contentDescription = stringResource(R.string.action_copy),
+                            )
+                        }
                     }
                 },
                 scrollBehavior = scrollBehavior,
@@ -183,6 +215,7 @@ fun RunDetailScreen(
                                     expandedSteps[row.step.seq] = expandedSteps[row.step.seq] != true
                                 }
                             },
+                            onCopy = copy,
                         )
                     }
 
@@ -313,6 +346,7 @@ private fun StepRow(
     expanded: Boolean,
     repeatExpanded: Boolean,
     onToggle: () -> Unit,
+    onCopy: (String) -> Unit,
 ) {
     val context = LocalContext.current
     val step = row.step
@@ -329,14 +363,19 @@ private fun StepRow(
             .padding(horizontal = 16.dp)
             .then(if (canExpand) Modifier.clickable(onClick = onToggle) else Modifier),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            // A log row is a tap target, not a line of a table: below this the rows read as one
+            // grey block and the chevron is hard to hit.
+            modifier = Modifier.heightIn(min = ROW_MIN_HEIGHT),
+        ) {
             // Guide lines instead of blank space: at three levels of nesting, counting indents by
             // eye is guesswork, and a run's log is read when something is already wrong.
             repeat(step.depth.coerceAtMost(MAX_INDENT_LEVELS)) {
                 Box(
                     modifier = Modifier
                         .width(INDENT_STEP)
-                        .height(28.dp),
+                        .height(ROW_MIN_HEIGHT),
                     contentAlignment = Alignment.Center,
                 ) {
                     Box(
@@ -347,8 +386,8 @@ private fun StepRow(
                     )
                 }
             }
-            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(10.dp))
+            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     step.actionType.info(context).label,
@@ -372,6 +411,7 @@ private fun StepRow(
                     formatDuration(step.durationMs),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 12.dp),
                 )
             }
             if (canExpand) {
@@ -389,29 +429,101 @@ private fun StepRow(
         AnimatedVisibility(visible = expanded && detailText != null) {
             Surface(
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                shape = RoundedCornerShape(10.dp),
+                shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
-                    .padding(start = indent + 28.dp, top = 4.dp, bottom = 4.dp)
+                    .padding(start = indent + 34.dp, top = 2.dp, bottom = 10.dp)
                     .fillMaxWidth(),
             ) {
-                Text(
-                    detailText.orEmpty(),
-                    style = MaterialTheme.typography.bodySmall,
-                    fontFamily = FontFamily.Monospace,
-                    color = if (step.errorMessage != null) {
-                        MaterialTheme.colorScheme.error
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                    // A resolved URL or a stack-shaped error must not be re-wrapped into
-                    // unreadability, so the block scrolls sideways rather than the page.
-                    modifier = Modifier
-                        .horizontalScroll(rememberScrollState())
-                        .padding(10.dp),
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        detailText.orEmpty(),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace,
+                        color = if (step.errorMessage != null) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        // A resolved URL or a stack-shaped error must not be re-wrapped into
+                        // unreadability, so the block scrolls sideways rather than the page.
+                        modifier = Modifier
+                            .weight(1f)
+                            .horizontalScroll(rememberScrollState())
+                            .padding(14.dp),
+                    )
+                    // The value itself is the thing worth copying — a resolved URL to open, an
+                    // error to search for — and it is the one part of the row that cannot be
+                    // retyped reliably.
+                    IconButton(onClick = { onCopy(detailText.orEmpty()) }) {
+                        Icon(
+                            Icons.Filled.ContentCopy,
+                            contentDescription = stringResource(R.string.action_copy),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
             }
         }
     }
+}
+
+/**
+ * The whole run as plain text, in the order it happened.
+ *
+ * Built from the same rows the screen shows rather than from the raw steps, minus the collapsing:
+ * a transcript is read once, top to bottom, so every repeat round is written out. Indentation
+ * carries the nesting, the way the guide lines do on screen.
+ */
+internal fun transcriptOf(context: Context, detail: RunDetail): String = buildString {
+    val log = detail.log ?: return@buildString
+    appendLine(detail.flowName.ifEmpty { context.getString(R.string.run_detail_title) })
+    appendLine(
+        "${statusLabel(context, log.status)} · " +
+            SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).format(Date(log.triggeredAt)) +
+            " · ${formatDuration(log.executionDurationMs)}",
+    )
+    log.errorMessage?.let { appendLine(it) }
+    appendLine()
+    detail.steps.forEach { step ->
+        val indent = "  ".repeat(step.depth.coerceAtMost(MAX_INDENT_LEVELS))
+        append(indent)
+        append(statusMark(step.status))
+        append(' ')
+        append(step.actionType.info(context).label)
+        if (step.durationMs > 0) append("  ${formatDuration(step.durationMs)}")
+        appendLine()
+        // noteText needs the row's round count, which only the repeat header has; the raw token
+        // is honest here and keeps the transcript free of a second flattening pass.
+        step.note?.let { appendLine("$indent    [$it]") }
+        step.errorMessage?.let { appendLine("$indent    $it") }
+        step.resolvedConfig?.lineSequence()?.forEach { appendLine("$indent    $it") }
+    }
+    if (detail.droppedSteps > 0) {
+        appendLine()
+        appendLine(
+            context.resources.getQuantityString(
+                R.plurals.run_steps_truncated,
+                detail.droppedSteps,
+                detail.droppedSteps,
+            ),
+        )
+    }
+}
+
+internal fun statusLabel(context: Context, status: ExecutionStatus): String = context.getString(
+    when (status) {
+        ExecutionStatus.SUCCESS -> R.string.log_status_success
+        ExecutionStatus.FAIL -> R.string.log_status_fail
+        ExecutionStatus.SKIPPED -> R.string.log_status_skipped
+    },
+)
+
+/** ASCII, not the screen's icons: a transcript is pasted where an icon font may not follow. */
+private fun statusMark(status: ExecutionStatus): String = when (status) {
+    ExecutionStatus.SUCCESS -> "[ok]"
+    ExecutionStatus.FAIL -> "[FAIL]"
+    ExecutionStatus.SKIPPED -> "[skip]"
 }
 
 /** The localized remark for a step, from its `note` token — see [ExecutionStep.note]. */
@@ -444,4 +556,7 @@ private fun formatDuration(ms: Long): String =
     if (ms < 1000) "${ms}ms" else "${"%.1f".format(ms / 1000.0)}s"
 
 private val INDENT_STEP = 16.dp
+
+/** Minimum tap target for a step row. */
+private val ROW_MIN_HEIGHT = 52.dp
 private const val MAX_INDENT_LEVELS = 3
