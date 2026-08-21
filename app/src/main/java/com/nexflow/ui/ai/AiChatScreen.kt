@@ -138,6 +138,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringArrayResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -919,7 +920,7 @@ private fun ExpandedFlowHeader(
             if (tokensUsed > 0) {
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    text = stringResource(R.string.ai_tokens_used, tokensUsed),
+                    text = pluralStringResource(R.plurals.ai_tokens_used, tokensUsed, tokensUsed),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
                 )

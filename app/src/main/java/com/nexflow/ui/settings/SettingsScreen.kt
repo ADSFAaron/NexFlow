@@ -58,6 +58,7 @@ import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Public
+import androidx.compose.material.icons.outlined.Troubleshoot
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.AlertDialog
@@ -97,6 +98,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
@@ -108,6 +110,7 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.nexflow.prefs.AiPrefs
 import com.nexflow.prefs.AutoStartPrefs
+import com.nexflow.prefs.DetailedLogPrefs
 import com.nexflow.prefs.ExecutionFeedbackPrefs
 import com.nexflow.ui.common.PermissionStatusIcon
 import com.nexflow.ui.flowimport.ImportReviewDialog
@@ -126,6 +129,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     var autoStart by remember { mutableStateOf(AutoStartPrefs.get(context)) }
     var executionToast by remember { mutableStateOf(ExecutionFeedbackPrefs.isToastEnabled(context)) }
+    var detailedLog by remember { mutableStateOf(DetailedLogPrefs.isEnabled(context)) }
     var logRetention by remember { mutableStateOf(LogRetentionPrefs.get(context)) }
     var showLogRetentionDialog by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
@@ -271,7 +275,7 @@ fun SettingsScreen(
                     headlineContent = { Text(stringResource(option.displayNameRes)) },
                     supportingContent = {
                         Text(
-                            text = stringResource(R.string.log_retention_detail, option.days, option.maxCount),
+                            text = logRetentionDetail(option.days, option.maxCount),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     },
@@ -778,6 +782,26 @@ fun SettingsScreen(
                     ),
                 )
             }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.settings_detailed_log)) },
+                    supportingContent = { Text(stringResource(R.string.settings_detailed_log_desc)) },
+                    leadingContent = {
+                        Icon(Icons.Outlined.Troubleshoot, contentDescription = null)
+                    },
+                    trailingContent = {
+                        Switch(checked = detailedLog, onCheckedChange = null)
+                    },
+                    modifier = Modifier.toggleable(
+                        value = detailedLog,
+                        role = Role.Switch,
+                        onValueChange = { value ->
+                            detailedLog = value
+                            DetailedLogPrefs.setEnabled(context, value)
+                        },
+                    ),
+                )
+            }
             item { HorizontalDivider() }
             item {
                 ListItem(
@@ -785,7 +809,7 @@ fun SettingsScreen(
                     supportingContent = {
                         Text(
                             stringResource(logRetention.displayNameRes) + " — " +
-                                stringResource(R.string.log_retention_detail, logRetention.days, logRetention.maxCount),
+                                logRetentionDetail(logRetention.days, logRetention.maxCount),
                         )
                     },
                     leadingContent = {
@@ -812,6 +836,17 @@ fun SettingsScreen(
         }
     }
 }
+
+/**
+ * "30 days · 500 entries" — two counts, so two plurals joined by a format string rather than one
+ * plurals resource, which can only agree with a single quantity.
+ */
+@Composable
+private fun logRetentionDetail(days: Int, entries: Int): String = stringResource(
+    R.string.log_retention_detail,
+    pluralStringResource(R.plurals.log_retention_days, days, days),
+    pluralStringResource(R.plurals.log_retention_entries, entries, entries),
+)
 
 @Composable
 private fun SectionHeader(title: String) {

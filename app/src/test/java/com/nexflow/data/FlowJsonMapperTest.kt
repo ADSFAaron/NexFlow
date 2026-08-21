@@ -18,12 +18,15 @@ package com.nexflow.data
 import com.nexflow.core.automation.model.ActionType
 import com.nexflow.core.automation.model.TriggerLogic
 import com.nexflow.core.automation.model.TriggerType
+import com.nexflow.core.automation.model.VariableType
 import com.nexflow.core.flowschema.ActionJson
 import com.nexflow.core.flowschema.FlowJson
 import com.nexflow.core.flowschema.FlowSerializer
 import com.nexflow.core.flowschema.GlobalVariableJson
 import com.nexflow.core.flowschema.TriggerJson
+import com.nexflow.core.flowschema.VariableJson
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
@@ -43,6 +46,7 @@ class FlowJsonMapperTest {
         actionConfig: JsonObject = buildJsonObject { put("message", "hi") },
         triggerLogic: String = "ALL",
         createdAt: String = "2026-01-02T03:04:05Z",
+        variables: List<VariableJson> = emptyList(),
     ) = FlowJson(
         schemaVersion = 1,
         id = "0f0e0d0c-0b0a-4908-8706-050403020100",
@@ -56,7 +60,7 @@ class FlowJsonMapperTest {
         triggerLogic = triggerLogic,
         conditions = emptyList(),
         actions = listOf(ActionJson("a1", actionType, actionConfig, order = 0, enabled = true)),
-        variables = emptyList(),
+        variables = variables,
     )
 
     @Test
@@ -127,6 +131,48 @@ class FlowJsonMapperTest {
         val decoded = FlowSerializer.decode(encoded).getOrThrow()
         assertEquals("counter", decoded.globalVariables.single().name)
         assertEquals("0", decoded.globalVariables.single().defaultValue)
+    }
+
+    @Test
+    fun `declared variables survive the import`() {
+        // They used to be dropped on the floor: the mapper hardcoded an empty list, so every
+        // exported flow came back with none of its variables. At runtime that is not a missing
+        // declaration but a wrong result — "{{counter}} + 1" with no counter is not arithmetic,
+        // so the literal text got stored in the variable and shown to the user.
+        val flow = flowJson(
+            variables = listOf(
+                VariableJson("counter", "INTEGER", JsonPrimitive("5")),
+                VariableJson("label", "STRING", JsonPrimitive("hi")),
+            ),
+        ).toDomain()
+
+        assertEquals(listOf("counter", "label"), flow.variables.map { it.name })
+        assertEquals(VariableType.INTEGER, flow.variables[0].type)
+        assertEquals("5", flow.variables[0].defaultValue)
+    }
+
+    @Test
+    fun `a variable default keeps its content rather than its JSON spelling`() {
+        // A typed default arrives as a JsonElement. Taking toString() would store a string
+        // default still wrapped in the quotes it was written with.
+        val flow = flowJson(
+            variables = listOf(
+                VariableJson("n", "INTEGER", JsonPrimitive(5)),
+                VariableJson("s", "STRING", JsonPrimitive("text")),
+                VariableJson("b", "BOOLEAN", JsonPrimitive(true)),
+            ),
+        ).toDomain()
+
+        assertEquals(listOf("5", "text", "true"), flow.variables.map { it.defaultValue })
+    }
+
+    @Test
+    fun `an unknown variable type falls back to STRING like the other enums do`() {
+        val flow = flowJson(
+            variables = listOf(VariableJson("v", "NUMBER", JsonPrimitive("1"))),
+        ).toDomain()
+
+        assertEquals(VariableType.STRING, flow.variables.single().type)
     }
 
     @Test

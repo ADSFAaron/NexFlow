@@ -1,5 +1,5 @@
 name: 🐛 Bug 回報 / Bug report
-description: 回報 NexFlow 的錯誤行為（流程沒觸發、動作失敗、崩潰…）
+description: 回報 NexFlow 的錯誤行為（流程沒觸發、動作失敗、崩潰…）/ Report incorrect behaviour (flow not triggering, action failing, crash…)
 title: "[Bug] "
 labels: ["bug"]
 body:
@@ -10,21 +10,34 @@ body:
 
         ⚠️ **安全性漏洞請不要開在這裡**，改走 [私下回報流程](https://github.com/ADSFAaron/NexFlow/security/advisories/new)（見 [SECURITY.md](https://github.com/ADSFAaron/NexFlow/blob/master/SECURITY.md)）。
 
+        ---
+
+        Thanks for reporting! Please fill in as much as you can — **device, Android version, flavor and
+        execution logs** are what we most often have to come back and ask for.
+
+        **You are welcome to write in English**; only the form labels are Chinese-first.
+
+        ⚠️ **Do not report security vulnerabilities here.** Use the
+        [private advisory flow](https://github.com/ADSFAaron/NexFlow/security/advisories/new) instead
+        (see [SECURITY.md](https://github.com/ADSFAaron/NexFlow/blob/master/SECURITY.md)).
+
   - type: checkboxes
     id: preflight
     attributes:
-      label: 回報前確認
+      label: 回報前確認 / Before you report
       options:
-        - label: 我已經搜尋過既有的 issue，沒有重複
+        - label: 我已經搜尋過既有的 issue，沒有重複 / I searched existing issues and this is not a duplicate
           required: true
-        - label: 我用的是[最新版](https://github.com/ADSFAaron/NexFlow/releases)，問題仍然存在
+        - label: 我用的是[最新版](https://github.com/ADSFAaron/NexFlow/releases)，問題仍然存在 / I am on the [latest release](https://github.com/ADSFAaron/NexFlow/releases) and the problem still happens
           required: true
 
   - type: input
     id: version
     attributes:
-      label: NexFlow 版本
-      description: App 內「設定 → 關於」可以看到
+      label: NexFlow 版本 / NexFlow version
+      description: |
+        App 內「設定 → 關於」可以看到。
+        Found under Settings → About in the app.
       placeholder: "1.1.1"
     validations:
       required: true
@@ -32,19 +45,21 @@ body:
   - type: dropdown
     id: flavor
     attributes:
-      label: 版本來源（flavor）
+      label: 版本來源（flavor）/ Build source (flavor)
       options:
-        - GitHub Release 的 APK（github，功能完整）
-        - Google Play（play）
-        - 自己從原始碼建置
+        - GitHub Release 的 APK（github，功能完整）/ GitHub Release APK (github, full features)
+        - Google Play（play）/ Google Play (play)
+        - 自己從原始碼建置 / Built from source
     validations:
       required: true
 
   - type: input
     id: device
     attributes:
-      label: 機型與 Android 版本
-      description: 有客製 ROM／廠商省電機制的話也請一併說明（很多觸發問題來自省電策略）
+      label: 機型與 Android 版本 / Device and Android version
+      description: |
+        有客製 ROM／廠商省電機制的話也請一併說明（很多觸發問題來自省電策略）。
+        Please also mention any custom ROM or vendor battery saver — many trigger problems come from aggressive power management.
       placeholder: "Pixel 8 / Android 15；或 Xiaomi 14, HyperOS 2"
     validations:
       required: true
@@ -52,55 +67,72 @@ body:
   - type: textarea
     id: what-happened
     attributes:
-      label: 發生了什麼
-      description: 你預期會怎樣、實際上怎樣
+      label: 發生了什麼 / What happened
+      description: |
+        你預期會怎樣、實際上怎樣。
+        What you expected, and what actually happened.
       placeholder: |
         預期：電量低於 20% 時自動開省電模式
         實際：流程沒有被觸發，執行記錄裡完全沒有紀錄
+
+        Expected: battery saver turns on when the battery drops below 20%
+        Actual: the flow never fires, and nothing appears in the execution log
     validations:
       required: true
 
   - type: textarea
     id: steps
     attributes:
-      label: 重現步驟
+      label: 重現步驟 / Steps to reproduce
       placeholder: |
         1. 建立流程：觸發「電量低於 20%」→ 動作「開啟省電模式」
         2. 啟用流程
         3. 把電量放到 19%
         4. 沒有任何反應
+
+        1. Create a flow: trigger "battery below 20%" → action "turn on battery saver"
+        2. Enable the flow
+        3. Let the battery drop to 19%
+        4. Nothing happens
     validations:
       required: true
 
   - type: textarea
     id: flow-json
     attributes:
-      label: 相關的流程（.flow 匯出內容）
+      label: 相關的流程（.flow 匯出內容）/ The flow involved (.flow export)
       description: |
         在流程詳細頁「匯出／分享」拿到 `.flow` 檔，把內容貼進來。
         **貼之前請先移除個人資訊**（電話號碼、API 金鑰、內網網址…）。
+
+        Export the flow with "Export / Share" on the flow detail screen and paste the `.flow` contents here.
+        **Remove personal data first** (phone numbers, API keys, internal URLs…).
       render: json
 
   - type: textarea
     id: logs
     attributes:
-      label: 執行記錄／logcat
-      description: App 內「執行記錄」分頁的失敗原因；有 logcat 更好（`adb logcat | grep -i nexflow`）
+      label: 執行記錄／logcat / Execution log or logcat
+      description: |
+        App 內「執行記錄」分頁的失敗原因；有 logcat 更好（`adb logcat | grep -i nexflow`）。
+        The failure reason from the app's "Logs" tab; logcat is even better (`adb logcat | grep -i nexflow`).
       render: shell
 
   - type: checkboxes
     id: permissions
     attributes:
-      label: 相關權限狀態（App 的「設定」分頁可以看到）
+      label: 相關權限狀態（App 的「設定」分頁可以看到）/ Permission state (visible on the app's Settings tab)
       options:
-        - label: 無障礙服務已開啟
-        - label: 通知存取權限已開啟
-        - label: 已授予「鬧鐘與提醒」（精確排程，時間觸發需要）
-        - label: 已把 NexFlow 排除在電池最佳化之外
-        - label: 定位權限（含背景定位）已授予（地理圍欄需要）
+        - label: 無障礙服務已開啟 / Accessibility service is enabled
+        - label: 通知存取權限已開啟 / Notification access is granted
+        - label: 已授予「鬧鐘與提醒」（精確排程，時間觸發需要）/ "Alarms & reminders" granted (exact scheduling, needed by TIME triggers)
+        - label: 已把 NexFlow 排除在電池最佳化之外 / NexFlow is excluded from battery optimisation
+        - label: 定位權限（含背景定位）已授予（地理圍欄需要）/ Location, including background location, is granted (needed by geofences)
 
   - type: textarea
     id: extra
     attributes:
-      label: 其他補充
-      description: 螢幕錄影、截圖，或任何你覺得有關的線索
+      label: 其他補充 / Anything else
+      description: |
+        螢幕錄影、截圖，或任何你覺得有關的線索。
+        Screen recordings, screenshots, or any other clue you think is relevant.

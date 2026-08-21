@@ -25,6 +25,7 @@ import com.nexflow.core.automation.model.Condition
 import com.nexflow.core.automation.model.ConditionType
 import com.nexflow.core.automation.model.ExecutionLog
 import com.nexflow.core.automation.model.ExecutionStatus
+import com.nexflow.core.automation.model.ExecutionStep
 import com.nexflow.core.automation.model.Flow
 import com.nexflow.core.automation.model.Trigger
 import com.nexflow.core.automation.model.TriggerLogic
@@ -43,6 +44,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -115,7 +117,7 @@ class FlowEngineConditionTest {
             setOf(FixedEvaluator(ConditionType.CHARGING, result = false)),
         )
         val logged = slot<ExecutionLog>()
-        coEvery { repository.saveExecutionLog(capture(logged)) } returns Unit
+        coEvery { repository.saveExecutionLog(capture(logged), any()) } returns Unit
 
         engine.runNow(flow.id)
 
@@ -137,12 +139,54 @@ class FlowEngineConditionTest {
             setOf(FixedEvaluator(ConditionType.CHARGING, result = true)),
         )
         val logged = slot<ExecutionLog>()
-        coEvery { repository.saveExecutionLog(capture(logged)) } returns Unit
+        coEvery { repository.saveExecutionLog(capture(logged), any()) } returns Unit
 
         engine.runNow(flow.id)
 
         assertEquals(listOf("hi"), executor.messages)
         assertEquals(ExecutionStatus.SUCCESS, logged.captured.status)
+    }
+
+    @Test
+    fun `a successful run is saved with the steps it was made of`() = runTest {
+        val executor = RecordingExecutor()
+        val repository = mockk<FlowRepository>(relaxed = true)
+        val flow = testFlow()
+        val engine = engineFor(flow, repository, executor, emptySet())
+        val logged = slot<ExecutionLog>()
+        val steps = slot<List<ExecutionStep>>()
+        coEvery { repository.saveExecutionLog(capture(logged), capture(steps)) } returns Unit
+
+        engine.runNow(flow.id)
+
+        // The steps are the whole point of the run detail screen, and they are only ever written
+        // here — a summary saved without them renders as a run that executed nothing.
+        assertEquals(1, steps.captured.size)
+        val step = steps.captured.single()
+        assertEquals("a0", step.actionId)
+        assertEquals(ExecutionStatus.SUCCESS, step.status)
+        assertEquals(logged.captured.id, step.logId, "steps must be filed under the run that produced them")
+        // Detailed logging is off unless the user turns it on, and the mocked prefs say off.
+        assertNull(step.resolvedConfig)
+    }
+
+    @Test
+    fun `a skipped run records no steps`() = runTest {
+        val executor = RecordingExecutor()
+        val repository = mockk<FlowRepository>(relaxed = true)
+        val flow = testFlow(conditions = listOf(condition(ConditionType.CHARGING)))
+        val engine = engineFor(
+            flow, repository, executor,
+            setOf(FixedEvaluator(ConditionType.CHARGING, result = false)),
+        )
+        val steps = slot<List<ExecutionStep>>()
+        coEvery { repository.saveExecutionLog(any(), capture(steps)) } returns Unit
+
+        engine.runNow(flow.id)
+
+        // Nothing ran, so there is nothing to show step by step — the gate's reason on the
+        // summary is the whole story.
+        assertTrue(steps.captured.isEmpty())
     }
 
     @Test
@@ -156,7 +200,7 @@ class FlowEngineConditionTest {
         )
         val engine = engineFor(flow, repository, executor, emptySet())
         val logged = slot<ExecutionLog>()
-        coEvery { repository.saveExecutionLog(capture(logged)) } returns Unit
+        coEvery { repository.saveExecutionLog(capture(logged), any()) } returns Unit
 
         engine.runNow(flow.id)
 

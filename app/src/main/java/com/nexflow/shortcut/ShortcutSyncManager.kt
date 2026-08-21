@@ -24,8 +24,10 @@ import com.nexflow.core.automation.repository.FlowRepository
 import com.nexflow.widget.NexFlowWidget
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -85,6 +87,22 @@ class ShortcutSyncManager @Inject constructor(
         if (signature == lastPinnedSignature) return
         runCatching { shortcutManager?.updateShortcuts(flows.map { buildShortcut(it).build() }) }
             .onSuccess { lastPinnedSignature = signature }
+    }
+
+    /**
+     * Pushes one flow's current label and icon onto every already-published copy of its shortcut —
+     * pinned on the home screen and/or dynamic in the long-press menu. `updateShortcuts` touches
+     * only ids that exist, so a flow with no shortcut anywhere costs one no-op call.
+     *
+     * [startSync] runs only while the engine service is alive (master switch on), so a rename or
+     * icon edit made with the switch off would otherwise leave the old name on screen until the
+     * engine next starts. Call this from wherever those fields are edited.
+     */
+    suspend fun refreshShortcut(flow: Flow) = withContext(Dispatchers.Default) {
+        runCatching { shortcutManager?.updateShortcuts(listOf(buildShortcut(flow).build())) }
+        // The batch paths' caches no longer describe what is published.
+        lastDynamicSignature = null
+        lastPinnedSignature = null
     }
 
     private fun buildShortcut(flow: Flow): ShortcutInfo.Builder =

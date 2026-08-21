@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Preview for 1x1 single-flow shortcut widget. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -14,15 +15,17 @@
         android:background="@drawable/bg_widget_play_btn"
         android:src="@android:drawable/ic_media_play"
         android:padding="10dp"
-        android:tint="#1C1B1F" />
+        android:tint="#1C1B1F"
+        android:contentDescription="@null"
+        tools:ignore="UseAppTint" />
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
-        android:text="我的流程"
+        android:text="@string/widget_preview_flow_a"
         android:textColor="#E6E1E5"
-        android:textSize="10sp"
+        android:textSize="11sp"
         android:gravity="center"
         android:singleLine="true"
         android:ellipsize="end" />

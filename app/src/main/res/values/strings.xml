@@ -1,5 +1,6 @@
 <resources>
-    <string name="app_name">NexFlow</string>
+    <!-- Product name: the same in every language, so translators never see it. -->
+    <string name="app_name" translatable="false">NexFlow</string>
     <string name="accessibility_service_description">NexFlow uses the Accessibility Service for three automation features: capturing a screenshot when a flow\'s screenshot action runs, performing a tap gesture at coordinates you specify when a flow runs a simulated-tap action, and detecting which app is brought to the foreground so your \"App Launched\" triggers can fire. It only reads the package name of the app in front; it does not read screen content, text, or passwords, and it does not send any data to a server. It runs only after you manually enable it.</string>
 
     <!-- Widgets -->
@@ -79,7 +80,10 @@
     <string name="fd_disabled">Disabled</string>
     <string name="fd_logic_any">ANY</string>
     <string name="fd_logic_all">ALL</string>
-    <string name="fd_logic_all_hint">ALL: every trigger must fire within %1$d minutes of each other.</string>
+    <plurals name="fd_logic_all_hint">
+        <item quantity="one">ALL: every trigger must fire within %1$d minute of each other.</item>
+        <item quantity="other">ALL: every trigger must fire within %1$d minutes of each other.</item>
+    </plurals>
     <string name="fd_clear_search">Clear search</string>
     <string name="fd_nothing_matches">Nothing matches “%1$s”</string>
     <string name="fd_no_config_needed">No configuration needed for this type.</string>
@@ -133,7 +137,7 @@
     <string name="settings_ai_model_load_failed">Couldn\'t load the model list</string>
     <string name="action_retry">Retry</string>
     <string name="ai_chat_title">AI assistant</string>
-    <string name="ai_greeting">Describe the automation you want — for example: \"When I plug in headphones, set media volume to 80% and open Spotify.\"</string>
+    <string name="ai_greeting" formatted="false">Describe the automation you want — for example: \"When I plug in headphones, set media volume to 80% and open Spotify.\"</string>
     <string name="ai_input_hint">Describe your automation…</string>
     <string name="ai_send">Send</string>
     <string name="ai_stop">Stop</string>
@@ -146,7 +150,10 @@
     <string name="ai_diff_field_change">%1$s: %2$s → %3$s</string>
     <string name="ai_flow_updated">Flow updated</string>
     <string name="ai_view_flow">View</string>
-    <string name="ai_tokens_used">%1$d tokens used</string>
+    <plurals name="ai_tokens_used">
+        <item quantity="one">%1$d token used</item>
+        <item quantity="other">%1$d tokens used</item>
+    </plurals>
     <string name="ai_suggestions_dismiss">Hide suggestions</string>
     <string name="ai_retry">Retry</string>
     <string name="ai_key_get">Get a free API key</string>
@@ -361,7 +368,15 @@
     <string name="log_retention_standard">Standard</string>
     <string name="log_retention_full">Full</string>
     <string name="log_retention_extended">Extended</string>
-    <string name="log_retention_detail">%1$d days · %2$d entries</string>
+    <string name="log_retention_detail">%1$s · %2$s</string>
+    <plurals name="log_retention_days">
+        <item quantity="one">%1$d day</item>
+        <item quantity="other">%1$d days</item>
+    </plurals>
+    <plurals name="log_retention_entries">
+        <item quantity="one">%1$d entry</item>
+        <item quantity="other">%1$d entries</item>
+    </plurals>
 
     <!-- Logs -->
     <string name="logs_title">Execution Logs</string>
@@ -417,7 +432,10 @@
     <string name="sp_configurable_hint">Opens the app\u2019s own setup screen</string>
     <string name="sp_empty">This app offers no accessible shortcuts</string>
     <string name="sp_empty_hint">Dynamic shortcuts cannot be read due to system restrictions</string>
-    <string name="sp_hidden_count">%1$d shortcuts hidden — their targets can only be launched from the home screen</string>
+    <plurals name="sp_hidden_count">
+        <item quantity="one">%1$d shortcut hidden — its target can only be launched from the home screen</item>
+        <item quantity="other">%1$d shortcuts hidden — their targets can only be launched from the home screen</item>
+    </plurals>
     <string name="sp_unsupported_result">This shortcut format is not supported</string>
     <string name="act_open_url_label">Open URL</string>
     <string name="act_open_url_desc">Open a link in the browser</string>
@@ -574,6 +592,11 @@
     <string name="cfg_url">URL</string>
     <string name="cfg_method">Method</string>
     <string name="cfg_body_optional">Body (optional)</string>
+    <string name="cfg_http_headers">Headers (optional)</string>
+    <string name="cfg_http_response_var">Store response in variable (optional)</string>
+    <string name="cfg_http_json_path">JSON field (optional)</string>
+    <string name="cfg_http_response_info_label">Using the response</string>
+    <string name="cfg_http_response_info_body">Name a variable and the response is stored there, ready to use as {{name}} in later actions. Leave the JSON field empty to store the whole response, or give a dot path such as main.temp or items.0.name to store just that field. The status code is always available as {{__http_status__}} — an error status does not stop the flow, so test it with an If action.</string>
     <string name="cfg_value">Value</string>
     <string name="cfg_variable_name">Variable name</string>
     <string name="cfg_content">Content</string>
@@ -772,7 +795,10 @@
     <string name="flows_perm_setup_start">Set up</string>
     <string name="flows_perm_setup_title">Grant permissions</string>
     <string name="flows_perm_setup_current">Next: enable \"%1$s\"</string>
-    <string name="flows_perm_setup_remaining">%1$d more after this</string>
+    <plurals name="flows_perm_setup_remaining">
+        <item quantity="one">%1$d more after this</item>
+        <item quantity="other">%1$d more after this</item>
+    </plurals>
     <string name="flows_perm_setup_skip">Skip this</string>
     <string name="flows_perm_setup_done">\"%1$s\" is ready to run</string>
     <string name="flows_perm_setup_incomplete">\"%1$s\" still needs some permissions and was left off</string>
@@ -800,4 +826,34 @@
         <item>Open Spotify when I plug in headphones</item>
         <item>Silence my phone at work</item>
     </string-array>
+
+    <!-- Per-run build log: the steps of one execution, reached by tapping a log entry -->
+    <string name="run_detail_title">Run detail</string>
+    <string name="run_detail_gone">This run is no longer stored.</string>
+    <string name="run_no_steps">This run was recorded before step logging existed, so only its result was saved.</string>
+    <string name="run_step_disabled">Turned off — skipped</string>
+    <string name="run_step_if_true">Condition met</string>
+    <string name="run_step_if_false">Condition not met</string>
+    <plurals name="run_step_repeat">
+        <item quantity="one">Repeated once</item>
+        <item quantity="other">Repeated %1$d times</item>
+    </plurals>
+    <string name="run_step_menu">Chose “%1$s”</string>
+    <plurals name="run_steps_truncated">
+        <item quantity="one">1 more step ran but was not recorded.</item>
+        <item quantity="other">%1$d more steps ran but were not recorded.</item>
+    </plurals>
+    <string name="settings_detailed_log">Detailed execution log</string>
+    <string name="settings_detailed_log_desc">Also record what each action’s settings came out as — the address actually called, the text actually sent. Stored on this device, and it will include whatever your flows handle.</string>
+    <string name="run_step_menu_cancelled">Closed without choosing</string>
+    <string name="widget_preview_count" translatable="false">4/6</string>
+    <string name="widget_preview_flow_a">Morning routine</string>
+    <string name="widget_preview_flow_b">Commute mode</string>
+    <string name="widget_preview_flow_c">Focus time</string>
+    <string name="widget_preview_flow_d">Bedtime</string>
+    <string name="run_detail_copied">Copied to clipboard</string>
+    <plurals name="cfg_volume_device_steps">
+        <item quantity="one">%1$d of %2$d step on this device</item>
+        <item quantity="other">%1$d of %2$d steps on this device</item>
+    </plurals>
 </resources>

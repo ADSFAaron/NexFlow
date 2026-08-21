@@ -106,6 +106,8 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.ExposedDropdownMenu
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.DropdownMenuItem
@@ -121,7 +123,6 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -169,8 +170,10 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.nexflow.R
+import com.nexflow.executor.HttpActionExecutor
 import com.nexflow.shortcut.PinShortcutHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -212,6 +215,7 @@ import androidx.compose.ui.graphics.Color
 import com.nexflow.ui.flows.detail.config.ActionInfo
 import com.nexflow.ui.flows.detail.config.ConfigField
 import com.nexflow.ui.flows.detail.config.NEGATE_KEY
+import com.nexflow.ui.flows.detail.config.normalizeConfigForEditing
 import com.nexflow.ui.flows.detail.config.CoordinatePickerDialog
 import com.nexflow.ui.flows.detail.config.pointFrom
 import com.nexflow.ui.flows.detail.config.TriggerInfo
@@ -365,6 +369,16 @@ private fun FlowDetailContent(
             f.variables.map { it.name } +
                 f.actions.filter { it.type == ActionType.SET_VARIABLE }
                     .mapNotNull { it.config["variable_name"]?.takeIf { n -> n.isNotBlank() } } +
+                // What an HTTP request stores: the variable the user named for the response, plus
+                // the status code every request publishes. Branching on an API reply is the point
+                // of the action, and without these the Save gate would reject the {{ref}} for it.
+                f.actions.filter { it.type == ActionType.HTTP_REQUEST }
+                    .flatMap { action ->
+                        listOfNotNull(
+                            action.config["response_var"]?.trim()?.takeIf { n -> n.isNotBlank() },
+                            HttpActionExecutor.STATUS_VARIABLE,
+                        )
+                    } +
                 // Global (cross-flow) variables, referenced as {{g:name}}.
                 globalVariableRefs +
                 // What this flow's triggers report about the event, as {{trigger.name}} —
@@ -530,9 +544,10 @@ private fun FlowDetailContent(
             if (f.triggerLogic == TriggerLogic.ALL && f.triggers.size > 1) {
                 item {
                     Text(
-                        stringResource(
-                            R.string.fd_logic_all_hint,
-                            AllTriggersGate.DEFAULT_WINDOW_MS / 60_000,
+                        pluralStringResource(
+                            R.plurals.fd_logic_all_hint,
+                            (AllTriggersGate.DEFAULT_WINDOW_MS / 60_000).toInt(),
+                            (AllTriggersGate.DEFAULT_WINDOW_MS / 60_000).toInt(),
                         ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -943,7 +958,7 @@ private fun FlowDetailContent(
                     else -> ConfigDialog(
                         title = action.type.info(context).label,
                         fields = action.type.info(context).fields,
-                        initialValues = action.config,
+                        initialValues = normalizeConfigForEditing(action.type, action.config),
                         availableVariables = flowVariables,
                         onConfirm = { values ->
                             vm.updateAction(action.copy(config = values))
@@ -1745,6 +1760,15 @@ internal fun ConfigDialog(
                                         valueRange = field.min.toFloat()..field.max.toFloat(),
                                         steps = 0,
                                     )
+                                    // What the number lands on here, for a value whose meaning
+                                    // depends on the device rather than on the flow.
+                                    field.describe?.invoke(context, values)?.let { detail ->
+                                        Text(
+                                            detail,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
                                 }
                             }
 
@@ -2417,7 +2441,7 @@ private fun DropdownConfigField(
             readOnly = true,
             modifier = Modifier
                 .fillMaxWidth()
-                .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
         )
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             field.options.forEach { (optValue, optLabel) ->
@@ -2717,7 +2741,7 @@ private fun OperatorDropdown(
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
             modifier = Modifier
                 .fillMaxWidth()
-                .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
         )
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             CONDITION_OPERATORS.forEach { opt ->

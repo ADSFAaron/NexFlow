@@ -35,6 +35,7 @@ import com.nexflow.core.automation.repository.GlobalVariableRepository
 import com.nexflow.core.automation.trigger.TriggerEvent
 import com.nexflow.core.automation.trigger.TriggerHandler
 import com.nexflow.core.automation.trigger.TriggerVariables
+import com.nexflow.prefs.DetailedLogPrefs
 import com.nexflow.prefs.ExecutionFeedbackPrefs
 import com.nexflow.trigger.TimeTriggerScheduler
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -257,6 +258,9 @@ class FlowEngine @Inject constructor(
                     ).show()
                 }
             }
+            // Collected for every run, not just failing ones: a run that "did nothing" is the
+            // hardest kind to diagnose, and it looks identical to a healthy one from the summary.
+            val steps = StepCollector()
             val result = try {
                 interpreter.execute(
                     flow = flow,
@@ -267,6 +271,8 @@ class FlowEngine @Inject constructor(
                     // write to an unknown g: name, so a typo lands in the execution log instead of
                     // silently creating a global nobody declared.
                     onGlobalVariableSet = globalVariableRepository::updateValue,
+                    onStep = steps::add,
+                    recordResolvedConfig = DetailedLogPrefs.isEnabled(context),
                 )
             } catch (e: CancellationException) {
                 throw e
@@ -274,21 +280,25 @@ class FlowEngine @Inject constructor(
                 InterpreterResult.Failure("Unexpected error in flow '${flow.name}': ${e.message}", e)
             }
             val durationMs = System.currentTimeMillis() - startMs
-            val status = if (result is InterpreterResult.Success) {
-                ExecutionStatus.SUCCESS
-            } else {
-                ExecutionStatus.FAIL
+            val status = when (result) {
+                is InterpreterResult.Success -> ExecutionStatus.SUCCESS
+                // The user closed a menu without picking. Nothing failed, and the steps up to
+                // the menu did run, so it is neither SUCCESS nor FAIL.
+                is InterpreterResult.Cancelled -> ExecutionStatus.SKIPPED
+                is InterpreterResult.Failure -> ExecutionStatus.FAIL
             }
 
+            val logId = UUID.randomUUID().toString()
             repository.saveExecutionLog(
                 ExecutionLog(
-                    id = UUID.randomUUID().toString(),
+                    id = logId,
                     flowId = flow.id,
                     triggeredAt = startMs,
                     status = status,
                     errorMessage = (result as? InterpreterResult.Failure)?.message,
                     executionDurationMs = durationMs,
                 ),
+                steps = steps.toSteps(logId),
             )
             return status
         } finally {

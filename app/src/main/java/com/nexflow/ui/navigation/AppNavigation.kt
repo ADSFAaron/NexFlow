@@ -60,6 +60,8 @@ import com.nexflow.ui.flows.FlowsScreen
 import com.nexflow.ui.flows.detail.FlowDetailScreen
 import com.nexflow.ui.globalvars.GlobalVariablesScreen
 import com.nexflow.ui.logs.LogsScreen
+import com.nexflow.ui.logs.RunDetailScreen
+import com.nexflow.ui.logs.RunDetailViewModel
 import com.nexflow.ui.settings.SettingsScreen
 
 sealed class Screen(
@@ -155,7 +157,12 @@ fun NexFlowNavHost(navController: NavHostController, modifier: Modifier = Modifi
                 onAiClick = { navController.navigate("ai_chat") },
             )
         }
-        composable(Screen.Logs.route) { LogsScreen() }
+        composable(Screen.Logs.route) {
+            LogsScreen(onEntryClick = { logId -> navController.navigate("runs/$logId") })
+        }
+        composable("runs/{${RunDetailViewModel.ARG_LOG_ID}}") {
+            RunDetailScreen(onBack = { navController.popBackStack() })
+        }
         composable(Screen.Settings.route) {
             SettingsScreen(
                 onAboutClick = { navController.navigate("about") },

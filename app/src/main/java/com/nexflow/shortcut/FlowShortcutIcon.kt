@@ -21,6 +21,7 @@ import android.graphics.Canvas
 import android.graphics.Matrix
 import android.graphics.Paint
 import androidx.compose.ui.graphics.Color
+import androidx.core.graphics.createBitmap
 import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -57,6 +58,54 @@ object FlowShortcutIcon {
     private val DEFAULT_BACKGROUND = Color(0xFF3E63DD)
 
     fun render(context: Context, flow: Flow): Bitmap = render(context, flow.icon, flow.iconColor)
+
+    /**
+     * The same glyph on the same flow color, but as a circle on a transparent square, for the
+     * badge on a widget card.
+     *
+     * Circular in the bitmap rather than a square bitmap rounded by the layout:
+     * `GlanceModifier.cornerRadius(Dp)` needs API 31 and minSdk here is 30, so on an API 30
+     * launcher a squared-off badge would be the one thing on the card that looks broken.
+     *
+     * @param sizeDp the badge's diameter as laid out; the bitmap is rendered at the display
+     *   density so it is not upscaled.
+     */
+    fun renderBadge(context: Context, iconKey: String?, iconColor: String?, sizeDp: Float): Bitmap {
+        val density = context.resources.displayMetrics.density
+        val sizePx = (sizeDp * density).roundToInt().coerceAtLeast(1)
+        // The glyph occupies a little over half the badge, the proportion a Material icon button
+        // uses; filling more makes the circle read as a solid blob at widget sizes.
+        val glyphPx = sizePx * 0.55f
+
+        val bitmap = createBitmap(sizePx, sizePx)
+        val canvas = Canvas(bitmap)
+        val radius = sizePx / 2f
+        canvas.drawCircle(
+            radius,
+            radius,
+            radius,
+            Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                style = Paint.Style.FILL
+                color = (FlowIcons.color(iconColor) ?: DEFAULT_BACKGROUND).toArgb()
+            },
+        )
+
+        val vector = FlowIcons.vector(iconKey)
+        val scale = glyphPx / maxOf(vector.viewportWidth, vector.viewportHeight)
+        val matrix = Matrix().apply {
+            postScale(scale, scale)
+            postTranslate(
+                (sizePx - vector.viewportWidth * scale) / 2f,
+                (sizePx - vector.viewportHeight * scale) / 2f,
+            )
+        }
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.FILL
+            color = android.graphics.Color.WHITE
+        }
+        drawGroup(canvas, vector.root, matrix, paint)
+        return bitmap
+    }
 
     fun render(context: Context, iconKey: String?, iconColor: String?): Bitmap {
         val density = context.resources.displayMetrics.density

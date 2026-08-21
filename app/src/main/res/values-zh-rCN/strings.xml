@@ -78,7 +78,9 @@
     <string name="fd_disabled">已停用</string>
     <string name="fd_logic_any">任一</string>
     <string name="fd_logic_all">全部</string>
-    <string name="fd_logic_all_hint">ALL：所有触发器都要在 %1$d 分钟内响应，流程才会执行。</string>
+    <plurals name="fd_logic_all_hint">
+        <item quantity="other">ALL：所有触发器都要在 %1$d 分钟内响应，流程才会执行。</item>
+    </plurals>
     <string name="fd_clear_search">清除搜索</string>
     <string name="fd_nothing_matches">找不到匹配「%1$s」的项目</string>
     <string name="fd_no_config_needed">此类型无需配置。</string>
@@ -132,7 +134,7 @@
     <string name="settings_ai_model_load_failed">无法加载模型列表</string>
     <string name="action_retry">重试</string>
     <string name="ai_chat_title">AI 助手</string>
-    <string name="ai_greeting">描述您想要的自动化 — 例如:"插上耳机时,把媒体音量调到 80% 并打开 Spotify。"</string>
+    <string name="ai_greeting" formatted="false">描述您想要的自动化 — 例如:"插上耳机时,把媒体音量调到 80% 并打开 Spotify。"</string>
     <string name="ai_input_hint">描述您的自动化…</string>
     <string name="ai_send">发送</string>
     <string name="ai_stop">停止</string>
@@ -145,7 +147,9 @@
     <string name="ai_diff_field_change">%1$s：%2$s → %3$s</string>
     <string name="ai_flow_updated">流程已更新</string>
     <string name="ai_view_flow">查看流程</string>
-    <string name="ai_tokens_used">已用 %1$d tokens</string>
+    <plurals name="ai_tokens_used">
+        <item quantity="other">已用 %1$d tokens</item>
+    </plurals>
     <string name="ai_suggestions_dismiss">隐藏建议</string>
     <string name="ai_retry">重试</string>
     <string name="ai_key_get">免费获取 API 密钥</string>
@@ -360,7 +364,13 @@
     <string name="log_retention_standard">标准</string>
     <string name="log_retention_full">完整</string>
     <string name="log_retention_extended">延长</string>
-    <string name="log_retention_detail">%1$d 天 · %2$d 条</string>
+    <string name="log_retention_detail">%1$s · %2$s</string>
+    <plurals name="log_retention_days">
+        <item quantity="other">%1$d 天</item>
+    </plurals>
+    <plurals name="log_retention_entries">
+        <item quantity="other">%1$d 条</item>
+    </plurals>
 
     <!-- Logs -->
     <string name="logs_title">执行日志</string>
@@ -413,7 +423,9 @@
     <string name="sp_configurable_hint">会打开该 App 自己的设置界面</string>
     <string name="sp_empty">此 App 未提供可访问的快捷方式</string>
     <string name="sp_empty_hint">动态快捷方式因系统限制无法读取</string>
-    <string name="sp_hidden_count">已隐藏 %1$d 个快捷方式——其目标仅能由桌面启动</string>
+    <plurals name="sp_hidden_count">
+        <item quantity="other">已隐藏 %1$d 个快捷方式——其目标仅能由桌面启动</item>
+    </plurals>
     <string name="sp_unsupported_result">不支持此快捷方式格式</string>
     <string name="act_open_url_label">打开网址</string>
     <string name="act_open_url_desc">在浏览器打开链接</string>
@@ -568,6 +580,11 @@
     <string name="cfg_url">网址</string>
     <string name="cfg_method">方法</string>
     <string name="cfg_body_optional">正文（可选）</string>
+    <string name="cfg_http_headers">标头（可选）</string>
+    <string name="cfg_http_response_var">将响应存入变量（可选）</string>
+    <string name="cfg_http_json_path">JSON 字段（可选）</string>
+    <string name="cfg_http_response_info_label">使用响应内容</string>
+    <string name="cfg_http_response_info_body">填入变量名称，响应就会存进该变量，后续动作可用 {{名称}} 取用。JSON 字段留空会存入整份响应；填入像 main.temp 或 items.0.name 这样的路径，则只存那一个字段。状态码一律可用 {{__http_status__}} 取得——错误状态不会中止流程，请用“如果”动作自行判断。</string>
     <string name="cfg_value">值</string>
     <string name="cfg_variable_name">变量名称</string>
     <string name="cfg_content">内容</string>
@@ -761,7 +778,9 @@
     <string name="flows_perm_setup_start">开始设置</string>
     <string name="flows_perm_setup_title">授予权限</string>
     <string name="flows_perm_setup_current">接下来：启用「%1$s」</string>
-    <string name="flows_perm_setup_remaining">之后还有 %1$d 项</string>
+    <plurals name="flows_perm_setup_remaining">
+        <item quantity="other">之后还有 %1$d 项</item>
+    </plurals>
     <string name="flows_perm_setup_skip">跳过此项</string>
     <string name="flows_perm_setup_done">「%1$s」已可运行</string>
     <string name="flows_perm_setup_incomplete">「%1$s」仍缺少权限，尚未启用</string>
@@ -789,4 +808,30 @@
         <item>接上耳机就打开 Spotify</item>
         <item>到公司自动静音</item>
     </string-array>
+
+    <!-- 单次执行的完整步骤记录，从记录列表点入 -->
+    <string name="run_detail_title">执行明细</string>
+    <string name="run_detail_gone">这次执行已经不在记录里了。</string>
+    <string name="run_no_steps">这次执行早于逐步骤记录功能，因此只留下结果。</string>
+    <string name="run_step_disabled">已关闭，跳过</string>
+    <string name="run_step_if_true">条件成立</string>
+    <string name="run_step_if_false">条件不成立</string>
+    <plurals name="run_step_repeat">
+        <item quantity="other">重复 %1$d 次</item>
+    </plurals>
+    <string name="run_step_menu">选择了“%1$s”</string>
+    <plurals name="run_steps_truncated">
+        <item quantity="other">另有 %1$d 个步骤执行过，但未记录。</item>
+    </plurals>
+    <string name="settings_detailed_log">详细执行记录</string>
+    <string name="settings_detailed_log_desc">连每个动作的设置代入变量后的结果一起记下来——实际调用的网址、实际发出的文字。只存在这台设备上，内容会包含你的流程处理到的任何数据。</string>
+    <string name="run_step_menu_cancelled">没有选择就关闭</string>
+    <string name="widget_preview_flow_a">早安日常</string>
+    <string name="widget_preview_flow_b">通勤模式</string>
+    <string name="widget_preview_flow_c">专注时段</string>
+    <string name="widget_preview_flow_d">睡前模式</string>
+    <string name="run_detail_copied">已复制到剪贴板</string>
+    <plurals name="cfg_volume_device_steps">
+        <item quantity="other">这台设备上为 %2$d 段中的第 %1$d 段</item>
+    </plurals>
 </resources>

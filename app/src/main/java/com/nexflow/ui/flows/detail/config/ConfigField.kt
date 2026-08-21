@@ -15,6 +15,8 @@
  */
 package com.nexflow.ui.flows.detail.config
 
+import android.content.Context
+
 sealed class ConfigField {
     abstract val key: String
     abstract val label: String
@@ -82,6 +84,12 @@ sealed class ConfigField {
         val min: Int,
         val max: Int,
         val unit: String = "",
+        /**
+         * A line under the slider saying what the value means on *this* device, given the other
+         * fields — "24 of 30 steps" for a volume percentage. Null for sliders whose number
+         * already means the same everywhere.
+         */
+        val describe: ((Context, Map<String, String>) -> String?)? = null,
     ) : ConfigField()
 
     data class TimePicker(

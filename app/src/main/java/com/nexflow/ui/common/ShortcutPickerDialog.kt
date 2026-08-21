@@ -60,6 +60,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -246,7 +247,7 @@ private fun ShortcutList(
         ) {
             Text(stringResource(R.string.sp_empty), style = MaterialTheme.typography.bodyLarge)
             Text(
-                if (hiddenCount > 0) stringResource(R.string.sp_hidden_count, hiddenCount)
+                if (hiddenCount > 0) pluralStringResource(R.plurals.sp_hidden_count, hiddenCount, hiddenCount)
                 else stringResource(R.string.sp_empty_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -295,7 +296,7 @@ private fun ShortcutList(
         if (hiddenCount > 0) {
             item {
                 Text(
-                    stringResource(R.string.sp_hidden_count, hiddenCount),
+                    pluralStringResource(R.plurals.sp_hidden_count, hiddenCount, hiddenCount),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),

@@ -1,36 +1,42 @@
 [versions]
 agp = "9.3.1"
-kotlin = "2.2.10"
-# KSP version must match Kotlin major.minor.patch. Check https://github.com/google/ksp/releases
-ksp = "2.3.9"
-coreKtx = "1.16.0"
-appcompat = "1.7.0"
-lifecycle = "2.9.0"
-activityCompose = "1.10.1"
-composeBom = "2026.02.01"
-material3Alpha = "1.5.0-alpha21"
-navigationCompose = "2.9.0"
-hilt = "2.59.2"
-hiltNavigationCompose = "1.2.0"
-hiltWork = "1.2.0"
-room = "2.7.2"
-kotlinxSerialization = "1.7.3"
-ktor = "3.0.3"
-workmanager = "2.10.0"
+kotlin = "2.4.10"
+# KSP2 has its own version line and does NOT track the Kotlin version — 2.3.11 is what
+# supports Kotlin 2.4.x. Check https://github.com/google/ksp/releases before bumping Kotlin.
+ksp = "2.3.11"
+coreKtx = "1.19.0"
+appcompat = "1.8.0"
+lifecycle = "2.11.0"
+activityCompose = "1.13.0"
+composeBom = "2026.08.00"
+material3Alpha = "1.5.0-alpha26"
+navigationCompose = "2.9.8"
+hilt = "2.60.1"
+hiltNavigationCompose = "1.4.0"
+hiltWork = "1.4.0"
+room = "2.8.4"
+kotlinxSerialization = "1.11.0"
+ktor = "3.5.2"
+workmanager = "2.11.2"
 glance = "1.1.1"
 reorderable = "3.1.0"
-playServicesLocation = "21.3.0"
+playServicesLocation = "21.4.0"
 imageCropper = "4.7.0"
-coil = "3.3.0"
+coil = "3.5.0"
 # Test
 junit = "4.13.2"
-junitVersion = "1.2.1"
-espressoCore = "3.6.1"
-junit5 = "5.10.0"
-junit5Platform = "1.10.0"
-mockk = "1.13.10"
-turbine = "1.1.0"
-kotlinxCoroutines = "1.8.0"
+junitVersion = "1.3.0"
+espressoCore = "3.7.0"
+junit5 = "5.14.4"
+junit5Platform = "1.14.4"
+mockk = "1.14.11"
+turbine = "1.2.1"
+kotlinxCoroutines = "1.11.0"
+# Robolectric 4.16.x knows Android SDKs up to 36 (Baklava); app/src/test/resources/robolectric.properties
+# pins the level the tests actually run at, since compileSdk 37 has no Robolectric image.
+robolectric = "4.16.1"
+# Compose Preview Screenshot Testing. Plugin and validation API are versioned together.
+screenshot = "0.0.1-alpha16"
 
 [libraries]
 # AndroidX Core
@@ -55,6 +61,7 @@ androidx-compose-material3-adaptive-navigation-suite = { group = "androidx.compo
 
 # Navigation
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
+androidx-navigation-testing = { group = "androidx.navigation", name = "navigation-testing", version.ref = "navigationCompose" }
 
 # Hilt
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
@@ -68,6 +75,7 @@ hilt-compiler-work = { group = "androidx.hilt", name = "hilt-compiler", version.
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+room-testing = { group = "androidx.room", name = "room-testing", version.ref = "room" }
 
 # Serialization
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
@@ -76,6 +84,7 @@ kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 ktor-client-android = { group = "io.ktor", name = "ktor-client-android", version.ref = "ktor" }
 ktor-client-content-negotiation = { group = "io.ktor", name = "ktor-client-content-negotiation", version.ref = "ktor" }
 ktor-serialization-kotlinx-json = { group = "io.ktor", name = "ktor-serialization-kotlinx-json", version.ref = "ktor" }
+ktor-client-mock = { group = "io.ktor", name = "ktor-client-mock", version.ref = "ktor" }
 
 # WorkManager
 androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workmanager" }
@@ -95,6 +104,11 @@ junit = { group = "junit", name = "junit", version.ref = "junit" }
 junit5-api = { group = "org.junit.jupiter", name = "junit-jupiter-api", version.ref = "junit5" }
 junit5-engine = { group = "org.junit.jupiter", name = "junit-jupiter-engine", version.ref = "junit5" }
 junit5-platform-launcher = { group = "org.junit.platform", name = "junit-platform-launcher", version.ref = "junit5Platform" }
+# Robolectric and the Compose test rules are JUnit 4; this engine is what lets them run under
+# the useJUnitPlatform() runner the rest of the suite uses. Version must track junit5.
+junit5-vintage-engine = { group = "org.junit.vintage", name = "junit-vintage-engine", version.ref = "junit5" }
+robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
+screenshot-validation-api = { group = "com.android.tools.screenshot", name = "screenshot-validation-api", version.ref = "screenshot" }
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
@@ -114,3 +128,4 @@ kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", versi
 hilt-android = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 room = { id = "androidx.room", version.ref = "room" }
+compose-screenshot = { id = "com.android.compose.screenshot", version.ref = "screenshot" }

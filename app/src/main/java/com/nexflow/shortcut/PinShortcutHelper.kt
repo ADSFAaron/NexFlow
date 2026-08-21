@@ -56,6 +56,11 @@ object PinShortcutHelper {
             .setIcon(IconCompat.createWithAdaptiveBitmap(FlowShortcutIcon.render(context, flow)))
             .setIntent(buildIntent(context, flow.id))
             .build()
+        // requestPinShortcut ignores every field but the id once a shortcut with that id is
+        // already published (dynamic from a recent run, or an earlier pin) — the launcher gets
+        // the *published* copy, so a rename or icon edit made since would be dropped. Push the
+        // fresh definition onto that copy first; updateShortcuts is a no-op for unknown ids.
+        runCatching { ShortcutManagerCompat.updateShortcuts(context, listOf(shortcut)) }
         ShortcutManagerCompat.requestPinShortcut(context, shortcut, null)
     }
 }

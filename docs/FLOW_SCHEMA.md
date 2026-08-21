@@ -186,7 +186,19 @@ Variables are referenced using double-brace syntax in any string `config` value:
 {{variable_name}}
 ```
 
-The runtime substitutes the current value before executing the action. Nested or compound expressions (e.g. `{{count}} + 1`) are evaluated by the ActionExecutor interpreter.
+The runtime substitutes the current value before executing the action. A name nothing resolves is left as the literal `{{name}}` text, so a typo stays visible rather than turning into an empty string — and an `IF_BLOCK` or `EXPRESSION` whose operands did not all resolve evaluates to **false** instead of comparing that literal text.
+
+### Arithmetic in `SET_VARIABLE`
+
+The `value` of a `SET_VARIABLE` is evaluated as arithmetic when — and only when — the whole value is numbers joined by `+`, `-`, `*` or `/`, **with whitespace on both sides of every operator**:
+
+```json
+{"variable_name": "counter", "value": "{{counter}} + 1"}
+```
+
+`*` and `/` bind tighter than `+` and `-`; the maths is exact (`0.1 + 0.2` is `0.3`) and whole results carry no decimal tail (`1 + 1` is `2`). Division by zero fails the run.
+
+The whitespace rule is what keeps ordinary values intact: `2026-08-10`, `0912-345-678` and `1.2.3` contain operator characters but are stored verbatim. Anything that is not arithmetic — which is most values — is stored exactly as interpolated.
 
 ---
 

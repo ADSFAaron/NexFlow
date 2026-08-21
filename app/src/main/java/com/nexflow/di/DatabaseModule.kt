@@ -19,6 +19,7 @@ import android.content.Context
 import androidx.room.Room
 import com.nexflow.data.local.NexFlowDatabase
 import com.nexflow.data.local.dao.ExecutionLogDao
+import com.nexflow.data.local.dao.ExecutionStepDao
 import com.nexflow.data.local.dao.FlowDao
 import com.nexflow.data.local.dao.AiConversationDao
 import com.nexflow.data.local.dao.GlobalVariableDao
@@ -48,6 +49,9 @@ object DatabaseModule {
 
     @Provides
     fun provideExecutionLogDao(db: NexFlowDatabase): ExecutionLogDao = db.executionLogDao()
+
+    @Provides
+    fun provideExecutionStepDao(db: NexFlowDatabase): ExecutionStepDao = db.executionStepDao()
 
     @Provides
     fun provideVariableDao(db: NexFlowDatabase): VariableDao = db.variableDao()

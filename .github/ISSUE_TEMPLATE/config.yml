@@ -1,12 +1,13 @@
 # 關掉空白 issue，強制走模板（bug / feature 兩種）。
 # 如果覺得太嚴格，把下面改成 true 即可。
+# Blank issues are disabled so every report goes through a form (bug / feature).
 blank_issues_enabled: false
 
 contact_links:
-  - name: 🔐 回報安全性漏洞
+  - name: 🔐 回報安全性漏洞 / Report a security vulnerability
     url: https://github.com/ADSFAaron/NexFlow/security/advisories/new
-    about: 請不要開公開 issue。透過 GitHub 私下回報，只有維護者看得到。
+    about: 請不要開公開 issue，透過 GitHub 私下回報。Please do not open a public issue — report privately via GitHub, visible only to maintainers.
 
-  - name: 💬 使用問題與討論
+  - name: 💬 使用問題與討論 / Questions and discussion
     url: https://github.com/ADSFAaron/NexFlow/discussions
-    about: 「這個流程要怎麼組？」之類的問題請到 Discussions（需先在 repo 設定啟用 Discussions）。
+    about: 「這個流程要怎麼組？」之類的問題請到 Discussions。For "how do I build this flow?" questions, use Discussions instead.

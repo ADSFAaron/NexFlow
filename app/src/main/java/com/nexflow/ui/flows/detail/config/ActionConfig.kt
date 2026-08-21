@@ -16,6 +16,7 @@
 package com.nexflow.ui.flows.detail.config
 
 import android.content.Context
+import android.media.AudioManager
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AirplanemodeActive
@@ -51,6 +52,7 @@ import androidx.compose.material.icons.outlined.Wallpaper
 import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.nexflow.R
+import com.nexflow.executor.VolumeActionExecutor
 import com.nexflow.core.automation.model.ActionType
 import com.nexflow.executor.NotificationActionExecutor
 
@@ -119,6 +121,24 @@ private fun wallpaperTargets(context: Context) = listOf(
 
 // HTTP verbs are protocol tokens, not localizable.
 private val httpMethods = listOf("GET" to "GET", "POST" to "POST", "PUT" to "PUT", "DELETE" to "DELETE", "PATCH" to "PATCH")
+
+/**
+ * The config as the editor should present it, for keys whose meaning has changed since a flow
+ * may have been written.
+ *
+ * VOLUME_ADJUST stored an absolute step under `level`, chosen on a slider that only ever reached
+ * 15 — so a saved 15 meant "all the way up" regardless of what the device's real maximum was.
+ * Converting on that basis is the only reading the old editor supports, and it is what keeps a
+ * flow the user merely opens and re-saves from dropping to a fraction of its intended volume.
+ * The legacy key is dropped in the same breath so the two cannot disagree afterwards.
+ */
+fun normalizeConfigForEditing(type: ActionType, config: Map<String, String>): Map<String, String> {
+    if (type != ActionType.VOLUME_ADJUST) return config
+    if (config.containsKey(VolumeActionExecutor.PERCENT_KEY)) return config
+    val legacy = config[VolumeActionExecutor.LEGACY_LEVEL_KEY]?.toIntOrNull() ?: return config
+    val percent = (legacy * 100 / VolumeActionExecutor.LEGACY_SLIDER_MAX).coerceIn(0, 100)
+    return config - VolumeActionExecutor.LEGACY_LEVEL_KEY + (VolumeActionExecutor.PERCENT_KEY to percent.toString())
+}
 
 fun ActionType.info(context: Context): ActionInfo = when (this) {
     ActionType.TOAST -> ActionInfo(
@@ -194,7 +214,31 @@ fun ActionType.info(context: Context): ActionInfo = when (this) {
                     "NOTIFICATION" to context.getString(R.string.opt_notification),
                 ),
             ),
-            ConfigField.Slider("level", context.getString(R.string.cfg_volume_level), 0, 15),
+            ConfigField.Slider(
+                VolumeActionExecutor.PERCENT_KEY,
+                context.getString(R.string.cfg_volume_level),
+                min = 0,
+                max = 100,
+                unit = "%",
+                // Volume scales are per-device and per-stream — media has 30 steps on one phone
+                // and 15 on another — so the percentage is what gets stored and this line says
+                // what it works out to here, where the user can hear it.
+                describe = { ctx, values ->
+                    val am = ctx.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+                    am?.let {
+                        val max = it.getStreamMaxVolume(VolumeActionExecutor.streamOf(values["stream"]))
+                        val percent = values[VolumeActionExecutor.PERCENT_KEY]?.toIntOrNull() ?: 0
+                        // Pluralised on the device's maximum, since that is the noun "steps"
+                        // has to agree with; the current step is just an argument.
+                        ctx.resources.getQuantityString(
+                            R.plurals.cfg_volume_device_steps,
+                            max,
+                            VolumeActionExecutor.stepsFor(percent, max),
+                            max,
+                        )
+                    }
+                },
+            ),
         ),
     )
     ActionType.OPEN_APP -> ActionInfo(
@@ -241,7 +285,22 @@ fun ActionType.info(context: Context): ActionInfo = when (this) {
         listOf(
             ConfigField.TextInput("url", context.getString(R.string.cfg_url), hint = "https://api.example.com/endpoint"),
             ConfigField.Dropdown("method", context.getString(R.string.cfg_method), httpMethods),
+            ConfigField.TextInput(
+                "headers",
+                context.getString(R.string.cfg_http_headers),
+                hint = "Authorization: Bearer abc123",
+                multiline = true,
+            ),
             ConfigField.TextInput("body", context.getString(R.string.cfg_body_optional), multiline = true),
+            // Plain text, not VariableNameInput: that field validates `g:` names as globals, and a
+            // global is exactly what HttpActionExecutor cannot write.
+            ConfigField.TextInput("response_var", context.getString(R.string.cfg_http_response_var), hint = "weather"),
+            ConfigField.TextInput("json_path", context.getString(R.string.cfg_http_json_path), hint = "main.temp"),
+            ConfigField.InfoText(
+                "_response",
+                context.getString(R.string.cfg_http_response_info_label),
+                context.getString(R.string.cfg_http_response_info_body),
+            ),
         ),
     )
     ActionType.BRIGHTNESS_ADJUST -> ActionInfo(
@@ -294,7 +353,9 @@ fun ActionType.info(context: Context): ActionInfo = when (this) {
         context.getString(R.string.act_set_variable_label), Icons.Outlined.Code, context.getString(R.string.act_set_variable_desc),
         listOf(
             ConfigField.VariableNameInput("variable_name", context.getString(R.string.cfg_variable_name), hint = "counter / g:global_name"),
-            ConfigField.TextInput("value", context.getString(R.string.cfg_value)),
+            // The hint doubles as the only place arithmetic is discoverable; it is an example, not
+            // prose, so it needs no translation.
+            ConfigField.TextInput("value", context.getString(R.string.cfg_value), hint = "{{counter}} + 1"),
             ConfigField.InfoText(
                 "_setvar_global_info",
                 context.getString(R.string.cfg_info_note_label),

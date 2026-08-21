@@ -89,3 +89,41 @@ data class ExecutionLog(
     val errorMessage: String?,
     val executionDurationMs: Long,
 )
+
+/**
+ * One action's outcome within a single run — the rows behind the per-run build log.
+ *
+ * A run's [ExecutionLog] says only whether the flow as a whole worked; that leaves "it failed"
+ * with no way to tell *which* of twenty actions failed, and a successful run with nothing to show
+ * at all. These steps are that missing detail.
+ *
+ * Steps are stored flat, in execution order ([seq]), with the nesting recovered from [depth] —
+ * a tree would have to be rebuilt against the flow's current action list, and the flow may have
+ * been edited since the run.
+ */
+data class ExecutionStep(
+    val logId: String,
+    /** Position in the run, from 0. Not [Action.order]: a repeated action appears once per round. */
+    val seq: Int,
+    val actionId: String,
+    val actionType: ActionType,
+    /** Nesting level for the UI's indent: 0 = top level, +1 inside each IF/REPEAT/menu branch. */
+    val depth: Int,
+    /** Round of the innermost enclosing REPEAT, from 0; 0 when not inside one. */
+    val iteration: Int,
+    val status: ExecutionStatus,
+    /**
+     * Why it failed, verbatim from the executor. Untranslated — it is engine output, and the
+     * language it was produced in is the language it stays in for the life of the row.
+     */
+    val errorMessage: String?,
+    /**
+     * A structural remark the UI localizes at render time, as `token` or `token:argument`:
+     * `disabled`, `if_true`, `if_false`, `repeat:5`, `menu:Coffee`. Stored as a token rather than
+     * a sentence so an old row still reads in the user's language after they switch it.
+     */
+    val note: String?,
+    /** The action's config after variable substitution — only when the user opted into detail. */
+    val resolvedConfig: String?,
+    val durationMs: Long,
+)

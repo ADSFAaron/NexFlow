@@ -78,7 +78,9 @@
     <string name="fd_disabled">無効</string>
     <string name="fd_logic_any">いずれか</string>
     <string name="fd_logic_all">すべて</string>
-    <string name="fd_logic_all_hint">ALL：すべてのトリガーが %1$d 分以内に作動したときだけ実行されます。</string>
+    <plurals name="fd_logic_all_hint">
+        <item quantity="other">ALL：すべてのトリガーが %1$d 分以内に作動したときだけ実行されます。</item>
+    </plurals>
     <string name="fd_clear_search">検索をクリア</string>
     <string name="fd_nothing_matches">「%1$s」に一致する項目はありません</string>
     <string name="fd_no_config_needed">このタイプに設定は不要です。</string>
@@ -132,7 +134,7 @@
     <string name="settings_ai_model_load_failed">モデル一覧を読み込めませんでした</string>
     <string name="action_retry">再試行</string>
     <string name="ai_chat_title">AI アシスタント</string>
-    <string name="ai_greeting">作りたい自動化を説明してください — 例:「イヤホンを接続したら、メディア音量を 80% にして Spotify を開く」</string>
+    <string name="ai_greeting" formatted="false">作りたい自動化を説明してください — 例:「イヤホンを接続したら、メディア音量を 80% にして Spotify を開く」</string>
     <string name="ai_input_hint">自動化の内容を入力…</string>
     <string name="ai_send">送信</string>
     <string name="ai_stop">停止</string>
@@ -145,7 +147,9 @@
     <string name="ai_diff_field_change">%1$s：%2$s → %3$s</string>
     <string name="ai_flow_updated">フローを更新しました</string>
     <string name="ai_view_flow">表示</string>
-    <string name="ai_tokens_used">%1$d トークン使用</string>
+    <plurals name="ai_tokens_used">
+        <item quantity="other">%1$d トークン使用</item>
+    </plurals>
     <string name="ai_suggestions_dismiss">候補を隠す</string>
     <string name="ai_retry">再試行</string>
     <string name="ai_key_get">無料で API キーを取得</string>
@@ -360,7 +364,13 @@
     <string name="log_retention_standard">標準</string>
     <string name="log_retention_full">フル</string>
     <string name="log_retention_extended">拡張</string>
-    <string name="log_retention_detail">%1$d 日 · %2$d 件</string>
+    <string name="log_retention_detail">%1$s · %2$s</string>
+    <plurals name="log_retention_days">
+        <item quantity="other">%1$d 日</item>
+    </plurals>
+    <plurals name="log_retention_entries">
+        <item quantity="other">%1$d 件</item>
+    </plurals>
 
     <!-- Logs -->
     <string name="logs_title">実行ログ</string>
@@ -413,7 +423,9 @@
     <string name="sp_configurable_hint">アプリ自身の設定画面が開きます</string>
     <string name="sp_empty">このアプリにはアクセス可能なショートカットがありません</string>
     <string name="sp_empty_hint">動的ショートカットはシステム制限により読み取れません</string>
-    <string name="sp_hidden_count">%1$d 件のショートカットを非表示にしました——ホーム画面からのみ起動可能です</string>
+    <plurals name="sp_hidden_count">
+        <item quantity="other">%1$d 件のショートカットを非表示にしました——ホーム画面からのみ起動可能です</item>
+    </plurals>
     <string name="sp_unsupported_result">このショートカット形式には対応していません</string>
     <string name="act_open_url_label">URL を開く</string>
     <string name="act_open_url_desc">ブラウザでリンクを開く</string>
@@ -568,6 +580,11 @@
     <string name="cfg_url">URL</string>
     <string name="cfg_method">メソッド</string>
     <string name="cfg_body_optional">本文（任意）</string>
+    <string name="cfg_http_headers">ヘッダー（任意）</string>
+    <string name="cfg_http_response_var">レスポンスを変数に保存（任意）</string>
+    <string name="cfg_http_json_path">JSON フィールド（任意）</string>
+    <string name="cfg_http_response_info_label">レスポンスの使い方</string>
+    <string name="cfg_http_response_info_body">変数名を入力すると、レスポンスがその変数に保存され、後続のアクションで {{名前}} として使えます。JSON フィールドを空にするとレスポンス全体を、main.temp や items.0.name のようなパスを入れるとそのフィールドだけを保存します。ステータスコードは常に {{__http_status__}} で取得できます——エラーステータスでもフローは止まらないので、「条件」アクションで判定してください。</string>
     <string name="cfg_value">値</string>
     <string name="cfg_variable_name">変数名</string>
     <string name="cfg_content">内容</string>
@@ -761,7 +778,9 @@
     <string name="flows_perm_setup_start">設定を開始</string>
     <string name="flows_perm_setup_title">権限を許可</string>
     <string name="flows_perm_setup_current">次に「%1$s」を有効にしてください</string>
-    <string name="flows_perm_setup_remaining">この後さらに %1$d 件</string>
+    <plurals name="flows_perm_setup_remaining">
+        <item quantity="other">この後さらに %1$d 件</item>
+    </plurals>
     <string name="flows_perm_setup_skip">この項目をスキップ</string>
     <string name="flows_perm_setup_done">「%1$s」を実行できます</string>
     <string name="flows_perm_setup_incomplete">「%1$s」はまだ権限が不足しており、オフのままです</string>
@@ -789,4 +808,30 @@
         <item>イヤホンを挿したら Spotify を開く</item>
         <item>職場ではマナーモードにする</item>
     </string-array>
+
+    <!-- 1 回の実行を手順ごとに記録したもの。履歴一覧から開く -->
+    <string name="run_detail_title">実行の詳細</string>
+    <string name="run_detail_gone">この実行はすでに保存されていません。</string>
+    <string name="run_no_steps">この実行は手順の記録が導入される前のもので、結果だけが残っています。</string>
+    <string name="run_step_disabled">オフのためスキップ</string>
+    <string name="run_step_if_true">条件を満たしました</string>
+    <string name="run_step_if_false">条件を満たしませんでした</string>
+    <plurals name="run_step_repeat">
+        <item quantity="other">%1$d 回繰り返し</item>
+    </plurals>
+    <string name="run_step_menu">「%1$s」を選択</string>
+    <plurals name="run_steps_truncated">
+        <item quantity="other">ほかに %1$d 件の手順が実行されましたが、記録されていません。</item>
+    </plurals>
+    <string name="settings_detailed_log">詳細な実行ログ</string>
+    <string name="settings_detailed_log_desc">各アクションの設定が変数を展開した後どうなったか——実際に呼び出したアドレス、実際に送った文——も記録します。この端末内にのみ保存され、フローが扱うあらゆる内容が含まれます。</string>
+    <string name="run_step_menu_cancelled">選ばずに閉じました</string>
+    <string name="widget_preview_flow_a">おはようルーティン</string>
+    <string name="widget_preview_flow_b">通勤モード</string>
+    <string name="widget_preview_flow_c">集中モード</string>
+    <string name="widget_preview_flow_d">おやすみモード</string>
+    <string name="run_detail_copied">クリップボードにコピーしました</string>
+    <plurals name="cfg_volume_device_steps">
+        <item quantity="other">この端末では %2$d 段階中 %1$d</item>
+    </plurals>
 </resources>

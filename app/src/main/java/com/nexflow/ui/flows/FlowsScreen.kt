@@ -644,8 +644,10 @@ private fun EmptyFlowsContent(modifier: Modifier = Modifier) {
     }
 }
 
+// internal, not private: app/src/screenshotTest previews this across all four locales and both
+// themes — it is the app's densest run of translated text on one surface.
 @Composable
-private fun FlowCard(
+internal fun FlowCard(
     flow: Flow,
     permissionWarning: Boolean,
     onClick: () -> Unit,

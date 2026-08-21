@@ -20,6 +20,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,6 +33,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.History
@@ -54,7 +56,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import android.text.format.DateFormat
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,12 +71,14 @@ import com.nexflow.R
 import com.nexflow.core.automation.model.ExecutionStatus
 import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.Locale
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LogsScreen(vm: LogsViewModel = hiltViewModel()) {
+fun LogsScreen(
+    onEntryClick: (logId: String) -> Unit = {},
+    vm: LogsViewModel = hiltViewModel(),
+) {
     val entries by vm.logEntries.collectAsState()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     var showClearDialog by remember { mutableStateOf(false) }
@@ -128,7 +134,7 @@ fun LogsScreen(vm: LogsViewModel = hiltViewModel()) {
                     items(currentEntries, key = { it.log.id }) { entry ->
                         // animateItem: new entries slide in at the top instead of popping.
                         Column(modifier = Modifier.animateItem()) {
-                            LogEntryItem(entry = entry)
+                            LogEntryItem(entry = entry, onClick = { onEntryClick(entry.log.id) })
                             HorizontalDivider()
                         }
                     }
@@ -183,7 +189,7 @@ private fun EmptyLogsContent(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun LogEntryItem(entry: LogEntry) {
+private fun LogEntryItem(entry: LogEntry, onClick: () -> Unit) {
     val (icon, tint) = when (entry.log.status) {
         // Use tertiary (green-teal) from the M3 color scheme for success — avoids hardcoded color
         ExecutionStatus.SUCCESS -> Icons.Filled.CheckCircle to MaterialTheme.colorScheme.tertiary
@@ -200,11 +206,19 @@ private fun LogEntryItem(entry: LogEntry) {
         },
     )
 
+    // LocalLocale is observable state, unlike Locale.getDefault(): the list reformats itself when
+    // the app language changes instead of keeping whatever locale it first composed with. The
+    // pattern is derived from a skeleton rather than hardcoded as "MMM d, HH:mm:ss", which imposed
+    // English field order on every language — ja/zh want 8月10日, not Aug 10.
+    val locale = LocalLocale.current.platformLocale
+    val dateFormat = remember(locale) {
+        SimpleDateFormat(DateFormat.getBestDateTimePattern(locale, "MMMdHHmmss"), locale)
+    }
+
     ListItem(
         headlineContent = { Text(entry.flowName) },
         supportingContent = {
-            val timestamp = SimpleDateFormat("MMM d, HH:mm:ss", Locale.getDefault())
-                .format(Date(entry.log.triggeredAt))
+            val timestamp = dateFormat.format(Date(entry.log.triggeredAt))
             val duration = if (entry.log.executionDurationMs < 1000) {
                 "${entry.log.executionDurationMs}ms"
             } else {
@@ -231,5 +245,15 @@ private fun LogEntryItem(entry: LogEntry) {
         leadingContent = {
             Icon(icon, contentDescription = statusDescription, tint = tint)
         },
+        trailingContent = {
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        // The whole row opens the run's steps. A summary alone cannot say which of a flow's
+        // actions failed, and that is the question this list gets opened to answer.
+        modifier = Modifier.clickable(onClick = onClick),
     )
 }
