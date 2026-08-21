@@ -6,7 +6,7 @@ NexFlow 是一個 Android 自動化 App（類似 MacroDroid / Tasker）。
 
 - **語言**: Kotlin 2.x + Jetpack Compose (Material 3)
 - **DI**: Hilt 2.x
-- **資料庫**: Room 2.7.x
+- **資料庫**: Room 2.8.x
 - **最低 SDK**: 30 / 目標 SDK: 37
 
 ### Module 結構
