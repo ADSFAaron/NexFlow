@@ -1,5 +1,5 @@
 name: ✨ 功能建議 / Feature request
-description: 提議新的觸發條件、動作，或既有功能的改進
+description: 提議新的觸發條件、動作，或既有功能的改進 / Propose a new trigger, a new action, or an improvement to something that exists
 title: "[Feature] "
 labels: ["enhancement"]
 body:
@@ -9,71 +9,91 @@ body:
         歡迎提案！如果你打算自己實作，**請先開這個 issue 討論再動手**，避免方向不合白做工。
         實作方式請看 [CONTRIBUTING.md](https://github.com/ADSFAaron/NexFlow/blob/master/CONTRIBUTING.md)。
 
+        ---
+
+        Proposals are welcome! If you plan to implement it yourself, **please open this issue and agree
+        on the direction first** so the work doesn't go to waste.
+        See [CONTRIBUTING.md](https://github.com/ADSFAaron/NexFlow/blob/master/CONTRIBUTING.md) for how to build the project.
+
+        **You are welcome to write in English**; only the form labels are Chinese-first.
+
   - type: checkboxes
     id: preflight
     attributes:
-      label: 提案前確認
+      label: 提案前確認 / Before you propose
       options:
-        - label: 我已經搜尋過既有的 issue，沒有重複的提案
+        - label: 我已經搜尋過既有的 issue，沒有重複的提案 / I searched existing issues and this is not a duplicate
           required: true
-        - label: 我看過 README 的功能總覽，確認現有的觸發／動作組不出這件事
+        - label: 我看過 README 的功能總覽，確認現有的觸發／動作組不出這件事 / I read the feature overview in the README and the existing triggers/actions cannot do this
           required: true
 
   - type: dropdown
     id: kind
     attributes:
-      label: 這是哪一類提案
+      label: 這是哪一類提案 / What kind of proposal is this
       options:
-        - 新的觸發條件（Trigger）
-        - 新的動作（Action）
-        - 既有功能的改進
-        - UI／使用體驗
-        - 匯入相容性（MacroDroid .mdr 等）
-        - 翻譯／在地化
-        - 其他
+        - 新的觸發條件（Trigger）/ New trigger
+        - 新的動作（Action）/ New action
+        - 既有功能的改進 / Improvement to an existing feature
+        - UI／使用體驗 / UI or user experience
+        - 匯入相容性（MacroDroid .mdr 等）/ Import compatibility (MacroDroid .mdr, etc.)
+        - 翻譯／在地化 / Translation or localisation
+        - 其他 / Other
     validations:
       required: true
 
   - type: textarea
     id: problem
     attributes:
-      label: 你想解決什麼問題
-      description: 請描述使用情境，而不只是功能名稱——知道你想達成什麼，才可能找到更好的做法
+      label: 你想解決什麼問題 / What problem are you trying to solve
+      description: |
+        請描述使用情境，而不只是功能名稱——知道你想達成什麼，才可能找到更好的做法。
+        Describe the situation, not just the feature name — knowing what you are trying to achieve is what makes a better solution possible.
       placeholder: |
         我想在連上車機藍牙時自動開啟導航 App 並把音量調到最大，
         但目前藍牙觸發沒辦法指定特定裝置。
+
+        I want navigation to open and the volume to go to maximum when my phone connects to my car's
+        Bluetooth, but the Bluetooth trigger cannot target a specific device.
     validations:
       required: true
 
   - type: textarea
     id: proposal
     attributes:
-      label: 你希望它怎麼運作
-      description: 需要哪些設定欄位？觸發時機是什麼？失敗時應該怎麼處理？
+      label: 你希望它怎麼運作 / How should it work
+      description: |
+        需要哪些設定欄位？觸發時機是什麼？失敗時應該怎麼處理？
+        What settings would it need? When exactly should it fire? What should happen when it fails?
     validations:
       required: true
 
   - type: textarea
     id: permissions
     attributes:
-      label: 需要什麼權限或系統能力（如果知道的話）
+      label: 需要什麼權限或系統能力（如果知道的話）/ Permissions or system capabilities needed (if you know)
       description: |
         例如：無障礙服務、通知存取、`WRITE_SECURE_SETTINGS`、root。
         ℹ️ 需要 root 或額外框架（Xposed / Magisk）的功能目前不在專案範圍內。
 
+        For example: accessibility service, notification access, `WRITE_SECURE_SETTINGS`, root.
+        ℹ️ Features requiring root or an extra framework (Xposed / Magisk) are out of scope for this project.
+
   - type: textarea
     id: alternatives
     attributes:
-      label: 有沒有替代做法
-      description: 現在你怎麼繞過這個問題？其他 App（MacroDroid / Tasker）是怎麼做的？
+      label: 有沒有替代做法 / Alternatives
+      description: |
+        現在你怎麼繞過這個問題？其他 App（MacroDroid / Tasker）是怎麼做的？
+        How do you work around it today? How do other apps (MacroDroid / Tasker) handle it?
 
   - type: dropdown
     id: contribute
     attributes:
-      label: 你願意自己實作嗎
+      label: 你願意自己實作嗎 / Are you willing to implement it
       options:
-        - 願意，需要一點指引
-        - 願意，我可以獨立完成
-        - 不行，只是提案
+        - 願意，需要一點指引 / Yes, with some guidance
+        - 願意，我可以獨立完成 / Yes, I can do it on my own
+        - 不行，只是提案 / No, this is just a proposal
     validations:
       required: true
