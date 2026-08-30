@@ -58,7 +58,11 @@ private fun sampleFlow(
 )
 
 @Composable
-private fun FlowCardPreview(flow: Flow, permissionWarning: Boolean = false) {
+private fun FlowCardPreview(
+    flow: Flow,
+    permissionWarning: Boolean = false,
+    running: Boolean = false,
+) {
     PreviewSurface {
         FlowCard(
             flow = flow,
@@ -67,6 +71,7 @@ private fun FlowCardPreview(flow: Flow, permissionWarning: Boolean = false) {
             onToggle = {},
             onRun = {},
             onWarningClick = {},
+            running = running,
         )
     }
 }
@@ -101,5 +106,26 @@ fun FlowCardDisabledWithWarning() {
             iconColor = null,
         ),
         permissionWarning = true,
+    )
+}
+
+/**
+ * The running state: the Run button becomes a spinner plus a label, which is the row's widest
+ * badge and the one place a long translation of "Running" could collide with the trigger chips.
+ *
+ * layoutlib renders the indeterminate spinner at animation frame 0, so in the reference image it
+ * is a bare sliver rather than an arc. That is stable across runs (the images are byte-identical
+ * on a re-render) — it is the still frame of a real animation, not a broken indicator.
+ */
+@PreviewTest
+@LocaleThemePreviews
+@Composable
+fun FlowCardRunning() {
+    FlowCardPreview(
+        flow = sampleFlow(
+            name = "Morning routine",
+            description = "Turn on Wi-Fi and read out today's weather",
+        ),
+        running = true,
     )
 }

@@ -14,6 +14,11 @@
 
     <!-- Foreground service / tile -->
     <string name="service_notification_text">Automation is active</string>
+    <string name="service_notification_running_one">Running: %1$s</string>
+    <plurals name="service_notification_running_many">
+        <item quantity="one">Running %1$d flow</item>
+        <item quantity="other">Running %1$d flows</item>
+    </plurals>
     <string name="action_stop">Stop</string>
     <string name="tile_run_flow">Run %1$s</string>
 
@@ -219,6 +224,7 @@
     <string name="perm_dnd">Do Not Disturb access</string>
     <string name="perm_write_settings">Modify system settings</string>
     <string name="perm_airplane_adb">Airplane mode (ADB)</string>
+    <string name="perm_exact_alarm">Alarms &amp; reminders</string>
 
     <!-- Background location prominent disclosure (Google Play policy) -->
     <string name="bg_location_disclosure_title">Allow background location</string>
@@ -343,8 +349,10 @@
     <string name="flows_service_stopped">Stopped</string>
     <string name="flows_empty_title">No flows yet</string>
     <string name="flows_empty_subtitle">Tap + to create your first automation</string>
-    <string name="flows_flow_activated">Flow activated</string>
-    <string name="flows_flow_started">Flow started</string>
+    <string name="flows_flow_running">Running</string>
+    <string name="flows_running_status">Show running flows</string>
+    <string name="flows_running_title">Running now</string>
+    <string name="flows_running_none">No flow is running</string>
     <string name="flows_service_off_banner">Automation service is stopped — triggers won\'t run</string>
     <string name="flows_service_off_action">Start</string>
 

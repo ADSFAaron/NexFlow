@@ -15,15 +15,20 @@
  */
 package com.nexflow.service
 
+import android.Manifest
 import android.app.Notification
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import com.nexflow.MainActivity
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,6 +46,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -57,7 +64,48 @@ class FlowExecutionService : Service() {
     override fun onCreate() {
         super.onCreate()
         _running.value = true
-        startForeground(SERVICE_NOTIFICATION_ID, buildServiceNotification())
+        startForeground(SERVICE_NOTIFICATION_ID, buildServiceNotification(emptyList()))
+        observeRunningFlows()
+    }
+
+    /**
+     * Keep the ongoing notification naming the flows that are running. Background triggers were
+     * previously indistinguishable from nothing happening: the only clue a flow had fired was a
+     * Toast the user may well have missed.
+     *
+     * Started from [onCreate] rather than alongside the engine, because a manual run (widget,
+     * tile, shortcut) is served even while the master switch is off.
+     */
+    private fun observeRunningFlows() {
+        serviceScope.launch {
+            flowEngine.runningFlows.collectLatest { running ->
+                // The platform drops notification updates posted more than about once a second,
+                // and a short flow can start and finish inside that window. collectLatest +
+                // a settling delay coalesces those bursts and always ends on the latest state;
+                // it also spares the shade a flicker for flows that finish in milliseconds.
+                delay(NOTIFICATION_SETTLE_MS)
+                postServiceNotification(running)
+            }
+        }
+    }
+
+    /**
+     * Re-post the ongoing notification. [Service.startForeground] is only for entering the
+     * foreground state; updates to the notification it posted go through the notification
+     * manager under the same id.
+     */
+    private fun postServiceNotification(running: List<RunningFlow>) {
+        // Without POST_NOTIFICATIONS (Android 13+) there is nothing in the shade to update —
+        // the service itself keeps running, so this is a skip, not a failure.
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+        NotificationManagerCompat.from(this)
+            .notify(SERVICE_NOTIFICATION_ID, buildServiceNotification(running))
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -120,7 +168,7 @@ class FlowExecutionService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    private fun buildServiceNotification(): Notification {
+    private fun buildServiceNotification(running: List<RunningFlow>): Notification {
         val openIntent = PendingIntent.getActivity(
             this, 0,
             Intent(this, MainActivity::class.java),
@@ -131,18 +179,49 @@ class FlowExecutionService : Service() {
             Intent(this, FlowExecutionService::class.java).apply { action = ACTION_STOP },
             PendingIntent.FLAG_IMMUTABLE,
         )
-        return NotificationCompat.Builder(this, CHANNEL_SERVICE)
+        val builder = NotificationCompat.Builder(this, CHANNEL_SERVICE)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("NexFlow")
-            .setContentText(getString(R.string.service_notification_text))
             .setContentIntent(openIntent)
             .setOngoing(true)
             .setSilent(true)
+            // Every state change re-posts this same id; without this the shade would re-animate
+            // the notification on each one even though the channel is silent.
+            .setOnlyAlertOnce(true)
             .addAction(R.drawable.ic_notification, getString(R.string.action_stop), stopIntent)
-            .build()
+
+        when (running.size) {
+            0 -> builder.setContentText(getString(R.string.service_notification_text))
+            1 -> builder.setContentText(
+                getString(R.string.service_notification_running_one, running.first().name),
+            )
+            // More than one at a time: the collapsed line counts them, and expanding lists which
+            // ones — a single truncated "A, B, C…" would hide exactly the flow being looked for.
+            else -> {
+                val summary = resources.getQuantityString(
+                    R.plurals.service_notification_running_many,
+                    running.size,
+                    running.size,
+                )
+                builder.setContentText(summary)
+                builder.setStyle(
+                    NotificationCompat.InboxStyle().also { style ->
+                        running.take(MAX_NOTIFICATION_LINES).forEach { style.addLine(it.name) }
+                        style.setSummaryText(summary)
+                    },
+                )
+            }
+        }
+        return builder.build()
     }
 
     companion object {
+        /** How long the running set must hold still before the notification is re-posted. */
+        private const val NOTIFICATION_SETTLE_MS = 250L
+
+        /** Cap on the expanded notification's flow lines; the shade truncates beyond this anyway. */
+        private const val MAX_NOTIFICATION_LINES = 6
+
         const val CHANNEL_SERVICE = "nexflow_service"
         const val SERVICE_NOTIFICATION_ID = 1
         const val ACTION_STOP = "com.nexflow.action.STOP_SERVICE"

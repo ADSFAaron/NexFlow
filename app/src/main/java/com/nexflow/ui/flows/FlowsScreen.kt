@@ -25,12 +25,16 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,6 +44,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
@@ -60,6 +65,7 @@ import androidx.compose.material.icons.outlined.FileOpen
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingActionButtonMenu
@@ -67,6 +73,7 @@ import androidx.compose.material3.FloatingActionButtonMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -92,8 +99,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -101,10 +112,12 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.contentDescription
@@ -114,7 +127,15 @@ import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupPositionProvider
+import androidx.compose.ui.window.PopupProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.nexflow.R
 import com.nexflow.core.automation.model.Flow
@@ -126,6 +147,7 @@ import com.nexflow.ui.common.PermissionSetupDialogs
 import com.nexflow.ui.common.geminiGradientTint
 import com.nexflow.ui.flows.detail.config.info
 import com.nexflow.service.FlowExecutionService
+import com.nexflow.service.RunningFlow
 import com.nexflow.ui.flowimport.ImportReviewDialog
 import com.nexflow.ui.flowimport.ImportViewModel
 import kotlinx.coroutines.delay
@@ -142,6 +164,12 @@ fun FlowsScreen(
 ) {
     val flows by vm.flows.collectAsState()
     val flowsMissingPermissions by vm.flowsMissingPermissions.collectAsState()
+    val runningFlows by vm.runningFlows.collectAsState()
+    // What the indicators actually show: the live set, with each flow held on screen long
+    // enough to be read. Everything below reads this rather than `runningFlows` directly, so
+    // the card badge and the status popup never disagree.
+    val heldRunning = rememberHeldRunning(runningFlows)
+    val heldRunningIds = remember(heldRunning) { heldRunning.mapTo(mutableSetOf()) { it.id } }
     val importResult by importVm.result.collectAsState()
     var showCreateDialog by rememberSaveable { mutableStateOf(false) }
     var permissionReminder by remember { mutableStateOf<PermissionReminder?>(null) }
@@ -270,6 +298,7 @@ fun FlowsScreen(
                     ServiceCapsule(
                         running = serviceRunning,
                         notification = serviceNotification,
+                        runningFlows = heldRunning,
                         onClick = {
                             // The capsule is the persistent master switch: remember the choice
                             // so reopening the app / rebooting doesn't override it.
@@ -407,6 +436,7 @@ fun FlowsScreen(
                         FlowCard(
                             flow = flow,
                             permissionWarning = flow.id in flowsMissingPermissions,
+                            running = flow.id in heldRunningIds,
                             onClick = { onFlowClick(flow.id, null) },
                             onToggle = { vm.toggleEnabled(flow.id, it) },
                             onRun = { vm.runFlow(flow.id) },
@@ -513,10 +543,17 @@ fun FlowsScreen(
     }
 }
 
+/**
+ * The master switch, and — on a long press — the app's answer to "what is running right now?".
+ *
+ * @param runningFlows what the popup lists; the capsule itself also shows the count as a badge
+ *   so the answer is visible without the long press.
+ */
 @Composable
 private fun ServiceCapsule(
     running: Boolean,
     notification: Boolean?,
+    runningFlows: List<RunningFlow>,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -529,44 +566,281 @@ private fun ServiceCapsule(
     else
         MaterialTheme.colorScheme.onSurfaceVariant
 
+    var showRunning by remember { mutableStateOf(false) }
+    val longPressLabel = stringResource(R.string.flows_running_status)
+
+    // The popup anchors to this Box, not to the Surface: the Surface's own size animates as the
+    // service-state label appears, and an anchor that moves would drag the popup with it.
+    Box(modifier = modifier.padding(end = 8.dp)) {
+        Surface(
+            shape = CircleShape,
+            color = containerColor,
+            contentColor = contentColor,
+            modifier = Modifier
+                // Clip before the click so the ripple stays inside the pill.
+                .clip(CircleShape)
+                .combinedClickable(
+                    onClick = onClick,
+                    // combinedClickable performs the long-press haptic itself.
+                    onLongClick = { showRunning = true },
+                    onLongClickLabel = longPressLabel,
+                )
+                // Size change = spatial motion; the theme's expressive token keeps the bounce
+                // consistent with built-in component motion.
+                .animateContentSize(animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec()),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            ) {
+                Icon(
+                    imageVector = if (running) Icons.Filled.Bolt else Icons.Outlined.Bolt,
+                    contentDescription = if (running) stringResource(R.string.flows_stop_service) else stringResource(R.string.flows_start_service),
+                    modifier = Modifier.size(20.dp),
+                )
+                if (notification != null) {
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = if (notification) stringResource(R.string.flows_service_started) else stringResource(R.string.flows_service_stopped),
+                        // includeFontPadding's default top/bottom padding is asymmetric, so the
+                        // glyphs sit visibly low within the line box even though the Row already
+                        // centers the Text's own bounds against the Icon.
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            lineHeightStyle = LineHeightStyle(
+                                alignment = LineHeightStyle.Alignment.Center,
+                                trim = LineHeightStyle.Trim.Both,
+                            ),
+                            platformStyle = PlatformTextStyle(includeFontPadding = false),
+                        ),
+                    )
+                } else if (runningFlows.isNotEmpty()) {
+                    // No service-state label competing for the room: show how many flows are
+                    // going, so a background run is visible without opening anything.
+                    Spacer(Modifier.width(6.dp))
+                    RunningCountBadge(count = runningFlows.size)
+                }
+            }
+        }
+
+        RunningFlowsIsland(
+            running = runningFlows,
+            expanded = showRunning,
+            onDismiss = { showRunning = false },
+        )
+    }
+}
+
+/** The live count riding on the master-switch capsule. */
+@Composable
+private fun RunningCountBadge(count: Int, modifier: Modifier = Modifier) {
     Surface(
-        onClick = onClick,
         shape = CircleShape,
-        color = containerColor,
-        contentColor = contentColor,
-        modifier = modifier
-            .padding(end = 8.dp)
-            // Size change = spatial motion; the theme's expressive token keeps the bounce
-            // consistent with built-in component motion.
+        color = MaterialTheme.colorScheme.primary,
+        contentColor = MaterialTheme.colorScheme.onPrimary,
+        modifier = modifier,
+    ) {
+        // AnimatedContent, not a plain Text: the number changing under the user's eyes is the
+        // whole point, and a hard swap reads as a redraw rather than as something happening.
+        AnimatedContent(
+            targetState = count,
+            transitionSpec = { fadeIn() togetherWith fadeOut() },
+            label = "running_count",
+        ) { value ->
+            Text(
+                text = value.toString(),
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
+            )
+        }
+    }
+}
+
+/**
+ * The running-flow list that drops out of the capsule on a long press — a status readout, not a
+ * menu, so it is a plain [Popup] rather than a dropdown: nothing in it is tappable and it never
+ * takes over the screen.
+ */
+@Composable
+private fun RunningFlowsIsland(
+    running: List<RunningFlow>,
+    expanded: Boolean,
+    onDismiss: () -> Unit,
+) {
+    // Driving AnimatedVisibility from a MutableTransitionState (rather than composing the popup
+    // on `expanded` alone) is what lets the exit animation play: the popup window has to stay
+    // composed until the transition reports it is idle again.
+    val transitionState = remember { MutableTransitionState(false) }
+    LaunchedEffect(expanded) { transitionState.targetState = expanded }
+    if (!transitionState.currentState && !transitionState.targetState && transitionState.isIdle) return
+
+    val density = LocalDensity.current
+    val positionProvider = remember(density) {
+        with(density) { IslandPositionProvider(gapPx = 8.dp.roundToPx(), marginPx = 12.dp.roundToPx()) }
+    }
+    val spatial = MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
+    val effects = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
+
+    Popup(
+        popupPositionProvider = positionProvider,
+        onDismissRequest = onDismiss,
+        // focusable so the back gesture dismisses the popup instead of the screen behind it.
+        properties = PopupProperties(focusable = true),
+    ) {
+        AnimatedVisibility(
+            visibleState = transitionState,
+            // Grow out of the capsule's trailing edge, which is where the press happened.
+            enter = fadeIn(effects) + scaleIn(spatial, initialScale = 0.8f, transformOrigin = IslandOrigin),
+            exit = fadeOut(effects) + scaleOut(spatial, targetScale = 0.8f, transformOrigin = IslandOrigin),
+            label = "running_island",
+        ) {
+            RunningFlowsIslandContent(running)
+        }
+    }
+}
+
+/** Top-trailing corner: the popup hangs from the capsule, so that is what it scales out of. */
+private val IslandOrigin = TransformOrigin(pivotFractionX = 1f, pivotFractionY = 0f)
+
+@Composable
+private fun RunningFlowsIslandContent(running: List<RunningFlow>) {
+    Surface(
+        shape = MaterialTheme.shapes.extraLarge,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        shadowElevation = 6.dp,
+        // The list grows and shrinks as flows come and go while the popup is open; resize it
+        // rather than letting the window jump between sizes.
+        modifier = Modifier
+            .sizeIn(minWidth = 200.dp, maxWidth = 300.dp)
             .animateContentSize(animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec()),
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Icon(
-                imageVector = if (running) Icons.Filled.Bolt else Icons.Outlined.Bolt,
-                contentDescription = if (running) stringResource(R.string.flows_stop_service) else stringResource(R.string.flows_start_service),
-                modifier = Modifier.size(20.dp),
-            )
-            if (notification != null) {
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    text = if (notification) stringResource(R.string.flows_service_started) else stringResource(R.string.flows_service_stopped),
-                    // includeFontPadding's default top/bottom padding is asymmetric, so the
-                    // glyphs sit visibly low within the line box even though the Row already
-                    // centers the Text's own bounds against the Icon.
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        lineHeightStyle = LineHeightStyle(
-                            alignment = LineHeightStyle.Alignment.Center,
-                            trim = LineHeightStyle.Trim.Both,
-                        ),
-                        platformStyle = PlatformTextStyle(includeFontPadding = false),
-                    ),
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(
+                    Icons.Filled.Bolt,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp),
                 )
+                Text(
+                    stringResource(R.string.flows_running_title),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+            }
+            if (running.isEmpty()) {
+                Text(
+                    stringResource(R.string.flows_running_none),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                running.forEach { flow ->
+                    key(flow.id) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            CircularProgressIndicator(
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = Color.Transparent,
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(14.dp),
+                            )
+                            Text(
+                                text = flow.name,
+                                style = MaterialTheme.typography.bodyMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
             }
         }
     }
+}
+
+/**
+ * Hangs the popup under the capsule and flush with its trailing edge, kept [marginPx] clear of
+ * the window edges so a long flow name can never push it off screen.
+ */
+private class IslandPositionProvider(
+    private val gapPx: Int,
+    private val marginPx: Int,
+) : PopupPositionProvider {
+    override fun calculatePosition(
+        anchorBounds: IntRect,
+        windowSize: IntSize,
+        layoutDirection: LayoutDirection,
+        popupContentSize: IntSize,
+    ): IntOffset {
+        val preferredX = if (layoutDirection == LayoutDirection.Ltr) {
+            anchorBounds.right - popupContentSize.width
+        } else {
+            anchorBounds.left
+        }
+        val maxX = (windowSize.width - popupContentSize.width - marginPx).coerceAtLeast(marginPx)
+        return IntOffset(
+            x = preferredX.coerceIn(marginPx, maxX),
+            y = anchorBounds.bottom + gapPx,
+        )
+    }
+}
+
+/**
+ * [running] with each flow kept in the returned list for at least [minVisibleMs] after its run
+ * ends. A flow whose actions take 30ms is a real run the user asked for, but without this its
+ * indicator would appear and vanish inside a single frame — indistinguishable from nothing
+ * having happened, which is the complaint this whole indicator exists to answer.
+ */
+@Composable
+private fun rememberHeldRunning(
+    running: List<RunningFlow>,
+    minVisibleMs: Long = 900L,
+): List<RunningFlow> {
+    // id -> when its indicator first appeared. A snapshot map so reads recompose the callers.
+    val shownAt = remember { mutableStateMapOf<String, Long>() }
+    val shown = remember { mutableStateMapOf<String, RunningFlow>() }
+    // Ids whose run has already ended and that are only still listed to serve out the minimum.
+    val expiring = remember { mutableSetOf<String>() }
+    val latest by rememberUpdatedState(running)
+
+    // One long-lived collector rather than an effect keyed on `running`: the pending hold timers
+    // must survive *other* flows starting and stopping, and a keyed effect would cancel them.
+    LaunchedEffect(Unit) {
+        snapshotFlow { latest }.collect { flows ->
+            val now = System.currentTimeMillis()
+            flows.forEach { flow ->
+                // A flow that starts again while it is expiring restarts its minimum.
+                if (flow.id !in shownAt || expiring.remove(flow.id)) shownAt[flow.id] = now
+                shown[flow.id] = flow
+            }
+            val liveIds = flows.mapTo(mutableSetOf()) { it.id }
+            shownAt.keys.toList()
+                .filterNot { it in liveIds || it in expiring }
+                .forEach { id ->
+                    expiring += id
+                    launch {
+                        val elapsed = now - (shownAt[id] ?: now)
+                        if (elapsed < minVisibleMs) delay(minVisibleMs - elapsed)
+                        // Still expiring means it never restarted while we were holding it.
+                        if (expiring.remove(id)) {
+                            shownAt.remove(id)
+                            shown.remove(id)
+                        }
+                    }
+                }
+        }
+    }
+
+    // Oldest first, matching the engine's own ordering.
+    return shown.values.sortedBy { it.startedAt }
 }
 
 /** Warning banner shown while the automation service (master switch) is stopped. */
@@ -655,16 +929,15 @@ internal fun FlowCard(
     onRun: () -> Unit,
     onWarningClick: () -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * Whether this flow is executing right now — from the engine, so a run started by a
+     * trigger, a swipe or the widget lights the badge exactly like one started by the Run
+     * button. It used to be a three-second timer armed by that button alone, which meant the
+     * badge said "started" for runs that never began and stayed dark for every run the user
+     * had not tapped for.
+     */
+    running: Boolean = false,
 ) {
-    var runActivated by remember { mutableStateOf(false) }
-
-    LaunchedEffect(runActivated) {
-        if (runActivated) {
-            delay(3000L)
-            runActivated = false
-        }
-    }
-
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
         modifier = modifier.fillMaxWidth(),
@@ -776,13 +1049,8 @@ internal fun FlowCard(
                 }
                 Spacer(Modifier.weight(1f))
                 RunCapsule(
-                    activated = runActivated,
-                    onClick = {
-                        if (!runActivated) {
-                            runActivated = true
-                            onRun()
-                        }
-                    },
+                    running = running,
+                    onClick = { if (!running) onRun() },
                     modifier = Modifier.padding(end = 8.dp),
                 )
             }
@@ -790,26 +1058,30 @@ internal fun FlowCard(
     }
 }
 
+/** The card's Run button, which doubles as its "this flow is executing" indicator. */
 @Composable
 private fun RunCapsule(
-    activated: Boolean,
+    running: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val containerColor = if (activated)
+    val containerColor = if (running)
         MaterialTheme.colorScheme.primary
     else
         MaterialTheme.colorScheme.secondaryContainer
-    val contentColor = if (activated)
+    val contentColor = if (running)
         MaterialTheme.colorScheme.onPrimary
     else
         MaterialTheme.colorScheme.onSecondaryContainer
 
+    val runningDesc = stringResource(R.string.flows_flow_running)
     Surface(
         onClick = onClick,
         shape = CircleShape,
         color = containerColor,
         contentColor = contentColor,
+        // Tapping a flow that is already running is a no-op, so stop offering it as a button.
+        enabled = !running,
         modifier = modifier.animateContentSize(
             animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
         ),
@@ -818,14 +1090,25 @@ private fun RunCapsule(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
         ) {
-            Icon(
-                imageVector = if (activated) Icons.Filled.Bolt else Icons.Filled.PlayArrow,
-                contentDescription = if (activated) stringResource(R.string.flows_flow_activated) else stringResource(R.string.fd_run_flow),
-                modifier = Modifier.size(16.dp),
-            )
-            if (activated) {
+            if (running) {
+                // A spinner rather than a static "started" icon: the point is that the run is
+                // still going, and a frozen glyph cannot say that.
+                CircularProgressIndicator(
+                    color = LocalContentColor.current,
+                    trackColor = Color.Transparent,
+                    strokeWidth = 2.dp,
+                    modifier = Modifier
+                        .size(16.dp)
+                        .semantics { contentDescription = runningDesc },
+                )
                 Spacer(Modifier.width(6.dp))
-                Text(stringResource(R.string.flows_flow_started), style = MaterialTheme.typography.labelMedium)
+                Text(runningDesc, style = MaterialTheme.typography.labelMedium)
+            } else {
+                Icon(
+                    imageVector = Icons.Filled.PlayArrow,
+                    contentDescription = stringResource(R.string.fd_run_flow),
+                    modifier = Modifier.size(16.dp),
+                )
             }
         }
     }

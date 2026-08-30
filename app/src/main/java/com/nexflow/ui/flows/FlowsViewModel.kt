@@ -29,6 +29,7 @@ import com.nexflow.permissions.PermissionSetup
 import com.nexflow.permissions.PermissionSetupManager
 import com.nexflow.permissions.PermissionSetupResult
 import com.nexflow.service.FlowEngine
+import com.nexflow.service.RunningFlow
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,6 +53,13 @@ class FlowsViewModel @Inject constructor(
 
     val flows: StateFlow<List<Flow>> = repository.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /**
+     * The flows executing right now, straight from the engine — so a run started by a trigger,
+     * a swipe, the widget or another process lights the same indicator as one started by
+     * tapping Run. Oldest first, which is the order the status popup lists them in.
+     */
+    val runningFlows: StateFlow<List<RunningFlow>> = flowEngine.runningFlows
 
     private val _navigateToFlow = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val navigateToFlow: SharedFlow<String> = _navigateToFlow.asSharedFlow()

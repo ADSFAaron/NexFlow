@@ -29,8 +29,10 @@ import javax.inject.Singleton
 
 /**
  * Fires when an NFC tag is scanned by the user.
- * Android only dispatches NFC to the foreground activity — this trigger works when
- * the NexFlow app is open. The MainActivity handles NFC intents and feeds NfcEventSource.
+ * Android only routes NFC to the foreground activity — this trigger works when the NexFlow app
+ * is open. MainActivity owns reader mode and feeds NfcEventSource; it only claims the NFC
+ * controller while a flow like this one is enabled, because reader mode blocks every other app
+ * on the device from seeing a tag at all.
  *
  * Reports the scanned UID as `{{trigger.tag_id}}`, so one flow can branch on several tags.
  */

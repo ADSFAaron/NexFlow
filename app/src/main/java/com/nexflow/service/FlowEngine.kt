@@ -45,6 +45,9 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.asFlow
@@ -53,7 +56,6 @@ import kotlinx.coroutines.flow.flattenMerge
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -78,8 +80,16 @@ class FlowEngine @Inject constructor(
 
     private var engineJob: Job? = null
 
-    /** Flow ids currently executing, to drop overlapping runs of the same flow. */
-    private val runningFlows = ConcurrentHashMap.newKeySet<String>()
+    private val runningLock = Any()
+    private val _runningFlows = MutableStateFlow<List<RunningFlow>>(emptyList())
+
+    /**
+     * The flows executing right now, oldest first — the single source of truth behind every
+     * "running" indicator in the app (the list card, the service notification, the status
+     * popup). Doubles as the guard that drops overlapping runs of the same flow, so it is
+     * never merely a display copy that could drift from what the engine is really doing.
+     */
+    val runningFlows: StateFlow<List<RunningFlow>> = _runningFlows.asStateFlow()
 
     fun start(scope: CoroutineScope) {
         engineJob = scope.launch {
@@ -218,7 +228,7 @@ class FlowEngine @Inject constructor(
     ): ExecutionStatus? {
         // Skip if this flow is already executing — rapid repeated triggers must not stack
         // overlapping runs of the same flow.
-        if (!runningFlows.add(flow.id)) return null
+        if (!beginRun(flow)) return null
         try {
             val startMs = System.currentTimeMillis()
             val globals = globalVariableRepository.currentValues()
@@ -302,8 +312,27 @@ class FlowEngine @Inject constructor(
             )
             return status
         } finally {
-            runningFlows.remove(flow.id)
+            endRun(flow.id)
         }
+    }
+
+    /**
+     * Claim the run slot for [flow]. Compare-and-set under a lock rather than a plain
+     * [MutableStateFlow.update]: the caller needs to know whether *it* was the one that
+     * claimed the slot, and two triggers firing in the same instant must not both decide
+     * they did.
+     *
+     * @return false when the flow is already running, in which case this run is dropped.
+     */
+    private fun beginRun(flow: AutomationFlow): Boolean = synchronized(runningLock) {
+        if (_runningFlows.value.any { it.id == flow.id }) return false
+        _runningFlows.value = _runningFlows.value +
+            RunningFlow(flow.id, flow.name, System.currentTimeMillis())
+        true
+    }
+
+    private fun endRun(flowId: String) = synchronized(runningLock) {
+        _runningFlows.value = _runningFlows.value.filterNot { it.id == flowId }
     }
 
     /**
@@ -344,3 +373,14 @@ class FlowEngine @Inject constructor(
         val triggerVariables: Map<String, String>,
     )
 }
+
+/**
+ * One flow the engine is executing right now. Carries the name so that surfaces without
+ * access to the repository — the foreground-service notification in particular — can say
+ * *which* flow is running rather than just that something is.
+ */
+data class RunningFlow(
+    val id: String,
+    val name: String,
+    val startedAt: Long,
+)

@@ -32,8 +32,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import com.nexflow.core.automation.model.TriggerType
+import com.nexflow.core.automation.repository.FlowRepository
 import com.nexflow.event.ImportEventSource
 import com.nexflow.event.NfcEventSource
+import com.nexflow.event.NfcReaderMode
 import com.nexflow.prefs.OnboardingPrefs
 import com.nexflow.prefs.ServiceEnabledPrefs
 import com.nexflow.service.FlowExecutionService
@@ -43,15 +49,23 @@ import com.nexflow.ui.navigation.NexFlowNavHost
 import com.nexflow.ui.onboarding.OnboardingScreen
 import com.nexflow.ui.theme.NexFlowTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
+
+    @Inject lateinit var repository: FlowRepository
 
     private var nfcAdapter: NfcAdapter? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         nfcAdapter = NfcAdapter.getDefaultAdapter(this)
+        observeReaderModeNeed()
         // Respect the persistent master switch: if the user stopped the automation
         // service, opening the app must not silently restart it.
         if (ServiceEnabledPrefs.get(this)) {
@@ -88,31 +102,67 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-        handleNfcIntent(intent)
         handleShareIntent(intent)
         handleRunFlowIntent(intent)
     }
 
-    override fun onResume() {
-        super.onResume()
-        nfcAdapter?.enableReaderMode(
-            this,
-            { tag -> dispatchNfcTag(tag) },
-            NfcAdapter.FLAG_READER_NFC_A or NfcAdapter.FLAG_READER_NFC_B or
-                NfcAdapter.FLAG_READER_NFC_F or NfcAdapter.FLAG_READER_NFC_V or
-                NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK,
-            null,
-        )
+    /**
+     * Hold the NFC controller in reader mode only while something actually needs it.
+     *
+     * This used to be an unconditional `enableReaderMode` in `onResume`, which meant that
+     * merely having NexFlow open swallowed every tap on the device: reader mode is exclusive
+     * and FLAG_READER_SKIP_NDEF_CHECK disables NDEF dispatch outright, so a URL tag opened
+     * nothing and a transit card did nothing — even for users with no NFC flow at all.
+     *
+     * Collection is scoped to RESUMED because reader mode is only legal for a foreground
+     * activity, which is also the only time an NFC trigger can fire.
+     */
+    private fun observeReaderModeNeed() {
+        val adapter = nfcAdapter ?: return
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                combine(
+                    repository.observeEnabled().map { flows ->
+                        flows.any { flow -> flow.triggers.any { it.type == TriggerType.NFC_TAG } }
+                    },
+                    FlowExecutionService.running,
+                    NfcReaderMode.scanRequests.map { it > 0 },
+                ) { hasNfcFlow, engineRunning, scanning ->
+                    // A tag can only start a flow when the engine is actually up, so with the
+                    // master switch off there is nothing to gain from claiming the controller.
+                    // A scan is exempt: naming a tag is how the first NFC flow gets configured.
+                    (hasNfcFlow && engineRunning) || scanning
+                }
+                    .distinctUntilChanged()
+                    .collect { needed ->
+                        if (needed) {
+                            adapter.enableReaderMode(
+                                this@MainActivity,
+                                { tag -> dispatchNfcTag(tag) },
+                                NfcAdapter.FLAG_READER_NFC_A or NfcAdapter.FLAG_READER_NFC_B or
+                                    NfcAdapter.FLAG_READER_NFC_F or NfcAdapter.FLAG_READER_NFC_V or
+                                    NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK,
+                                null,
+                            )
+                        } else {
+                            adapter.disableReaderMode(this@MainActivity)
+                        }
+                    }
+            }
+        }
     }
 
     override fun onPause() {
         super.onPause()
+        // Unconditional, and before onPause returns: the collector above is cancelled by the
+        // lifecycle without getting a chance to turn reader mode off itself, and leaving it on
+        // would keep NFC hijacked after the app is no longer in front. A no-op when it was
+        // never enabled.
         nfcAdapter?.disableReaderMode(this)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        handleNfcIntent(intent)
         handleShareIntent(intent)
         handleRunFlowIntent(intent)
     }
@@ -155,13 +205,14 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun handleNfcIntent(intent: Intent?) {
-        val tag = intent?.getParcelableExtra<Tag>(NfcAdapter.EXTRA_TAG) ?: return
-        dispatchNfcTag(tag)
-    }
-
     private fun dispatchNfcTag(tag: Tag) {
         val tagId = tag.id.joinToString("") { "%02X".format(it) }
-        NfcEventSource.emit(tagId)
+        // A scan in progress claims the tag outright. The user is naming a tag, not asking for
+        // the flows bound to it to run — and one of those is very likely the flow being edited.
+        if (NfcReaderMode.scanRequests.value > 0) {
+            NfcReaderMode.emitScannedTag(tagId)
+        } else {
+            NfcEventSource.emit(tagId)
+        }
     }
 }

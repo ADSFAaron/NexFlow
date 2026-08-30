@@ -111,11 +111,12 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- NFC tag dispatch — receives NFC intents when app is in foreground -->
-            <intent-filter>
-                <action android:name="android.nfc.action.TAG_DISCOVERED" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
+            <!-- Deliberately NO NFC intent filter. TAG_DISCOVERED is the tag dispatch
+                 system's last resort, so registering it made NexFlow the catch-all handler for
+                 every tag no other app claimed — office badges, transit cards and URL tags all
+                 launched NexFlow instead of doing what the user expected. It is also deprecated
+                 as of API 37. NFC triggers only fire while the app is in the foreground
+                 (MainActivity's reader mode), which never needed this filter. -->
             <!-- Receive shared NexFlow JSON (from another device's Export button) -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
@@ -151,6 +152,16 @@
             android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Re-schedule TIME alarms as exact ones the moment the user grants
+             "Alarms & reminders". Not exported: the system sends this broadcast directly. -->
+        <receiver
+            android:name=".receiver.ExactAlarmPermissionReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
             </intent-filter>
         </receiver>
 

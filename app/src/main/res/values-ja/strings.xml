@@ -12,6 +12,10 @@
 
     <!-- Foreground service / tile -->
     <string name="service_notification_text">自動化を実行中</string>
+    <string name="service_notification_running_one">実行中：%1$s</string>
+    <plurals name="service_notification_running_many">
+        <item quantity="other">%1$d 件のフローを実行中</item>
+    </plurals>
     <string name="action_stop">停止</string>
     <string name="tile_run_flow">%1$s を実行</string>
 
@@ -215,6 +219,7 @@
     <string name="perm_dnd">サイレント モードへのアクセス</string>
     <string name="perm_write_settings">システム設定の変更</string>
     <string name="perm_airplane_adb">機内モード（ADB）</string>
+    <string name="perm_exact_alarm">アラームとリマインダー</string>
 
     <!-- バックグラウンド位置情報の重要な開示 (Google Play ポリシー) -->
     <string name="bg_location_disclosure_title">バックグラウンドの位置情報を許可</string>
@@ -339,8 +344,10 @@
     <string name="flows_service_stopped">停止しました</string>
     <string name="flows_empty_title">フローがありません</string>
     <string name="flows_empty_subtitle">+ をタップして最初の自動化を作成</string>
-    <string name="flows_flow_activated">フローを実行しました</string>
-    <string name="flows_flow_started">フローを開始しました</string>
+    <string name="flows_flow_running">実行中</string>
+    <string name="flows_running_status">実行中のフローを表示</string>
+    <string name="flows_running_title">実行中</string>
+    <string name="flows_running_none">実行中のフローはありません</string>
     <string name="flows_service_off_banner">自動化サービスは停止中です — トリガーは実行されません</string>
     <string name="flows_service_off_action">開始</string>
 

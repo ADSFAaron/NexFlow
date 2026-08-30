@@ -29,6 +29,7 @@ import com.nexflow.core.automation.model.ConditionType
 import com.nexflow.core.automation.model.Flow
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.executor.NotificationActionExecutor
+import com.nexflow.trigger.TimeTriggerScheduler
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -54,6 +55,13 @@ enum class SpecialAccess {
 
     /** WRITE_SECURE_SETTINGS — grantable only via ADB, no system UI to send the user to. */
     WRITE_SECURE_SETTINGS,
+
+    /**
+     * SCHEDULE_EXACT_ALARM — declared in the manifest but, for a targetSdk 33+ app, denied by
+     * default on a fresh install (and after a backup-restore). Granted on the system's
+     * "Alarms & reminders" page.
+     */
+    EXACT_ALARM,
 }
 
 /**
@@ -79,6 +87,7 @@ data class MissingPermission(
 @Singleton
 class FlowPermissionChecker @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val timeTriggerScheduler: TimeTriggerScheduler,
 ) {
 
     fun missingPermissions(flow: Flow): List<MissingPermission> {
@@ -138,6 +147,16 @@ class FlowPermissionChecker @Inject constructor(
                 TriggerType.BLUETOOTH ->
                     if (!bluetoothGranted()) {
                         add(R.string.perm_bluetooth, Manifest.permission.BLUETOOTH_CONNECT)
+                    }
+                // Without exact alarms the flow still runs, just late — the scheduler falls back
+                // to an inexact alarm the system batches into a Doze maintenance window, which
+                // in practice turns "09:00" into anything up to an hour later. That is the one
+                // failure mode a user cannot diagnose from the outside: the flow is enabled, the
+                // log shows it ran, and the only wrong thing is the time. So it is reported here
+                // like any other missing permission rather than left to be discovered.
+                TriggerType.TIME ->
+                    if (!timeTriggerScheduler.canScheduleExact()) {
+                        addSpecial(R.string.perm_exact_alarm, SpecialAccess.EXACT_ALARM)
                     }
                 else -> Unit
             }
