@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Which tags may wake NexFlow while it is closed (see NfcTagDispatchAlias in the manifest).
+
+    Matching is counter-intuitive: a tech-list matches when it is a SUBSET of what the tag
+    reports, so listing FEWER technologies matches MORE tags. Entries within one tech-list are
+    ANDed; separate tech-lists are ORed. One tech per list is therefore the widest each can be.
+
+    Ndef and NdefFormatable, and deliberately nothing else:
+
+    - Ndef is the only technology the platform guarantees. "It is mandatory for all Android
+      devices with NFC to correctly enumerate Ndef on NFC Forum Tag Types 1-4", so this list
+      matches the same tags on every phone. MifareClassic and MifareUltralight are explicitly
+      optional ("If it is not implemented, then MifareClassic will never be enumerated in
+      getTechList") — listing those would silently never match on a non-NXP NFC chipset, with
+      no error and nothing in the log.
+    - It also keeps NexFlow away from the cards this was hijacking. Transit passes and door
+      badges are MifareClassic, payment cards are IsoDep, Suica is NfcF — none of them enumerate
+      Ndef, so none of them reach us. That is a tighter net than the TAG_DISCOVERED filter this
+      replaces, which caught every tag no other app claimed.
+
+    A tag carrying a URL still goes to the browser: NDEF_DISCOVERED outranks TECH_DISCOVERED and
+    should. Blank and UID-only tags — what a NexFlow NFC trigger is actually built on — fall
+    through to here.
+-->
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <tech-list>
+        <tech>android.nfc.tech.Ndef</tech>
+    </tech-list>
+    <tech-list>
+        <tech>android.nfc.tech.NdefFormatable</tech>
+    </tech-list>
+</resources>
