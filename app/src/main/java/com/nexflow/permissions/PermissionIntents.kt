@@ -19,6 +19,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import com.nexflow.service.NexFlowAccessibilityService
@@ -59,6 +60,15 @@ object PermissionIntents {
         SpecialAccess.BACKGROUND_LOCATION ->
             Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, appUri(context))
         SpecialAccess.WRITE_SECURE_SETTINGS -> null
+        // Official deep link to this app's "Alarms & reminders" toggle. The page (and the
+        // constant) only exist on API 31+; below that SCHEDULE_EXACT_ALARM is granted at
+        // install, so the checker never reports it and this branch is unreachable anyway.
+        SpecialAccess.EXACT_ALARM ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, appUri(context))
+            } else {
+                null
+            }
     }
 
     /**

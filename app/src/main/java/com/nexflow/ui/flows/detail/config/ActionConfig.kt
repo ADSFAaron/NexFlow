@@ -525,7 +525,19 @@ fun ActionType.configSummary(context: Context, config: Map<String, String>): Str
                 else -> R.string.opt_media
             },
         )
-        context.getString(R.string.sum_stream_level, s, config["level"] ?: "?")
+        // Read the same normalized view the editor shows. The volume value moved from an
+        // absolute step under `level` to a percentage under `volume_percent`; this line still
+        // asked for `level`, so every volume action — new ones included — summarised as "?".
+        // Going through normalizeConfigForEditing also means a flow written before the change
+        // reads as the percentage it will actually run at, without having to be re-saved first.
+        val percent = normalizeConfigForEditing(ActionType.VOLUME_ADJUST, config)[
+            VolumeActionExecutor.PERCENT_KEY,
+        ]
+        context.getString(
+            R.string.sum_stream_level,
+            s,
+            percent?.let { "$it%" } ?: context.getString(R.string.sum_not_set),
+        )
     }
     ActionType.OPEN_APP -> config["package_name"]?.takeIf { it.isNotBlank() } ?: context.getString(R.string.sum_not_set)
     ActionType.LAUNCH_SHORTCUT -> config["label"]?.takeIf { it.isNotBlank() } ?: context.getString(R.string.sum_not_set)

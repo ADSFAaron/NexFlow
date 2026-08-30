@@ -48,6 +48,9 @@ core/macrodroid-compat/     # MacroDroid .mdr 格式解析
 | `Regex("""\{\{([^}]+)}}""")` | 某些 Android regex engine 對 `))}}` 報 syntax error | 改為 `\}\}` 明確 escape |
 | `AccessibilityService.dispatchGesture()` | 沒在 accessibility-service XML 宣告 `android:canPerformGestures="true"` 就只會回 `false`，不丟例外、不寫 log，模擬點擊／滑動整個靜默失效 | `nexflow_accessibility_config.xml` 一定要有 `android:canPerformGestures="true"` |
 | `GestureDescription.StrokeDescription` | 座標超出螢幕範圍會丟 `IllegalArgumentException`；座標來自使用者手打的設定，在 service 的 coroutine 裡丟出去會拖垮整個無障礙服務 | 建 `StrokeDescription` 要包 `runCatching`，失敗就回報 action 失敗。單點 `moveTo`（不 `lineTo`）是合法的「不移動的觸碰」，可直接當點擊用 |
+| `NfcAdapter.enableReaderMode()` | **獨占且全裝置生效**：開著的時候所有感應都只進自己的 callback，別的 App 一律看不到標籤；`FLAG_READER_SKIP_NDEF_CHECK` 更直接關掉 NDEF 分派（javadoc 原話「NDEF-based tag dispatch will not be functional」）。在 `onResume` 無條件開啟＝只要 App 開著就吃掉使用者的網址標籤與交通卡 | 只在真的要用時開（有啟用中的 NFC 流程、或正在掃描設定），且只能有一個持有者。設定頁想掃卡就向那個持有者提出請求，不要自己 `enableReaderMode`——第二個持有者關閉時會把第一個的也關掉 |
+| manifest `android.nfc.action.TAG_DISCOVERED` | 分派順序是 NDEF → TECH → TAG，TAG 是最後手段。若機器上只有你註冊，就成了所有其他 App 不處理的標籤（門禁卡、交通卡）的萬用接收者。API 37 已標 `@Deprecated` | 前景 NFC 用 reader mode 就夠，不要註冊這個 filter。真要背景 NFC 才用 `TECH_DISCOVERED` + 明確 tech-list |
+| `SCHEDULE_EXACT_ALARM` | targetSdk 33+ 的 App **全新安裝時預設拒絕**（備份還原到新機也是拒絕），但從舊版升級的裝置會保留已授予的 → 同一版有人正常有人遲到。沒授權時退回不精確鬧鐘，官方保證只有「一小時內」，排 9:00 的流程 9:10 才跑 | 宣告不等於拿到：一定要 `canScheduleExactAlarms()` 檢查 + 用 `ACTION_REQUEST_SCHEDULE_EXACT_ALARM` 引導。並且要收 `ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED` 重排——鬧鐘的精度是排定當下決定的，授權後既有鬧鐘不會自己升級 |
 
 ### 3. 測試
 

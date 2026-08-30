@@ -17,7 +17,6 @@ package com.nexflow.ui.flows.detail
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -25,12 +24,12 @@ import androidx.core.content.FileProvider
 import java.io.File
 import android.location.LocationManager
 import android.net.wifi.WifiManager
-import android.nfc.NfcAdapter
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import android.graphics.Bitmap
 import android.net.Uri
+import android.nfc.NfcAdapter
 import android.view.WindowManager
 import com.canhub.cropper.CropImageContract
 import com.canhub.cropper.CropImageContractOptions
@@ -211,6 +210,7 @@ import com.nexflow.ui.common.PermissionSetupDialogs
 import com.nexflow.ui.common.ShortcutPickerDialog
 import com.nexflow.core.automation.model.Variable
 import com.nexflow.core.automation.model.VariableType
+import com.nexflow.event.NfcReaderMode
 import androidx.compose.ui.graphics.Color
 import com.nexflow.ui.flows.detail.config.ActionInfo
 import com.nexflow.ui.flows.detail.config.ConfigField
@@ -2045,35 +2045,24 @@ internal fun ConfigDialog(
                             }
 
                             is ConfigField.NfcTagScan -> {
+                                // Read-only: whether this device has NFC and whether it is on.
+                                // Reader mode itself is owned by MainActivity, see below.
                                 val nfcAdapter = remember { NfcAdapter.getDefaultAdapter(context) }
                                 var scanning by remember { mutableStateOf(false) }
-                                val activity = context as? Activity
 
+                                // Ask MainActivity for reader mode rather than enabling it here:
+                                // reader mode is device-wide and exclusive, so two owners meant
+                                // this screen's disable also switched off the one the activity
+                                // holds for live NFC triggers.
                                 DisposableEffect(scanning) {
-                                    var readerModeEnabled = false
-                                    if (scanning && nfcAdapter != null && activity != null) {
-                                        nfcAdapter.enableReaderMode(
-                                            activity,
-                                            { tag ->
-                                                val id = tag.id.joinToString("") { "%02X".format(it) }
-                                                values[field.key] = id
-                                                scanning = false
-                                            },
-                                            NfcAdapter.FLAG_READER_NFC_A or NfcAdapter.FLAG_READER_NFC_B or
-                                                NfcAdapter.FLAG_READER_NFC_F or NfcAdapter.FLAG_READER_NFC_V or
-                                                NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK,
-                                            null,
-                                        )
-                                        readerModeEnabled = true
-                                    }
-                                    onDispose {
-                                        // Only disable reader mode if this effect actually enabled it.
-                                        // Unconditional disable would kill MainActivity's onResume reader mode.
-                                        if (readerModeEnabled) {
-                                            runCatching {
-                                                if (activity != null) nfcAdapter?.disableReaderMode(activity)
-                                            }
-                                        }
+                                    if (scanning) NfcReaderMode.beginScan()
+                                    onDispose { if (scanning) NfcReaderMode.endScan() }
+                                }
+                                LaunchedEffect(scanning) {
+                                    if (!scanning) return@LaunchedEffect
+                                    NfcReaderMode.scannedTags.collect { tagId ->
+                                        values[field.key] = tagId
+                                        scanning = false
                                     }
                                 }
 

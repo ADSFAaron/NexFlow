@@ -12,6 +12,10 @@
 
     <!-- Foreground service / tile -->
     <string name="service_notification_text">自动化运行中</string>
+    <string name="service_notification_running_one">正在运行：%1$s</string>
+    <plurals name="service_notification_running_many">
+        <item quantity="other">正在运行 %1$d 个流程</item>
+    </plurals>
     <string name="action_stop">停止</string>
     <string name="tile_run_flow">运行 %1$s</string>
 
@@ -215,6 +219,7 @@
     <string name="perm_dnd">勿扰模式访问权限</string>
     <string name="perm_write_settings">修改系统设置</string>
     <string name="perm_airplane_adb">飞行模式（ADB）</string>
+    <string name="perm_exact_alarm">闹钟和提醒</string>
 
     <!-- 后台定位显著披露 (Google Play 政策) -->
     <string name="bg_location_disclosure_title">允许后台定位</string>
@@ -339,8 +344,10 @@
     <string name="flows_service_stopped">已关闭</string>
     <string name="flows_empty_title">尚无流程</string>
     <string name="flows_empty_subtitle">点按 + 创建你的第一个自动化</string>
-    <string name="flows_flow_activated">流程已触发</string>
-    <string name="flows_flow_started">流程已启动</string>
+    <string name="flows_flow_running">运行中</string>
+    <string name="flows_running_status">显示运行中的流程</string>
+    <string name="flows_running_title">运行中</string>
+    <string name="flows_running_none">当前没有流程在运行</string>
     <string name="flows_service_off_banner">自动化服务已停止——触发器不会执行</string>
     <string name="flows_service_off_action">启动</string>
 
