@@ -155,6 +155,34 @@
             </intent-filter>
         </receiver>
 
+        <!-- Where a tag lands when the app is closed: invisible, runs the flow, finishes.
+             Not exported — only the alias below is reachable from outside. -->
+        <activity
+            android:name=".nfc.NfcTagRunActivity"
+            android:exported="false"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@style/Theme.NexFlow.Transparent" />
+
+        <!-- NFC tag dispatch, shipped DISABLED and switched on by NfcBackgroundDispatch only
+             while an enabled flow has an NFC trigger. A plain manifest filter is permanent, and
+             that is what made the old TAG_DISCOVERED entry hijack every unclaimed tag for users
+             who had no NFC flow at all. See res/xml/nfc_tech_filter.xml for why the tech-list is
+             Ndef-only. -->
+        <activity-alias
+            android:name=".nfc.NfcTagDispatchAlias"
+            android:targetActivity=".nfc.NfcTagRunActivity"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.nfc.action.TECH_DISCOVERED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.nfc.action.TECH_DISCOVERED"
+                android:resource="@xml/nfc_tech_filter" />
+        </activity-alias>
+
         <!-- Re-schedule TIME alarms as exact ones the moment the user grants
              "Alarms & reminders". Not exported: the system sends this broadcast directly. -->
         <receiver

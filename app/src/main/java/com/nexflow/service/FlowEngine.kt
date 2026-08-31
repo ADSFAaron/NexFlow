@@ -35,6 +35,7 @@ import com.nexflow.core.automation.repository.GlobalVariableRepository
 import com.nexflow.core.automation.trigger.TriggerEvent
 import com.nexflow.core.automation.trigger.TriggerHandler
 import com.nexflow.core.automation.trigger.TriggerVariables
+import com.nexflow.nfc.NfcBackgroundDispatch
 import com.nexflow.prefs.DetailedLogPrefs
 import com.nexflow.prefs.ExecutionFeedbackPrefs
 import com.nexflow.trigger.TimeTriggerScheduler
@@ -67,6 +68,7 @@ class FlowEngine @Inject constructor(
     private val actionExecutorSet: Set<@JvmSuppressWildcards ActionExecutor>,
     private val conditionEvaluatorSet: Set<@JvmSuppressWildcards ConditionEvaluator>,
     private val timeTriggerScheduler: TimeTriggerScheduler,
+    private val nfcBackgroundDispatch: NfcBackgroundDispatch,
     @param:ApplicationContext private val context: Context,
 ) {
     private companion object {
@@ -97,7 +99,12 @@ class FlowEngine @Inject constructor(
             // in-process streams below, so they survive Doze and service death. Keep alarms in
             // sync with the current enabled set on every change.
             launch {
-                repository.observeEnabled().collect { timeTriggerScheduler.sync(it) }
+                repository.observeEnabled().collect {
+                    timeTriggerScheduler.sync(it)
+                    // Same idea, different mechanism: claim NFC tag dispatch only while a flow
+                    // could use a tag, so a user with no NFC flow never intercepts one.
+                    nfcBackgroundDispatch.sync(it)
+                }
             }
 
             // Rebuild the in-process trigger streams ONLY when the trigger structure changes.
@@ -165,6 +172,9 @@ class FlowEngine @Inject constructor(
     fun stop() {
         engineJob?.cancel()
         engineJob = null
+        // Automation is off, so a tag has nothing to start. Hand dispatch back rather than
+        // swallowing taps that would do nothing.
+        nfcBackgroundDispatch.disable()
         // Half-finished ALL combinations belong to the session that started them.
         allTriggersGate.clear()
     }

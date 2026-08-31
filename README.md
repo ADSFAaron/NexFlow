@@ -349,17 +349,17 @@ adb shell settings put global animator_duration_scale 1.0
 | 亮度調整 | 修改系統設定（WRITE_SETTINGS） |
 | 勿擾模式 | 勿擾存取權限 |
 | Wi-Fi／飛航模式靜默切換 | `WRITE_SECURE_SETTINGS`（需透過 ADB 授權一次，App 內有指令可複製） |
-| NFC 觸發 | 僅 App 在前景時有效 |
+| NFC 觸發 | App 開著時皆可；關著時僅限 NDEF 標籤，且需有啟用中的 NFC 流程 |
 
 ## 已知限制（規劃中）
 
 - 全域變數需先在「設定 → 全域變數」建立才能寫入：`SET_VARIABLE` 不會用打錯的 `g:名稱` 自動建立新變數（避免 typo 悄悄產生殭屍變數）。設定框會擋下不存在的 `g:` 名稱、無法儲存；萬一仍寫入（例如匯入的舊檔），執行會**失敗並在執行記錄寫出該名稱**，而不是靜默跳過
 - **MacroDroid 相容為部分覆蓋**：目前對照 22 種觸發、30 種動作、7 種條件的 MacroDroid class type（MacroDroid 本身有上百種），其餘一律轉成 `UNSUPPORTED` 並在匯入時逐項列出警告（原始 class 名會保留在 config 裡，方便手動補上對應動作）。設定欄位有 46 種 class 的對照，沒有對照或對不過去的欄位同樣會逐項寫進警告，不會靜默消失。轉換是 best-effort，複雜巨集匯入後請先檢視再啟用 —— 已知一定轉不過來的項目（地理圍欄座標、選單各選項的動作、捷徑、桌布圖片…）列在 [docs/MACRODROID_IMPORT.md](docs/MACRODROID_IMPORT.md)
-- **精確時間需要「鬧鐘與提醒」權限**：TIME 觸發走 `AlarmManager`，Android 12+ 未授權 `SCHEDULE_EXACT_ALARM` 時會退回不精確排程 —— 仍能穿透 Doze，但系統可能併入維護視窗，**誤差數分鐘**。設定頁有引導前往授權
+- **精確時間需要「鬧鐘與提醒」權限**：TIME 觸發走 `AlarmManager`，Android 12+ 未授權 `SCHEDULE_EXACT_ALARM` 時會退回不精確排程 —— 仍能穿透 Doze，但系統可能併入維護視窗，**誤差可達一小時**（官方對不精確鬧鐘的保證是「一小時內」）。未授權時**流程卡片會亮出警告**並帶你前往授權，授權後既有排程會立即重新校正
 - **省電機制可能中斷非時間類觸發**：搖晃、環境光、Wi-Fi／藍牙、耳機、螢幕等觸發依附於前景服務的事件串流，被系統或廠商的省電策略殺掉後就會停止監聽（TIME 因為由 AlarmManager 驅動不受影響）。目前**還沒有引導使用者把 App 加入電池最佳化白名單**的畫面，激進省電的機型請自行到系統設定放行
 - **同一流程不會並行執行**：正在執行的流程再次被觸發會直接略過（避免重複觸發疊加成多份同時執行），這些觸發**不會排隊補跑**
 - **Wi-Fi／飛航模式靜默切換需一次性 ADB 授權**：Android 10 起系統不再開放第三方 App 直接切換，必須手動授予 `WRITE_SECURE_SETTINGS`（App 內可複製指令）；未授權時只能改為跳轉系統設定頁
-- **NFC 觸發僅在 App 前景時有效**：使用 `enableReaderMode`，背景不會接收標籤
+- **NFC 背景觸發只涵蓋 NDEF 標籤**：App 開著時走 `enableReaderMode`，什麼標籤都讀得到。關著時走 `TECH_DISCOVERED`，tech-list 只列 `Ndef`／`NdefFormatable` —— 交通卡、門禁卡（MifareClassic）與感應支付（IsoDep）不會列舉 `Ndef`，所以**背景不會觸發**，這是刻意的：那份攔截若放寬，NexFlow 就會變成這些卡片的萬用接收者。另外，**寫入網址的標籤仍會開啟瀏覽器**（`NDEF_DISCOVERED` 優先權在上）。背景攔截掛在預設關閉的 `<activity-alias>` 上，只有在你有啟用中的 NFC 流程時才會打開——沒有的話 NexFlow 完全不出現在標籤分派名單裡
 
 ## 參與貢獻
 

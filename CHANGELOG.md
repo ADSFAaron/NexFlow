@@ -6,7 +6,29 @@
 
 （尚無項目）
 
+## [1.5.1] - 2026-08-30
+
+把 1.5.0 為了修好「NFC 被獨占」而一併拿掉的背景感應補回來，但這次只發給真的需要的人。
+
+### 新增（Added）
+
+- **關著 App 也能感應 NFC 標籤觸發流程**。1.5.0 移除了 manifest 的 `TAG_DISCOVERED` 攔截——它是「所有其他 App 都不處理的標籤我全收」，門禁卡、交通卡因此都會把 NexFlow 叫起來。代價是背景感應一起沒了。現在改成 `<activity-alias>` 承載攔截、預設關閉，只在「有啟用中的 NFC 流程」時才由程式打開：
+  - **沒有 NFC 流程的使用者，NexFlow 完全不會出現在標籤分派名單裡**。被停用的元件不參與 intent 解析，所以不是「排在後面」，是根本不在
+  - 感應後開啟的是一個透明、無介面、跑完即關的 Activity，畫面上不會彈出任何東西
+  - 改用 `TECH_DISCOVERED` 而非已被 API 37 標為 deprecated 的 `TAG_DISCOVERED`。tech-list 只列 `Ndef` 與 `NdefFormatable`：`Ndef` 是官方文件唯一保證「所有支援 NFC 的 Android 裝置都必須正確列舉」的技術，而 `MifareClassic`／`MifareUltralight` 是選配的——列了它們會在非 NXP 晶片的手機上安靜地永遠不匹配。這份清單同時把抱怨來源擋在外面：交通卡與門禁卡是 MifareClassic、感應支付是 IsoDep、Suica 是 NfcF，都不會列舉 `Ndef`
+  - 引擎停止時交還標籤分派。自動化關掉時攔下感應卻什麼都不做，等於白白吃掉使用者的一次感應
+- 標籤在引擎訂閱之前抵達時會先保留再送出。標籤喚醒的是一個已經死掉的程序，`NfcEventSource` 原本 `replay = 0`，那一次 emit 會落空——結果是 App 被叫醒、流程沒跑
+
+### 已知限制
+
+- 寫入網址的標籤仍然會開啟瀏覽器：`NDEF_DISCOVERED` 的優先權在 `TECH_DISCOVERED` 之上，這是對的。空白或只用 UID 的標籤（NexFlow NFC 觸發器的實際用法）不受影響
+- 非 NDEF 標籤（門禁卡、交通卡當觸發器）在背景不會觸發。App 開著時 reader mode 仍然讀得到所有標籤
+
 ## [1.5.0] - 2026-08-30
+
+> **未上架 Google Play。** 這一版的內容隨 1.5.1 一起發布，商店的使用者是從 1.4.0
+> 直接更新到 1.5.1，所以 Play 的更新資訊涵蓋兩版（見
+> [docs/play-release-notes.md](docs/play-release-notes.md)）。
 
 這一版處理的是「我怎麼知道它有沒有在動」，以及兩個安靜到不像故障的故障。執行中的流程現在會在卡片、通知與長按閃電的清單裡同時現身；排程晚到十分鐘的原因是一個從來沒被要求過的權限；而 NexFlow 只要開著，就會把整支手機的 NFC 感應全部吃掉。
 
@@ -249,6 +271,7 @@ AI 對話從「能用」變成「好用」：回覆逐字出現而不是等半�
 - 多語言：繁體中文、簡體中文、日文、英文
 - 匯入／匯出 `.flow`（JSON）與 MacroDroid `.mdr` 相容解析
 
+[1.5.1]: https://github.com/ADSFAaron/NexFlow/releases/tag/v1.5.1
 [1.5.0]: https://github.com/ADSFAaron/NexFlow/releases/tag/v1.5.0
 [1.4.0]: https://github.com/ADSFAaron/NexFlow/releases/tag/v1.4.0
 [1.3.0]: https://github.com/ADSFAaron/NexFlow/releases/tag/v1.3.0

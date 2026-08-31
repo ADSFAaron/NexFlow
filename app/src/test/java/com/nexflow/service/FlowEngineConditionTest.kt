@@ -32,6 +32,7 @@ import com.nexflow.core.automation.model.TriggerLogic
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.automation.repository.FlowRepository
 import com.nexflow.core.automation.repository.GlobalVariableRepository
+import com.nexflow.nfc.NfcBackgroundDispatch
 import com.nexflow.core.automation.trigger.TriggerVariables
 import com.nexflow.trigger.TimeTriggerScheduler
 import io.mockk.coEvery
@@ -103,6 +104,7 @@ class FlowEngineConditionTest {
             actionExecutorSet = setOf(executor),
             conditionEvaluatorSet = evaluators,
             timeTriggerScheduler = mockk<TimeTriggerScheduler>(relaxed = true),
+            nfcBackgroundDispatch = mockk<NfcBackgroundDispatch>(relaxed = true),
             context = context,
         )
     }

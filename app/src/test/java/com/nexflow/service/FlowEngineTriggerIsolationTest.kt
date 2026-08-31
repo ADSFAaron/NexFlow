@@ -23,6 +23,7 @@ import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.automation.repository.FlowRepository
 import com.nexflow.core.automation.trigger.TriggerEvent
 import com.nexflow.core.automation.trigger.TriggerHandler
+import com.nexflow.nfc.NfcBackgroundDispatch
 import com.nexflow.trigger.TimeTriggerScheduler
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -106,6 +107,7 @@ class FlowEngineTriggerIsolationTest {
             actionExecutorSet = emptySet(),
             conditionEvaluatorSet = emptySet(),
             timeTriggerScheduler = scheduler,
+            nfcBackgroundDispatch = mockk<NfcBackgroundDispatch>(relaxed = true),
             context = context,
         )
 
