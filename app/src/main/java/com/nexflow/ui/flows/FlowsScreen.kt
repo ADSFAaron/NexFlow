@@ -34,6 +34,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -43,6 +44,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.size
@@ -51,6 +53,8 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -115,6 +119,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -132,6 +139,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.roundToIntRect
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
@@ -567,11 +575,18 @@ private fun ServiceCapsule(
         MaterialTheme.colorScheme.onSurfaceVariant
 
     var showRunning by remember { mutableStateOf(false) }
+    var anchorInWindow by remember { mutableStateOf(IntRect.Zero) }
     val longPressLabel = stringResource(R.string.flows_running_status)
 
-    // The popup anchors to this Box, not to the Surface: the Surface's own size animates as the
-    // service-state label appears, and an anchor that moves would drag the popup with it.
-    Box(modifier = modifier.padding(end = 8.dp)) {
+    // The panel lives in a window-filling popup (so it can dim what is behind it), which means
+    // it cannot anchor itself — it has to be told where the capsule ended up. This Box, not the
+    // Surface: the Surface's own size animates as the service-state label appears, and an anchor
+    // that moves would drag the panel with it.
+    Box(
+        modifier = modifier
+            .padding(end = 8.dp)
+            .onGloballyPositioned { anchorInWindow = it.boundsInWindow().roundToIntRect() },
+    ) {
         Surface(
             shape = CircleShape,
             color = containerColor,
@@ -624,6 +639,7 @@ private fun ServiceCapsule(
 
         RunningFlowsIsland(
             running = runningFlows,
+            anchorInWindow = anchorInWindow,
             expanded = showRunning,
             onDismiss = { showRunning = false },
         )
@@ -656,13 +672,21 @@ private fun RunningCountBadge(count: Int, modifier: Modifier = Modifier) {
 }
 
 /**
- * The running-flow list that drops out of the capsule on a long press — a status readout, not a
- * menu, so it is a plain [Popup] rather than a dropdown: nothing in it is tappable and it never
- * takes over the screen.
+ * The running-flow panel that drops out of the capsule on a long press — a status readout, not a
+ * menu, so nothing in it is tappable and it never takes over the screen.
+ *
+ * The popup window fills the whole app window rather than wrapping the panel. A popup window
+ * sized to its content leaves no room outside the surface for the surface's own drop shadow, so
+ * the shadow is cut off square at the window edge — which is what the panel looked like in light
+ * theme. A window-sized popup also gives the panel a scrim to sit on.
+ *
+ * @param anchorInWindow where the capsule ended up, in window coordinates — the same space
+ *   this popup's content is laid out in, since the window is placed at the window origin.
  */
 @Composable
 private fun RunningFlowsIsland(
     running: List<RunningFlow>,
+    anchorInWindow: IntRect,
     expanded: Boolean,
     onDismiss: () -> Unit,
 ) {
@@ -673,12 +697,11 @@ private fun RunningFlowsIsland(
     LaunchedEffect(expanded) { transitionState.targetState = expanded }
     if (!transitionState.currentState && !transitionState.targetState && transitionState.isIdle) return
 
-    val density = LocalDensity.current
-    val positionProvider = remember(density) {
-        with(density) { IslandPositionProvider(gapPx = 8.dp.roundToPx(), marginPx = 12.dp.roundToPx()) }
-    }
     val spatial = MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
     val effects = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
+    val panelTop = with(LocalDensity.current) { anchorInWindow.bottom.coerceAtLeast(0).toDp() } + 8.dp
+    val positionProvider = remember(anchorInWindow) { WindowOriginPositionProvider(anchorInWindow) }
+    val dismiss by rememberUpdatedState(onDismiss)
 
     Popup(
         popupPositionProvider = positionProvider,
@@ -686,20 +709,48 @@ private fun RunningFlowsIsland(
         // focusable so the back gesture dismisses the popup instead of the screen behind it.
         properties = PopupProperties(focusable = true),
     ) {
-        AnimatedVisibility(
-            visibleState = transitionState,
-            // Grow out of the capsule's trailing edge, which is where the press happened.
-            enter = fadeIn(effects) + scaleIn(spatial, initialScale = 0.8f, transformOrigin = IslandOrigin),
-            exit = fadeOut(effects) + scaleOut(spatial, targetScale = 0.8f, transformOrigin = IslandOrigin),
-            label = "running_island",
-        ) {
-            RunningFlowsIslandContent(running)
+        Box(modifier = Modifier.fillMaxSize()) {
+            AnimatedVisibility(
+                visibleState = transitionState,
+                enter = fadeIn(effects),
+                exit = fadeOut(effects),
+                label = "running_scrim",
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.scrim.copy(alpha = ScrimAlpha))
+                        // pointerInput, not clickable: tapping away is not a control, and a
+                        // window-sized clickable would offer itself to TalkBack as one.
+                        // Keyed on Unit with the callback read through rememberUpdatedState:
+                        // keying on the lambda itself would tear down and restart the gesture
+                        // detector on every recomposition.
+                        .pointerInput(Unit) { detectTapGestures { dismiss() } },
+                )
+            }
+            AnimatedVisibility(
+                visibleState = transitionState,
+                // Grow out of the capsule's trailing edge, which is where the press happened.
+                enter = fadeIn(effects) + scaleIn(spatial, initialScale = 0.85f, transformOrigin = IslandOrigin),
+                exit = fadeOut(effects) + scaleOut(spatial, targetScale = 0.85f, transformOrigin = IslandOrigin),
+                // Hangs just under the capsule, kept clear of the window edges so a long flow
+                // name can never push it off screen — and so the shadow has room to fall.
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = panelTop, start = 16.dp, end = 16.dp, bottom = 24.dp),
+                label = "running_island",
+            ) {
+                RunningFlowsIslandContent(running)
+            }
         }
     }
 }
 
-/** Top-trailing corner: the popup hangs from the capsule, so that is what it scales out of. */
+/** Top-trailing corner: the panel hangs from the capsule, so that is what it scales out of. */
 private val IslandOrigin = TransformOrigin(pivotFractionX = 1f, pivotFractionY = 0f)
+
+/** M3's scrim opacity for a modal surface. */
+private const val ScrimAlpha = 0.32f
 
 @Composable
 private fun RunningFlowsIslandContent(running: List<RunningFlow>) {
@@ -708,56 +759,70 @@ private fun RunningFlowsIslandContent(running: List<RunningFlow>) {
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         contentColor = MaterialTheme.colorScheme.onSurface,
         shadowElevation = 6.dp,
-        // The list grows and shrinks as flows come and go while the popup is open; resize it
+        // The list grows and shrinks as flows come and go while the panel is open; resize it
         // rather than letting the window jump between sizes.
         modifier = Modifier
-            .sizeIn(minWidth = 200.dp, maxWidth = 300.dp)
+            .sizeIn(minWidth = 260.dp, maxWidth = 360.dp)
             .animateContentSize(animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec()),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Icon(
-                    Icons.Filled.Bolt,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(18.dp),
-                )
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                ) {
+                    Icon(
+                        Icons.Filled.Bolt,
+                        contentDescription = null,
+                        modifier = Modifier.padding(7.dp).size(18.dp),
+                    )
+                }
                 Text(
                     stringResource(R.string.flows_running_title),
-                    style = MaterialTheme.typography.titleSmall,
+                    style = MaterialTheme.typography.titleMedium,
                 )
             }
             if (running.isEmpty()) {
                 Text(
                     stringResource(R.string.flows_running_none),
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
-                running.forEach { flow ->
-                    key(flow.id) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
-                            CircularProgressIndicator(
-                                color = MaterialTheme.colorScheme.primary,
-                                trackColor = Color.Transparent,
-                                strokeWidth = 2.dp,
-                                modifier = Modifier.size(14.dp),
-                            )
-                            Text(
-                                text = flow.name,
-                                style = MaterialTheme.typography.bodyMedium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
+                Column(
+                    // Bounded: a burst of concurrent runs scrolls inside the panel instead of
+                    // growing it past the bottom of the screen.
+                    modifier = Modifier
+                        .heightIn(max = 280.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    running.forEach { flow ->
+                        key(flow.id) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                CircularProgressIndicator(
+                                    color = MaterialTheme.colorScheme.primary,
+                                    trackColor = Color.Transparent,
+                                    strokeWidth = 2.dp,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                                Text(
+                                    text = flow.name,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
                         }
                     }
                 }
@@ -767,30 +832,21 @@ private fun RunningFlowsIslandContent(running: List<RunningFlow>) {
 }
 
 /**
- * Hangs the popup under the capsule and flush with its trailing edge, kept [marginPx] clear of
- * the window edges so a long flow name can never push it off screen.
+ * Places the popup window at the app window's origin, so the popup's content is laid out in
+ * window coordinates and [Modifier.fillMaxSize] inside it covers the window.
+ *
+ * The offset is the difference between the anchor as the popup sees it and [anchorInWindow], the
+ * same anchor in window coordinates — which lands on the window origin whichever space the popup
+ * is positioning in, and so survives the window not starting at the top-left of the screen
+ * (split screen, freeform).
  */
-private class IslandPositionProvider(
-    private val gapPx: Int,
-    private val marginPx: Int,
-) : PopupPositionProvider {
+private class WindowOriginPositionProvider(private val anchorInWindow: IntRect) : PopupPositionProvider {
     override fun calculatePosition(
         anchorBounds: IntRect,
         windowSize: IntSize,
         layoutDirection: LayoutDirection,
         popupContentSize: IntSize,
-    ): IntOffset {
-        val preferredX = if (layoutDirection == LayoutDirection.Ltr) {
-            anchorBounds.right - popupContentSize.width
-        } else {
-            anchorBounds.left
-        }
-        val maxX = (windowSize.width - popupContentSize.width - marginPx).coerceAtLeast(marginPx)
-        return IntOffset(
-            x = preferredX.coerceIn(marginPx, maxX),
-            y = anchorBounds.bottom + gapPx,
-        )
-    }
+    ): IntOffset = anchorBounds.topLeft - anchorInWindow.topLeft
 }
 
 /**

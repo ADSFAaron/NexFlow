@@ -51,13 +51,16 @@ class ShortcutSyncManager @Inject constructor(
                 val flowMap = flows.associateBy { it.id }
                 val recent = logs.map { it.flowId }
                     .distinct()
-                    .take(4)
                     .mapNotNull { flowMap[it] }
-                recent to flows
-            }.collect { (recentFlows, allFlows) ->
+                // The launcher's long-press menu holds a handful; the widget is however big the
+                // user made it, and recent runs alone left a large one half empty. Top it up with
+                // the rest of the flows so the grid has something to fill itself with.
+                val widgetFlows = (recent + flows).distinctBy { it.id }.take(NexFlowWidget.MAX_FLOWS)
+                Triple(recent.take(SHORTCUT_LIMIT), flows, widgetFlows)
+            }.collect { (recentFlows, allFlows, widgetFlows) ->
                 syncShortcuts(recentFlows)
                 refreshPinnedShortcuts(allFlows)
-                NexFlowWidget.updateRecentFlows(context, recentFlows)
+                NexFlowWidget.updateRecentFlows(context, widgetFlows)
             }
         }
     }
@@ -113,4 +116,9 @@ class ShortcutSyncManager @Inject constructor(
             .setIntent(PinShortcutHelper.buildIntent(context, flow.id))
 
     private fun Flow.signature(): String = "$id:$name:$icon:$iconColor"
+
+    private companion object {
+        /** How many recent flows the launcher's long-press menu gets. */
+        const val SHORTCUT_LIMIT = 4
+    }
 }

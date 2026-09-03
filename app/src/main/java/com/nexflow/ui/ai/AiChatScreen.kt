@@ -449,6 +449,17 @@ fun AiChatScreen(
                                     placementSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
                                     fadeOutSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
                                 )
+                                // Same, minus the fade out. Retry deletes the error bubble and
+                                // starts the turn in the same breath, so the thinking indicator
+                                // is placed in the very slot the error is still fading out of —
+                                // two opaque bubbles drawn on top of each other. Nothing else in
+                                // this list is ever replaced in place, so only this one bubble
+                                // has to leave immediately.
+                                val replacedItemModifier = Modifier.animateItem(
+                                    fadeInSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
+                                    placementSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
+                                    fadeOutSpec = null,
+                                )
                                 // A day rule opens the transcript and marks every date change after it.
                                 val previous = uiState.messages.getOrNull(index - 1)
                                 if (previous == null || !isSameDay(previous.timestamp, message.timestamp)) {
@@ -490,7 +501,7 @@ fun AiChatScreen(
                                         } else {
                                             null
                                         },
-                                        modifier = itemModifier,
+                                        modifier = replacedItemModifier,
                                     )
 
                                     is ChatMessage.FlowPreview -> FlowPreviewCard(
@@ -507,11 +518,19 @@ fun AiChatScreen(
                             // forming in place, or — before the first token — the indicator.
                             if (uiState.isThinking) {
                                 item(key = "thinking") {
+                                    // Fades in with the list's own item animation like every
+                                    // other bubble; leaves at once, because the answer it turns
+                                    // into is placed in this same slot.
+                                    val indicatorModifier = Modifier.animateItem(
+                                        fadeInSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
+                                        placementSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
+                                        fadeOutSpec = null,
+                                    )
                                     val streaming = uiState.streamingText
                                     if (streaming.isNullOrBlank()) {
-                                        ThinkingBubble(step = uiState.thinkingStep)
+                                        ThinkingBubble(step = uiState.thinkingStep, modifier = indicatorModifier)
                                     } else {
-                                        StreamingBubble(text = streaming)
+                                        StreamingBubble(text = streaming, modifier = indicatorModifier)
                                     }
                                 }
                             }
@@ -1187,9 +1206,9 @@ private fun JumpToLatestPill(onClick: () -> Unit) {
  * frequently" case the accessibility guidance warns about. The finished message announces once.
  */
 @Composable
-private fun StreamingBubble(text: String) {
+private fun StreamingBubble(text: String, modifier: Modifier = Modifier) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(end = bubbleGutter()),
         horizontalAlignment = Alignment.Start,
@@ -1501,10 +1520,11 @@ private fun copyToClipboard(context: Context, text: String) {
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun ThinkingBubble(step: AiChatOrchestrator.Progress?) {
+private fun ThinkingBubble(step: AiChatOrchestrator.Progress?, modifier: Modifier = Modifier) {
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         shape = RoundedCornerShape(20.dp),
+        modifier = modifier,
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,

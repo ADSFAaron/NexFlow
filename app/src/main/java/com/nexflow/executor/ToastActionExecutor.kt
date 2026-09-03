@@ -36,8 +36,18 @@ class ToastActionExecutor @Inject constructor(
         val message = action.config["message"]?.takeIf { it.isNotBlank() }
             ?: return ActionResult.Skipped
         withContext(Dispatchers.Main) {
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            // Toasts queue rather than replace: a loop that toasts three times plays out over
+            // six seconds, still popping messages long after the flow itself has finished, which
+            // reads as the run being stuck. Cancelling the one on screen before posting the next
+            // keeps what the user sees in step with where the flow actually is.
+            onScreen?.cancel()
+            onScreen = Toast.makeText(context, message, Toast.LENGTH_SHORT).also { it.show() }
         }
         return ActionResult.Success
+    }
+
+    private companion object {
+        /** The toast this app last posted. Only ever touched on the main thread. */
+        var onScreen: Toast? = null
     }
 }

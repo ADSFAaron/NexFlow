@@ -9,6 +9,8 @@
     <string name="widget_configure_title">フローを選択</string>
     <string name="widget_no_flows">フローがありません — まずアプリ内で作成してください</string>
     <string name="widget_no_runs">実行履歴がありません</string>
+    <string name="widget_enabled_count">%1$d/%2$d 有効</string>
+    <string name="widget_preview_count">4/6 有効</string>
 
     <!-- Foreground service / tile -->
     <string name="service_notification_text">自動化を実行中</string>
@@ -50,6 +52,8 @@
     <!-- Flow detail -->
     <string name="fd_change_icon">アイコンを変更</string>
     <string name="fd_edit_flow">フローを編集</string>
+    <string name="fd_duplicate_flow">フローを複製</string>
+    <string name="fd_copy_name">%1$s のコピー</string>
     <string name="fd_pin_shortcut">ホーム画面に追加</string>
     <string name="fd_pin_shortcut_unsupported">このランチャーはショートカットの固定に対応していません</string>
     <string name="fd_flow_started">フローを開始しました</string>
@@ -798,6 +802,7 @@
 
     <!-- Delete undo snackbar -->
     <string name="action_undo">元に戻す</string>
+    <string name="action_more">その他のオプション</string>
     <string name="snackbar_deleted">「%1$s」を削除しました</string>
 
     <!-- Accessibility (TalkBack) labels -->

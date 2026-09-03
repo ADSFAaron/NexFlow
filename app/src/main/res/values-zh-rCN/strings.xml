@@ -9,6 +9,8 @@
     <string name="widget_configure_title">选择流程</string>
     <string name="widget_no_flows">尚无流程 — 请先在 App 内创建</string>
     <string name="widget_no_runs">尚无执行记录</string>
+    <string name="widget_enabled_count">%1$d/%2$d 已启用</string>
+    <string name="widget_preview_count">4/6 已启用</string>
 
     <!-- Foreground service / tile -->
     <string name="service_notification_text">自动化运行中</string>
@@ -50,6 +52,8 @@
     <!-- Flow detail -->
     <string name="fd_change_icon">更改图标</string>
     <string name="fd_edit_flow">编辑流程</string>
+    <string name="fd_duplicate_flow">复制流程</string>
+    <string name="fd_copy_name">%1$s 的副本</string>
     <string name="fd_pin_shortcut">添加到主屏幕</string>
     <string name="fd_pin_shortcut_unsupported">此启动器不支持固定快捷方式</string>
     <string name="fd_flow_started">流程已启动</string>
@@ -798,6 +802,7 @@
 
     <!-- Delete undo snackbar -->
     <string name="action_undo">撤销</string>
+    <string name="action_more">更多选项</string>
     <string name="snackbar_deleted">已删除“%1$s”</string>
 
     <!-- Accessibility (TalkBack) labels -->

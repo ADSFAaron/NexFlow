@@ -78,12 +78,14 @@ import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.ArrowDropDown
 import androidx.compose.material.icons.outlined.Code
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.DataObject
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
@@ -185,7 +187,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -238,8 +239,12 @@ fun FlowDetailScreen(
     vm: FlowDetailViewModel = hiltViewModel(),
     onBack: () -> Unit,
     onEditWithAi: () -> Unit = {},
+    onOpenFlow: (String) -> Unit = {},
 ) {
     val flow by vm.flow.collectAsState()
+
+    // Duplicating opens the copy, so what the user edits next is the copy and not the original.
+    LaunchedEffect(vm) { vm.navigateToCopy.collect { flowId -> onOpenFlow(flowId) } }
 
     // Crossfade loading → editor. contentKey limits the transition to the null ↔ loaded
     // switch, so ordinary flow edits (every save changes the state) don't re-animate.
@@ -463,15 +468,45 @@ private fun FlowDetailContent(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
+                // One overflow, not a row of icons. Every icon here is a whole flow name's
+                // worth of title taken away, and the name is the only thing on this screen that
+                // says which flow is being edited — with three of them, a duplicate could not be
+                // told from its original. None of these three is used often enough to earn that.
                 actions = {
-                    IconButton(onClick = onPinShortcut) {
-                        Icon(
-                            Icons.AutoMirrored.Outlined.AddToHomeScreen,
-                            contentDescription = stringResource(R.string.fd_pin_shortcut),
-                        )
+                    // stringResource, not context.getString: a resource read through
+                    // LocalContext is not invalidated when the Configuration changes.
+                    val copyName = stringResource(R.string.fd_copy_name, f.name)
+                    var menuOpen by remember { mutableStateOf(false) }
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.action_more))
                     }
-                    IconButton(onClick = { showRenameDialog = true }) {
-                        Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.fd_edit_flow))
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.fd_edit_flow)) },
+                            leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
+                            onClick = {
+                                menuOpen = false
+                                showRenameDialog = true
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.fd_duplicate_flow)) },
+                            leadingIcon = { Icon(Icons.Outlined.ContentCopy, contentDescription = null) },
+                            onClick = {
+                                menuOpen = false
+                                vm.duplicateFlow(copyName)
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.fd_pin_shortcut)) },
+                            leadingIcon = {
+                                Icon(Icons.AutoMirrored.Outlined.AddToHomeScreen, contentDescription = null)
+                            },
+                            onClick = {
+                                menuOpen = false
+                                onPinShortcut()
+                            },
+                        )
                     }
                 },
             )
@@ -1275,17 +1310,22 @@ private fun GroupedItem(
     // Highlight ON snaps so the "currently executing" marker tracks the engine with zero
     // lag; highlight OFF eases out on the effects token (M3: color/elevation = effects).
     val colorEffects = MaterialTheme.motionScheme.defaultEffectsSpec<Color>()
-    val dpEffects = MaterialTheme.motionScheme.defaultEffectsSpec<Dp>()
+    // A container role and its matching "on" colour, not primary at 18% alpha over the row.
+    // The translucent version let the row's 8dp shadow show straight through the surface — a
+    // grey smear under the text that read as two overlapping cards in light theme, and was
+    // invisible in dark theme, which is why it survived this long. It also left the text on
+    // onSurface over a blue wash. M3 states are colour roles, not alpha and shadow.
     val surfaceColor by animateColorAsState(
-        targetValue = if (highlighted) primary.copy(alpha = 0.18f)
+        targetValue = if (highlighted) MaterialTheme.colorScheme.primaryContainer
                       else MaterialTheme.colorScheme.surfaceContainer,
         animationSpec = if (highlighted) snap() else colorEffects,
         label = "item_bg",
     )
-    val shadowElevation by animateDpAsState(
-        targetValue = if (highlighted) 8.dp else 0.dp,
-        animationSpec = if (highlighted) snap() else dpEffects,
-        label = "item_shadow",
+    val contentColor by animateColorAsState(
+        targetValue = if (highlighted) MaterialTheme.colorScheme.onPrimaryContainer
+                      else MaterialTheme.colorScheme.onSurface,
+        animationSpec = if (highlighted) snap() else colorEffects,
+        label = "item_fg",
     )
     val borderColor by animateColorAsState(
         targetValue = if (highlighted) primary else androidx.compose.ui.graphics.Color.Transparent,
@@ -1315,14 +1355,17 @@ private fun GroupedItem(
             onClick = onClick,
             shape = shape,
             color = surfaceColor,
-            shadowElevation = maxOf(shadowElevation, dragElevation),
+            contentColor = contentColor,
+            // Only a drag lifts a row now; being the executing row is said in colour.
+            shadowElevation = dragElevation,
             modifier = rowModifier,
         ) { content() }
     } else {
         Surface(
             shape = shape,
             color = surfaceColor,
-            shadowElevation = maxOf(shadowElevation, dragElevation),
+            contentColor = contentColor,
+            shadowElevation = dragElevation,
             modifier = rowModifier,
         ) { content() }
     }

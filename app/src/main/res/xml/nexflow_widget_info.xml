@@ -3,6 +3,8 @@
     android:description="@string/widget_overview_description"
     android:minWidth="245dp"
     android:minHeight="180dp"
+    android:minResizeWidth="110dp"
+    android:minResizeHeight="40dp"
     android:maxResizeWidth="624dp"
     android:maxResizeHeight="422dp"
     android:targetCellWidth="4"

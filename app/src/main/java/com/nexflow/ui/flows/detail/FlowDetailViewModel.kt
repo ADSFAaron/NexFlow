@@ -255,6 +255,40 @@ class FlowDetailViewModel @Inject constructor(
         copy(variables = variables.filter { it.name != name })
     }
 
+    private val _navigateToCopy = MutableSharedFlow<String>(extraBufferCapacity = 1)
+
+    /** The id of a flow just created by [duplicateFlow] — the screen follows it to the copy. */
+    val navigateToCopy: SharedFlow<String> = _navigateToCopy.asSharedFlow()
+
+    /**
+     * Saves a second flow holding everything this one holds, under [copyName].
+     *
+     * The copy is created switched off. A copy of an enabled flow would otherwise subscribe its
+     * triggers the moment it was saved, and the user would have two flows doing the same thing
+     * before they had touched anything — including two of the same alarm or geofence.
+     */
+    fun duplicateFlow(copyName: String) {
+        viewModelScope.launch {
+            val original = flow.value ?: return@launch
+            val now = System.currentTimeMillis()
+            // Fresh ids all the way down: a trigger's id is what the engine registers real system
+            // resources under (a geofence request, an alarm), so two flows carrying the same
+            // trigger id would fight over one registration.
+            val copy = original.copy(
+                id = java.util.UUID.randomUUID().toString(),
+                name = copyName,
+                enabled = false,
+                createdAt = now,
+                updatedAt = now,
+                triggers = original.triggers.map { it.copy(id = java.util.UUID.randomUUID().toString()) },
+                conditions = original.conditions.map { it.copy(id = java.util.UUID.randomUUID().toString()) },
+                actions = original.actions.map { it.copy(id = java.util.UUID.randomUUID().toString()) },
+            )
+            repository.save(copy)
+            _navigateToCopy.emit(copy.id)
+        }
+    }
+
     fun setEnabled(enabled: Boolean) {
         viewModelScope.launch {
             // Block enabling while required permissions are missing — otherwise the engine

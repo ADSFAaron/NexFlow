@@ -11,6 +11,7 @@
     <string name="widget_configure_title">Choose a flow</string>
     <string name="widget_no_flows">No flows yet — create one in the app first</string>
     <string name="widget_no_runs">No runs yet</string>
+    <string name="widget_enabled_count">%1$d of %2$d on</string>
 
     <!-- Foreground service / tile -->
     <string name="service_notification_text">Automation is active</string>
@@ -53,6 +54,8 @@
     <!-- Flow detail -->
     <string name="fd_change_icon">Change icon</string>
     <string name="fd_edit_flow">Edit flow</string>
+    <string name="fd_duplicate_flow">Duplicate flow</string>
+    <string name="fd_copy_name">%1$s copy</string>
     <string name="fd_pin_shortcut">Add to home screen</string>
     <string name="fd_pin_shortcut_unsupported">This launcher does not support pinned shortcuts</string>
     <string name="fd_flow_started">Flow started</string>
@@ -817,6 +820,7 @@
 
     <!-- Delete undo snackbar -->
     <string name="action_undo">Undo</string>
+    <string name="action_more">More options</string>
     <string name="snackbar_deleted">Deleted “%1$s”</string>
 
     <!-- Accessibility (TalkBack) labels -->
@@ -857,7 +861,7 @@
     <string name="settings_detailed_log">Detailed execution log</string>
     <string name="settings_detailed_log_desc">Also record what each action’s settings came out as — the address actually called, the text actually sent. Stored on this device, and it will include whatever your flows handle.</string>
     <string name="run_step_menu_cancelled">Closed without choosing</string>
-    <string name="widget_preview_count" translatable="false">4/6</string>
+    <string name="widget_preview_count">4 of 6 on</string>
     <string name="widget_preview_flow_a">Morning routine</string>
     <string name="widget_preview_flow_b">Commute mode</string>
     <string name="widget_preview_flow_c">Focus time</string>
