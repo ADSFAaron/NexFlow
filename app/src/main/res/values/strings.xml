@@ -11,6 +11,7 @@
     <string name="widget_configure_title">Choose a flow</string>
     <string name="widget_no_flows">No flows yet — create one in the app first</string>
     <string name="widget_no_runs">No runs yet</string>
+    <string name="widget_enabled_count">%1$d of %2$d on</string>
 
     <!-- Foreground service / tile -->
     <string name="service_notification_text">Automation is active</string>
@@ -53,6 +54,8 @@
     <!-- Flow detail -->
     <string name="fd_change_icon">Change icon</string>
     <string name="fd_edit_flow">Edit flow</string>
+    <string name="fd_duplicate_flow">Duplicate flow</string>
+    <string name="fd_copy_name">%1$s copy</string>
     <string name="fd_pin_shortcut">Add to home screen</string>
     <string name="fd_pin_shortcut_unsupported">This launcher does not support pinned shortcuts</string>
     <string name="fd_flow_started">Flow started</string>
@@ -705,6 +708,8 @@
     <string name="cfg_info_screenshot_body">Screenshot requires the NexFlow Accessibility Service to be enabled. Go to Settings → Accessibility → Installed apps → NexFlow and toggle it on. Requires Android 12 or higher.</string>
     <string name="cfg_info_wifi_ssid_body">Matching a network name needs location permission — without it Android hides the name and the condition never holds. Leave it blank to accept any Wi-Fi network.</string>
     <string name="cfg_info_bluetooth_audio_body">Only audio devices are detected (headphones, speakers, car kits). Other Bluetooth accessories are invisible to this condition.</string>
+    <string name="cfg_info_battery_trigger_body">Fires once, at the moment the level crosses this threshold — not again while the battery stays there. To check the level at some other moment (a scheduled run, say), add the Battery level condition under ONLY IF instead.</string>
+    <string name="cfg_info_battery_condition_body">Checked just before every run, whatever fired the flow. It starts nothing by itself — unlike the Battery trigger, it only lets a run through or holds it back.</string>
     <string name="cfg_info_condition_label">Condition</string>
     <string name="cfg_info_condition_body">Examples: {{battery}} &lt; 20 · {{status}} == ok · true. Supports ==, !=, &lt;, &gt;, &lt;=, &gt;= — numbers compare numerically. Close the block with an End If action.</string>
 
@@ -777,9 +782,10 @@
     <string name="sum_no_days">no days</string>
     <string name="sum_level">Level: %1$s%2$s</string>
     <string name="sum_stream_level">%1$s: %2$s</string>
-    <string name="sum_battery">%1$s%% %2$s</string>
-    <string name="sum_battery_below">below</string>
-    <string name="sum_battery_above">above</string>
+    <string name="sum_battery_falls">Drops to %1$s%% or below</string>
+    <string name="sum_battery_rises">Rises to %1$s%% or above</string>
+    <string name="sum_battery_at_or_below">While at or below %1$s%%</string>
+    <string name="sum_battery_at_or_above">While at or above %1$s%%</string>
     <string name="sum_device_event">%1$s %2$s</string>
 
     <plurals name="flows_imported_count">
@@ -814,6 +820,7 @@
 
     <!-- Delete undo snackbar -->
     <string name="action_undo">Undo</string>
+    <string name="action_more">More options</string>
     <string name="snackbar_deleted">Deleted “%1$s”</string>
 
     <!-- Accessibility (TalkBack) labels -->
@@ -854,7 +861,7 @@
     <string name="settings_detailed_log">Detailed execution log</string>
     <string name="settings_detailed_log_desc">Also record what each action’s settings came out as — the address actually called, the text actually sent. Stored on this device, and it will include whatever your flows handle.</string>
     <string name="run_step_menu_cancelled">Closed without choosing</string>
-    <string name="widget_preview_count" translatable="false">4/6</string>
+    <string name="widget_preview_count">4 of 6 on</string>
     <string name="widget_preview_flow_a">Morning routine</string>
     <string name="widget_preview_flow_b">Commute mode</string>
     <string name="widget_preview_flow_c">Focus time</string>

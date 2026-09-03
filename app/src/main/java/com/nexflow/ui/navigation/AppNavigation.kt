@@ -186,6 +186,8 @@ fun NexFlowNavHost(navController: NavHostController, modifier: Modifier = Modifi
                     val flowId = entry.arguments?.getString("flowId") ?: return@FlowDetailScreen
                     navController.navigate("ai_chat?flowId=$flowId")
                 },
+                // The original stays on the back stack, so Back from a copy returns to it.
+                onOpenFlow = { flowId -> navController.navigate(flowRoute(flowId, focusItemId = null)) },
             )
         }
         composable("about") {

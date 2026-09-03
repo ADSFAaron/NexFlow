@@ -120,6 +120,13 @@ fun TriggerType.info(context: Context): TriggerInfo = when (this) {
     TriggerType.BATTERY -> TriggerInfo(
         context.getString(R.string.trg_battery_label), Icons.Outlined.BatteryAlert, context.getString(R.string.trg_battery_desc),
         listOf(
+            // Leads the dialog because the edge/state distinction against the BATTERY_LEVEL
+            // condition is the thing people get wrong, and they get it wrong before they read on.
+            ConfigField.InfoText(
+                "_battery_trigger_info",
+                context.getString(R.string.cfg_info_note_label),
+                context.getString(R.string.cfg_info_battery_trigger_body),
+            ),
             ConfigField.Slider("level", context.getString(R.string.cfg_battery_level), 0, 100, "%"),
             ConfigField.Dropdown("direction", context.getString(R.string.cfg_trigger_when), listOf(
                 "BELOW" to context.getString(R.string.opt_falls_below),
@@ -284,10 +291,10 @@ fun TriggerType.configSummary(context: Context, config: Map<String, String>): St
             append("$t · $label")
         }
     }
-    TriggerType.BATTERY -> {
-        val dir = context.getString(if (config["direction"] == "ABOVE") R.string.sum_battery_above else R.string.sum_battery_below)
-        context.getString(R.string.sum_battery, config["level"] ?: "?", dir)
-    }
+    TriggerType.BATTERY -> context.getString(
+        if (config["direction"] == "ABOVE") R.string.sum_battery_rises else R.string.sum_battery_falls,
+        config["level"] ?: "?",
+    )
     TriggerType.BLUETOOTH -> {
         val d = config["device_name"]?.takeIf { it.isNotBlank() } ?: context.getString(R.string.sum_any_device)
         context.getString(R.string.sum_device_event, d, connectEventLabel(context, config["event"]))

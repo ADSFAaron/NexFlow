@@ -74,7 +74,7 @@ class FlowRepositoryImpl @Inject constructor(
     }
 
     override suspend fun setEnabled(id: String, enabled: Boolean) {
-        flowDao.setEnabled(id, enabled, System.currentTimeMillis())
+        flowDao.setEnabled(id, enabled)
     }
 
     override suspend fun saveExecutionLog(log: ExecutionLog, steps: List<ExecutionStep>) {

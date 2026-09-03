@@ -41,6 +41,12 @@ interface FlowDao {
     @Query("DELETE FROM flows WHERE id = :id")
     suspend fun deleteById(id: String)
 
-    @Query("UPDATE flows SET enabled = :enabled, updated_at = :updatedAt WHERE id = :id")
-    suspend fun setEnabled(id: String, enabled: Boolean, updatedAt: Long)
+    /**
+     * Deliberately leaves `updated_at` alone. The list is ordered by it, so bumping it here made
+     * flicking a flow's switch fire the flow up to the top of the list and out from under the
+     * user's finger — which reads as the flow having vanished. Flipping a switch is not an edit
+     * to the flow.
+     */
+    @Query("UPDATE flows SET enabled = :enabled WHERE id = :id")
+    suspend fun setEnabled(id: String, enabled: Boolean)
 }

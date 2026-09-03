@@ -9,6 +9,8 @@
     <string name="widget_configure_title">选择流程</string>
     <string name="widget_no_flows">尚无流程 — 请先在 App 内创建</string>
     <string name="widget_no_runs">尚无执行记录</string>
+    <string name="widget_enabled_count">%1$d/%2$d 已启用</string>
+    <string name="widget_preview_count">4/6 已启用</string>
 
     <!-- Foreground service / tile -->
     <string name="service_notification_text">自动化运行中</string>
@@ -50,6 +52,8 @@
     <!-- Flow detail -->
     <string name="fd_change_icon">更改图标</string>
     <string name="fd_edit_flow">编辑流程</string>
+    <string name="fd_duplicate_flow">复制流程</string>
+    <string name="fd_copy_name">%1$s 的副本</string>
     <string name="fd_pin_shortcut">添加到主屏幕</string>
     <string name="fd_pin_shortcut_unsupported">此启动器不支持固定快捷方式</string>
     <string name="fd_flow_started">流程已启动</string>
@@ -58,9 +62,9 @@
     <string name="fd_export_flow">导出流程</string>
     <string name="fd_export">导出</string>
     <string name="fd_edit_with_ai">用 Gemini 修改</string>
-    <string name="fd_section_when">触发</string>
-    <string name="fd_section_only_if">限制条件</string>
-    <string name="fd_section_then">动作</string>
+    <string name="fd_section_when">当…的时候</string>
+    <string name="fd_section_only_if">而且只有在</string>
+    <string name="fd_section_then">就执行</string>
     <string name="fd_section_variables">变量</string>
     <string name="fd_no_triggers">尚无触发器，请在下方添加。</string>
     <string name="fd_no_conditions">尚无限制条件。只要触发器响应，流程就会执行。</string>
@@ -646,7 +650,7 @@
     <string name="cfg_repeat">重复</string>
     <string name="cfg_custom_days">自定义日期</string>
     <string name="cfg_battery_level">电池电量</string>
-    <string name="cfg_trigger_when">触发条件</string>
+    <string name="cfg_trigger_when">触发时机</string>
     <string name="cfg_charging_state">充电状态</string>
     <string name="cfg_device_name_optional">设备名称（可选）</string>
     <string name="cfg_network_name_optional">网络名称（可选）</string>
@@ -690,6 +694,8 @@
     <string name="cfg_info_screenshot_body">屏幕截图需要启用 NexFlow 无障碍服务。请前往“设置 → 无障碍 → 已安装的应用 → NexFlow”并开启。需要 Android 12 及以上。</string>
     <string name="cfg_info_wifi_ssid_body">匹配网络名称需要定位权限 — 没有权限时 Android 会隐藏名称，该条件将永远不成立。留空即接受任意 Wi-Fi 网络。</string>
     <string name="cfg_info_bluetooth_audio_body">只能检测音频设备（耳机、音箱、车载音响），其他蓝牙配件无法被该条件检测。</string>
+    <string name="cfg_info_battery_trigger_body">只在电量「跨过」这个门槛的那一刻触发一次；电量一直停在门槛以下并不会再次触发。想在别的时机检查电量（例如定时执行时），请改用「而且只有在」区段里的「电池电量」限制条件。</string>
+    <string name="cfg_info_battery_condition_body">不论是哪个触发器叫醒流程，每次执行前都会检查一次当下电量。它本身不会启动任何东西——和「电池」触发器不同，它只决定这次执行放不放行。</string>
     <string name="cfg_info_condition_label">条件</string>
     <string name="cfg_info_condition_body">示例：{{battery}} &lt; 20 · {{status}} == ok · true。支持 ==、!=、&lt;、&gt;、&lt;=、&gt;=——数字按数值比较。请用“结束如果”动作关闭此块。</string>
 
@@ -710,8 +716,8 @@
     <string name="opt_weekends">仅周末</string>
     <string name="opt_custom_days">自定义日期…</string>
     <string name="opt_once">一次</string>
-    <string name="opt_falls_below">低于</string>
-    <string name="opt_rises_above">高于</string>
+    <string name="opt_falls_below">掉到…以下</string>
+    <string name="opt_rises_above">升到…以上</string>
     <string name="opt_any">任意</string>
     <string name="opt_charging">充电中</string>
     <string name="opt_not_charging">未充电</string>
@@ -760,9 +766,10 @@
     <string name="sum_no_days">无日期</string>
     <string name="sum_level">等级：%1$s%2$s</string>
     <string name="sum_stream_level">%1$s：%2$s</string>
-    <string name="sum_battery">%1$s%% %2$s</string>
-    <string name="sum_battery_below">以下</string>
-    <string name="sum_battery_above">以上</string>
+    <string name="sum_battery_falls">掉到 %1$s%% 以下时</string>
+    <string name="sum_battery_rises">升到 %1$s%% 以上时</string>
+    <string name="sum_battery_at_or_below">电量在 %1$s%% 以下时</string>
+    <string name="sum_battery_at_or_above">电量在 %1$s%% 以上时</string>
     <string name="sum_device_event">%1$s %2$s</string>
 
     <plurals name="flows_imported_count">
@@ -795,6 +802,7 @@
 
     <!-- Delete undo snackbar -->
     <string name="action_undo">撤销</string>
+    <string name="action_more">更多选项</string>
     <string name="snackbar_deleted">已删除“%1$s”</string>
 
     <!-- Accessibility (TalkBack) labels -->

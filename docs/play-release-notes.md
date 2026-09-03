@@ -9,87 +9,102 @@
 
 ---
 
-# 上架用：1.5.1（versionCode 10）
+# 上架用：1.6.0（versionCode 11）
 
-**1.5.0 沒有上架 Play**，所以商店的使用者是從 1.4.0 直接跳到 1.5.1。下面這份文案
-因此涵蓋 1.5.0 與 1.5.1 兩版的內容，不是只有 1.5.1 的部分。
+前一版（1.5.1）的商店文案保留在 git 記錄裡：`git show d92d940:docs/play-release-notes.md`。
 
-排在最前面的是**排程權限**以外唯一的新功能，而排程權限是這兩版裡唯一
-**需要使用者自己動手授權**才會好的項目——其餘都是安裝完就生效。
+這一版沒有需要使用者動手的項目——安裝完就生效，所以四種語言都直接從新功能開始。
+四件事的順序是：兩個看得到的新東西、一則觀念說明、然後才是修正。
 
-英文版塞不下音量摘要那一條（500 字元上限，英文最不省字），所以只有中日文保留；
-那是四件事裡最小的一件，捨它最不虧。
+英文最不省字：完整版超過 500 字元，所以每一句都比中日文短一截（例如小工具那段
+不重述「拉寬拉高」，修正清單也只留關鍵詞）。四個區塊都保住了。
 
-## 繁體中文（zh-TW）— 232 字元
-
-```
-【看得見正在執行的流程】
-流程執行時，卡片右下角會顯示「執行中」，不論是側滑執行、時間到或背景觸發。通知會寫出正在執行哪一個流程；長按右上角的閃電可列出全部。
-
-【排程準時了】
-排定 9:00 卻晚十分鐘才跑，是因為缺少「鬧鐘和提醒」權限。流程卡片現在會提示，並帶你前往授權。
-
-【NFC 修好了】
-App 開著時不再獨占感應，網址標籤與交通卡恢復正常；而在你有啟用中的 NFC 流程時，關著 App 感應一樣會觸發。
-
-【其他】
-• 音量動作的摘要不再顯示「？」
-```
-
----
-
-## English（en-US）— 483 字元
+## 繁體中文（zh-TW）— 265 字元
 
 ```
-SEE WHAT'S RUNNING
-A running flow shows "Running" on its card — swiped, scheduled or triggered in the background. The notification names it, and a long press on the lightning bolt lists them all.
+【複製流程】
+流程詳細頁右上角 ⋮ →「複製流程」。副本會以停用狀態建立，等你改好再開啟。
 
-SCHEDULES RUN ON TIME
-A flow set for 9:00 could run ten minutes late: the "Alarms & reminders" permission was never requested. Flows now flag it and take you there.
+【小工具會跟著大小變】
+欄數、列數與卡片大小依小工具的實際尺寸調整，拉寬拉高都不會再被切掉半排；能放的流程也從 4 個增加到 12 個。
 
-NFC FIXED
-Tags are no longer taken over while the app is open, and work with the app closed once an NFC flow is enabled.
+【電池：觸發器與條件的差別】
+兩者的設定畫面都加上說明。觸發器是「跨過門檻的那一刻」發生一次，條件是「每次執行前檢查」。
+
+【修正】
+• 淺色模式下執行中的動作不再糊成一團
+• 撥動開關後，流程不會突然跳到清單最上面
+• 快顯訊息不再比流程晚好幾秒才冒出來
+• AI 對話按「重試」時兩個泡泡重疊
 ```
 
 ---
 
-## 日本語（ja-JP）— 289 字元
+## English（en-US）— 496 字元
 
 ```
-【実行中のフローが見えます】
-実行中はカード右下に「実行中」と表示されます。スワイプ実行でも、時刻やバックグラウンドのトリガーでも同じです。通知にはフロー名が表示され、右上の稲妻の長押しで一覧できます。
+DUPLICATE A FLOW
+Detail screen, ⋮ → Duplicate flow. The copy starts switched off.
 
-【スケジュールが時間どおりに】
-9:00 のフローが10分遅れることがありました。「アラームとリマインダー」の権限を要求していなかったためです。不足時はカードに表示し、設定へ案内します。
+THE WIDGET FITS ITS SIZE
+Columns, rows and cards follow the widget's size — no half-cut rows — and it holds 12 flows, not 4.
 
-【NFC の修正】
-アプリ起動中にタグを占有しなくなりました。有効な NFC フローがあれば、アプリを閉じていてもタグが動作します。
+BATTERY: TRIGGER VS CONDITION
+The trigger fires once, as the level crosses. The condition is checked before every run.
 
-・音量アクションの概要が「?」にならないように
+FIXED
+• Light theme: the running action is readable
+• Flows stay put when you flick the switch
+• Toasts keep up with the flow
+• AI chat: bubbles overlapped after Retry
 ```
 
 ---
 
-## 简体中文（zh-CN）— 232 字元
+## 日本語（ja-JP）— 338 字元
 
 ```
-【看得见正在运行的流程】
-流程运行时，卡片右下角会显示「运行中」，无论是侧滑运行、时间到或后台触发。通知会写出正在运行哪一个流程；长按右上角的闪电可列出全部。
+【フローの複製】
+詳細画面の右上 ⋮ →「フローを複製」。複製は無効の状態で作られるので、編集してから有効にできます。
 
-【定时准时了】
-设定 9:00 却晚十分钟才跑，是因为缺少「闹钟和提醒」权限。流程卡片现在会提示，并带你前往授权。
+【ウィジェットがサイズに合わせて変化】
+列数・行数・カードの大きさがウィジェットの実際のサイズに追従し、行が途中で切れなくなりました。登録できるフローも 4 件から 12 件に。
 
-【NFC 修好了】
-App 开着时不再独占感应，网址标签与交通卡恢复正常；而在你有启用中的 NFC 流程时，关着 App 感应一样会触发。
+【バッテリー：トリガーと条件の違い】
+どちらの設定にも説明を追加しました。トリガーは「しきい値をまたいだ瞬間」に一度、条件は「実行前に毎回」チェックします。
 
-【其他】
-• 音量动作的摘要不再显示「？」
+【修正】
+・ライトテーマで実行中のアクションが読めるように
+・スイッチを切り替えてもフローが一番上に飛ばなくなりました
+・トーストがフローより数秒遅れて出る問題
+・AI チャットの「再試行」で吹き出しが重なる問題
+```
+
+---
+
+## 简体中文（zh-CN）— 265 字元
+
+```
+【复制流程】
+流程详细页右上角 ⋮ →「复制流程」。副本会以停用状态建立，等你改好再开启。
+
+【小工具会跟着大小变】
+列数、行数与卡片大小依小工具的实际尺寸调整，拉宽拉高都不会再被切掉半排；能放的流程也从 4 个增加到 12 个。
+
+【电池：触发器与条件的差别】
+两者的设置画面都加上说明。触发器是「跨过门槛的那一刻」发生一次，条件是「每次执行前检查」。
+
+【修正】
+• 浅色模式下执行中的动作不再糊成一团
+• 拨动开关后，流程不会突然跳到列表最上面
+• 快显消息不再比流程晚好几秒才冒出来
+• AI 对话按「重试」时两个气泡重叠
 ```
 
 ---
 
 # 附註
 
-若日後需要分版本的文案（例如補發 GitHub Release），1.5.0 與 1.5.1 各自的四語版本
-保留在 git 記錄裡：`git show 618d26b:docs/play-release-notes.md`（1.5.0）與
-`git show 897abb1:docs/play-release-notes.md`（1.5.0 + 1.5.1 分開版）。
+這份檔案只留「下一次要貼進 Play 的那一版」。舊版文案保留在 git 記錄裡：
+`git show d92d940:docs/play-release-notes.md`（1.5.0 + 1.5.1 合併版）、
+`git show 618d26b:docs/play-release-notes.md`（1.5.0）。

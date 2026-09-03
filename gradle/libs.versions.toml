@@ -1,5 +1,5 @@
 [versions]
-agp = "9.3.1"
+agp = "9.3.2"
 kotlin = "2.4.10"
 # KSP2 has its own version line and does NOT track the Kotlin version — 2.3.11 is what
 # supports Kotlin 2.4.x. Check https://github.com/google/ksp/releases before bumping Kotlin.
