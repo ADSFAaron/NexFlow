@@ -58,9 +58,9 @@
     <string name="fd_export_flow">匯出流程</string>
     <string name="fd_export">匯出</string>
     <string name="fd_edit_with_ai">用 Gemini 修改</string>
-    <string name="fd_section_when">觸發</string>
-    <string name="fd_section_only_if">限制條件</string>
-    <string name="fd_section_then">動作</string>
+    <string name="fd_section_when">當…的時候</string>
+    <string name="fd_section_only_if">而且只有在</string>
+    <string name="fd_section_then">就執行</string>
     <string name="fd_section_variables">變數</string>
     <string name="fd_no_triggers">尚無觸發器，請在下方新增。</string>
     <string name="fd_no_conditions">尚無限制條件。只要觸發器響應，流程就會執行。</string>
@@ -646,7 +646,7 @@
     <string name="cfg_repeat">重複</string>
     <string name="cfg_custom_days">自訂日期</string>
     <string name="cfg_battery_level">電池電量</string>
-    <string name="cfg_trigger_when">觸發條件</string>
+    <string name="cfg_trigger_when">觸發時機</string>
     <string name="cfg_charging_state">充電狀態</string>
     <string name="cfg_device_name_optional">裝置名稱（選填）</string>
     <string name="cfg_network_name_optional">網路名稱（選填）</string>
@@ -690,6 +690,8 @@
     <string name="cfg_info_screenshot_body">螢幕截圖需要啟用 NexFlow 無障礙服務。請至「設定 → 無障礙 → 已安裝的應用程式 → NexFlow」並開啟。需要 Android 12 以上。</string>
     <string name="cfg_info_wifi_ssid_body">比對網路名稱需要定位權限 — 沒有權限時 Android 會隱藏名稱，這個條件將永遠不成立。留空即接受任何 Wi-Fi 網路。</string>
     <string name="cfg_info_bluetooth_audio_body">只偵測得到音訊裝置（耳機、喇叭、車用音響），其他藍牙配件無法被這個條件偵測。</string>
+    <string name="cfg_info_battery_trigger_body">只在電量「跨過」這個門檻的那一刻觸發一次；電量一直停在門檻以下並不會再次觸發。想在別的時機檢查電量（例如定時執行時），請改用「而且只有在」區段裡的「電池電量」限制條件。</string>
+    <string name="cfg_info_battery_condition_body">不論是哪個觸發器叫醒流程，每次執行前都會檢查一次當下電量。它本身不會啟動任何東西——和「電池」觸發器不同，它只決定這次執行放不放行。</string>
     <string name="cfg_info_condition_label">條件</string>
     <string name="cfg_info_condition_body">範例：{{battery}} &lt; 20 · {{status}} == ok · true。支援 ==、!=、&lt;、&gt;、&lt;=、&gt;=——數字會以數值比較。請以「結束如果」動作關閉此區塊。</string>
 
@@ -710,8 +712,8 @@
     <string name="opt_weekends">僅週末</string>
     <string name="opt_custom_days">自訂日期…</string>
     <string name="opt_once">一次</string>
-    <string name="opt_falls_below">低於</string>
-    <string name="opt_rises_above">高於</string>
+    <string name="opt_falls_below">掉到…以下</string>
+    <string name="opt_rises_above">升到…以上</string>
     <string name="opt_any">任何</string>
     <string name="opt_charging">充電中</string>
     <string name="opt_not_charging">未充電</string>
@@ -760,9 +762,10 @@
     <string name="sum_no_days">無日期</string>
     <string name="sum_level">等級：%1$s%2$s</string>
     <string name="sum_stream_level">%1$s：%2$s</string>
-    <string name="sum_battery">%1$s%% %2$s</string>
-    <string name="sum_battery_below">以下</string>
-    <string name="sum_battery_above">以上</string>
+    <string name="sum_battery_falls">掉到 %1$s%% 以下時</string>
+    <string name="sum_battery_rises">升到 %1$s%% 以上時</string>
+    <string name="sum_battery_at_or_below">電量在 %1$s%% 以下時</string>
+    <string name="sum_battery_at_or_above">電量在 %1$s%% 以上時</string>
     <string name="sum_device_event">%1$s %2$s</string>
 
     <plurals name="flows_imported_count">

@@ -96,6 +96,11 @@ fun ConditionType.info(context: Context): ConditionInfo = when (this) {
         context.getString(R.string.cnd_battery_label), Icons.Outlined.BatteryAlert,
         context.getString(R.string.cnd_battery_desc),
         listOf(
+            ConfigField.InfoText(
+                "_battery_condition_info",
+                context.getString(R.string.cfg_info_note_label),
+                context.getString(R.string.cfg_info_battery_condition_body),
+            ),
             ConfigField.Dropdown(
                 "direction", context.getString(R.string.cfg_battery_when), listOf(
                     "BELOW" to context.getString(R.string.opt_at_or_below),
@@ -190,10 +195,11 @@ fun ConditionType.configSummary(
         }
         ConditionType.DAY_OF_WEEK ->
             config["days"]?.takeIf { it.isNotBlank() } ?: context.getString(R.string.sum_any_day)
-        ConditionType.BATTERY_LEVEL -> {
-            val op = if (config["direction"]?.uppercase() == "ABOVE") "≥" else "≤"
-            "$op ${config["level"] ?: "20"}%"
-        }
+        ConditionType.BATTERY_LEVEL -> context.getString(
+            if (config["direction"]?.uppercase() == "ABOVE") R.string.sum_battery_at_or_above
+            else R.string.sum_battery_at_or_below,
+            config["level"] ?: "20",
+        )
         ConditionType.CHARGING -> context.getString(
             if (config["state"]?.uppercase() == "NOT_CHARGING") R.string.opt_not_charging else R.string.opt_charging,
         )

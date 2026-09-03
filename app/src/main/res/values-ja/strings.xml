@@ -58,9 +58,9 @@
     <string name="fd_export_flow">フローをエクスポート</string>
     <string name="fd_export">エクスポート</string>
     <string name="fd_edit_with_ai">Gemini で編集</string>
-    <string name="fd_section_when">トリガー</string>
-    <string name="fd_section_only_if">条件</string>
-    <string name="fd_section_then">アクション</string>
+    <string name="fd_section_when">〜のとき</string>
+    <string name="fd_section_only_if">しかも〜の場合だけ</string>
+    <string name="fd_section_then">実行する</string>
     <string name="fd_section_variables">変数</string>
     <string name="fd_no_triggers">トリガーがありません。下から追加してください。</string>
     <string name="fd_no_conditions">条件がありません。トリガーが作動するたびにフローが実行されます。</string>
@@ -646,7 +646,7 @@
     <string name="cfg_repeat">繰り返し</string>
     <string name="cfg_custom_days">カスタム曜日</string>
     <string name="cfg_battery_level">バッテリー残量</string>
-    <string name="cfg_trigger_when">トリガー条件</string>
+    <string name="cfg_trigger_when">トリガーのタイミング</string>
     <string name="cfg_charging_state">充電状態</string>
     <string name="cfg_device_name_optional">デバイス名（任意）</string>
     <string name="cfg_network_name_optional">ネットワーク名（任意）</string>
@@ -690,6 +690,8 @@
     <string name="cfg_info_screenshot_body">スクリーンショットには NexFlow ユーザー補助サービスの有効化が必要です。「設定 → ユーザー補助 → インストール済みアプリ → NexFlow」でオンにしてください。Android 12 以上が必要です。</string>
     <string name="cfg_info_wifi_ssid_body">ネットワーク名の照合には位置情報の権限が必要です。権限がないと Android は名前を隠すため、この条件は決して成立しません。空欄にすると、どの Wi-Fi でも成立します。</string>
     <string name="cfg_info_bluetooth_audio_body">検出できるのはオーディオ機器（ヘッドホン、スピーカー、カーオーディオ）だけです。その他の Bluetooth 機器はこの条件では検出できません。</string>
+    <string name="cfg_info_battery_trigger_body">残量がこのしきい値を「またいだ」瞬間に一度だけ作動します。低いままでも再度は作動しません。別のタイミングで残量を見たい場合（定時実行など）は、「しかも〜の場合だけ」の「バッテリー残量」条件を使ってください。</string>
+    <string name="cfg_info_battery_condition_body">どのトリガーで起動したかに関わらず、実行の直前に毎回チェックされます。これ自体は何も起動しません——「バッテリー」トリガーと違い、その実行を通すか止めるかを決めるだけです。</string>
     <string name="cfg_info_condition_label">条件</string>
     <string name="cfg_info_condition_body">例：{{battery}} &lt; 20 · {{status}} == ok · true。==、!=、&lt;、&gt;、&lt;=、&gt;= をサポート——数値は数値として比較されます。「もし終了」アクションでブロックを閉じてください。</string>
 
@@ -760,9 +762,10 @@
     <string name="sum_no_days">曜日なし</string>
     <string name="sum_level">レベル：%1$s%2$s</string>
     <string name="sum_stream_level">%1$s：%2$s</string>
-    <string name="sum_battery">%1$s%% %2$s</string>
-    <string name="sum_battery_below">未満</string>
-    <string name="sum_battery_above">超過</string>
+    <string name="sum_battery_falls">%1$s%% 以下になったとき</string>
+    <string name="sum_battery_rises">%1$s%% 以上になったとき</string>
+    <string name="sum_battery_at_or_below">残量が %1$s%% 以下のあいだ</string>
+    <string name="sum_battery_at_or_above">残量が %1$s%% 以上のあいだ</string>
     <string name="sum_device_event">%1$s %2$s</string>
 
     <plurals name="flows_imported_count">
