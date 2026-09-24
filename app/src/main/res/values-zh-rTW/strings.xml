@@ -2,7 +2,7 @@
     <string name="accessibility_service_description">NexFlow 使用無障礙服務提供三項自動化功能：在流程的截圖動作執行時擷取螢幕畫面、在流程執行模擬點擊動作時於您指定的座標執行點擊手勢，以及偵測目前切換到前景的 App，以便觸發您的「App 啟動」條件。本服務僅讀取前景 App 的套件名稱，不會讀取畫面內容、文字或密碼，也不會將任何資料傳送到伺服器。本服務僅在您手動開啟後才會運作。</string>
 
     <!-- Widgets -->
-    <string name="widget_overview_description">顯示近期流程以便快速啟動</string>
+    <string name="widget_overview_description">顯示近期或自選的流程以便快速啟動</string>
     <string name="widget_single_description">單一流程快速啟動捷徑</string>
     <string name="widget_wide_description">寬版單一流程快速啟動捷徑</string>
     <string name="widget_not_configured">點此選擇流程</string>
@@ -10,6 +10,15 @@
     <string name="widget_no_flows">尚無流程 — 請先在 App 內建立</string>
     <string name="widget_no_runs">尚無執行記錄</string>
     <string name="widget_enabled_count">%1$d/%2$d 已啟用</string>
+    <string name="widget_overview_configure_title">小工具顯示的流程</string>
+    <string name="widget_overview_mode_auto">自動</string>
+    <string name="widget_overview_mode_manual">自選</string>
+    <string name="widget_overview_mode_auto_hint">顯示最近執行過的流程，空位再用其他流程補滿。</string>
+    <string name="widget_overview_mode_manual_hint">只顯示你勾選的流程，依勾選順序排列（%1$d/%2$d）。</string>
+    <string name="widget_overview_position">第 %1$d 個</string>
+    <string name="widget_overview_save">儲存</string>
+    <string name="widget_overview_edit">選擇流程</string>
+    <string name="widget_overview_none_picked">尚未選擇流程，輕觸以選擇</string>
     <string name="widget_preview_count">4/6 已啟用</string>
 
     <!-- Foreground service / tile -->

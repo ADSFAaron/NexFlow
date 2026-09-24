@@ -4,7 +4,7 @@
     <string name="accessibility_service_description">NexFlow uses the Accessibility Service for three automation features: capturing a screenshot when a flow\'s screenshot action runs, performing a tap gesture at coordinates you specify when a flow runs a simulated-tap action, and detecting which app is brought to the foreground so your \"App Launched\" triggers can fire. It only reads the package name of the app in front; it does not read screen content, text, or passwords, and it does not send any data to a server. It runs only after you manually enable it.</string>
 
     <!-- Widgets -->
-    <string name="widget_overview_description">Show recent flows for quick launch</string>
+    <string name="widget_overview_description">Show recent or hand-picked flows for quick launch</string>
     <string name="widget_single_description">Single-flow quick launch shortcut</string>
     <string name="widget_wide_description">Wide single-flow quick launch shortcut</string>
     <string name="widget_not_configured">Tap to choose a flow</string>
@@ -12,6 +12,15 @@
     <string name="widget_no_flows">No flows yet — create one in the app first</string>
     <string name="widget_no_runs">No runs yet</string>
     <string name="widget_enabled_count">%1$d of %2$d on</string>
+    <string name="widget_overview_configure_title">Widget flows</string>
+    <string name="widget_overview_mode_auto">Automatic</string>
+    <string name="widget_overview_mode_manual">Pick flows</string>
+    <string name="widget_overview_mode_auto_hint">Shows the flows you ran most recently, then fills any space left with your other flows.</string>
+    <string name="widget_overview_mode_manual_hint">Shows only the flows you tick, in the order you tick them (%1$d/%2$d).</string>
+    <string name="widget_overview_position">Position %1$d</string>
+    <string name="widget_overview_save">Save</string>
+    <string name="widget_overview_edit">Choose flows</string>
+    <string name="widget_overview_none_picked">No flows picked — tap to choose</string>
 
     <!-- Foreground service / tile -->
     <string name="service_notification_text">Automation is active</string>

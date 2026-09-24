@@ -2,7 +2,7 @@
     <string name="accessibility_service_description">NexFlow はユーザー補助サービスを 3 つの自動化機能に使用します。フローのスクリーンショット アクション実行時に画面を撮影すること、フローのシミュレートタップ アクション実行時に指定した座標でタップ操作を行うこと、前面に表示されたアプリを検出して「アプリ起動」トリガーを発火させることです。本サービスは前面アプリのパッケージ名のみを読み取り、画面の内容・テキスト・パスワードは読み取らず、いかなるデータもサーバーに送信しません。本サービスはお客様が手動で有効にした場合にのみ動作します。</string>
 
     <!-- Widgets -->
-    <string name="widget_overview_description">最近のフローを表示してすばやく起動</string>
+    <string name="widget_overview_description">最近のフローや選んだフローを表示してすばやく起動</string>
     <string name="widget_single_description">単一フローのクイック起動ショートカット</string>
     <string name="widget_wide_description">ワイド版・単一フローのクイック起動ショートカット</string>
     <string name="widget_not_configured">タップしてフローを選択</string>
@@ -10,6 +10,15 @@
     <string name="widget_no_flows">フローがありません — まずアプリ内で作成してください</string>
     <string name="widget_no_runs">実行履歴がありません</string>
     <string name="widget_enabled_count">%1$d/%2$d 有効</string>
+    <string name="widget_overview_configure_title">ウィジェットのフロー</string>
+    <string name="widget_overview_mode_auto">自動</string>
+    <string name="widget_overview_mode_manual">手動で選択</string>
+    <string name="widget_overview_mode_auto_hint">最近実行したフローを表示し、空いた枠はほかのフローで埋めます。</string>
+    <string name="widget_overview_mode_manual_hint">チェックしたフローだけを、チェックした順に表示します（%1$d/%2$d）。</string>
+    <string name="widget_overview_position">%1$d 番目</string>
+    <string name="widget_overview_save">保存</string>
+    <string name="widget_overview_edit">フローを選択</string>
+    <string name="widget_overview_none_picked">フローが選択されていません。タップして選択</string>
     <string name="widget_preview_count">4/6 有効</string>
 
     <!-- Foreground service / tile -->

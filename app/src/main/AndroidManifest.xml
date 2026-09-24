@@ -232,6 +232,20 @@
         <!-- Widget configuration activity: lets users select a flow for single/wide widgets.
              taskAffinity="" isolates this activity in its own task so finishing it does not
              surface the main app's back-stack (prevents the "jumps to home screen" bug). -->
+        <!-- Overview widget: recent runs or a hand-picked list, chosen per widget. Optional at
+             placement (API 31+), reachable afterwards from the widget's edit icon or the
+             launcher's widget settings. -->
+        <activity
+            android:name=".widget.OverviewWidgetConfigureActivity"
+            android:exported="true"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.NexFlow">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
         <activity
             android:name=".widget.WidgetConfigureActivity"
             android:exported="true"
