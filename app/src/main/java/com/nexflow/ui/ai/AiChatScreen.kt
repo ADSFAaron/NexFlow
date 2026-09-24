@@ -1546,6 +1546,8 @@ private fun ThinkingBubble(step: AiChatOrchestrator.Progress?, modifier: Modifie
                     AiChatOrchestrator.Progress.BuildingFlow -> stringResource(R.string.ai_step_building_flow)
                     is AiChatOrchestrator.Progress.Repairing ->
                         stringResource(R.string.ai_step_repairing, step.attempt)
+                    is AiChatOrchestrator.Progress.Retrying ->
+                        stringResource(R.string.ai_step_retrying, step.attempt, step.maxAttempts)
                     null -> null
                 }
                 if (stepText != null) {

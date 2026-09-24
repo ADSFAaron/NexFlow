@@ -176,6 +176,7 @@
     <string name="ai_step_searching_shortcuts">正在搜尋應用程式捷徑…</string>
     <string name="ai_step_building_flow">正在產生並驗證流程…</string>
     <string name="ai_step_repairing">正在修正驗證錯誤(第 %1$d 次)…</string>
+    <string name="ai_step_retrying">Gemini 忙碌中，重試中（%1$d/%2$d）…</string>
     <string name="ai_new_chat">新對話</string>
     <string name="ai_editing_flow_subtitle">用 Gemini 修改這個流程</string>
     <string name="ai_flow_header_expand">顯示流程資訊</string>
@@ -190,6 +191,7 @@
     <string name="ai_key_missing_button">開啟設定</string>
     <string name="ai_error_invalid_key">API 金鑰被拒絕。請到設定檢查 Gemini API 金鑰。</string>
     <string name="ai_error_rate_limited">已達速率限制。請稍候再試。</string>
+    <string name="ai_error_unavailable">Gemini 目前使用量過高，自動重試後仍然無法處理。這是 Google 端的狀況，通常幾分鐘內就會恢復。請稍後再試，或到設定改用其他模型。</string>
     <string name="ai_error_model_not_found">找不到模型。請到設定選擇其他模型。</string>
     <string name="ai_error_network">網路錯誤。請檢查連線後再試。</string>
     <string name="ai_error_generic">發生錯誤:%1$s</string>

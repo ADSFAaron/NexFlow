@@ -593,4 +593,88 @@ class AiChatOrchestratorTest {
         assertEquals(1, userTurns.size, "the cancelled turn must not linger in the history")
         assertEquals("second", userTurns.single().parts.single().text)
     }
+
+    // --- Busy server (503 "high demand") -------------------------------------
+
+    @Test
+    fun `a busy server is retried and the turn succeeds once it gets through`() = runTest {
+        val busy = GeminiException.Unavailable("This model is currently experiencing high demand.")
+        every { client.streamGenerateContent(any(), any(), any()) } returns
+            failingStream(busy) andThen failingStream(busy) andThen chunks(textResponse("hi"))
+
+        val steps = mutableListOf<AiChatOrchestrator.Progress>()
+        val result = orchestrator().sendUserMessage("hello", onProgress = { steps += it })
+
+        assertEquals("hi", (result as TurnResult.Assistant).text)
+        assertEquals(
+            listOf(
+                AiChatOrchestrator.Progress.Contacting,
+                AiChatOrchestrator.Progress.Retrying(1, 3),
+                AiChatOrchestrator.Progress.Retrying(2, 3),
+                // Back to what it was doing, not left saying the server is busy.
+                AiChatOrchestrator.Progress.Contacting,
+            ),
+            steps,
+        )
+    }
+
+    @Test
+    fun `a server that stays busy is reported after three retries`() = runTest {
+        var calls = 0
+        every { client.streamGenerateContent(any(), any(), any()) } answers {
+            calls++
+            failingStream(GeminiException.Unavailable("high demand"))
+        }
+
+        val result = orchestrator().sendUserMessage("hello")
+
+        assertInstanceOf(GeminiException.Unavailable::class.java, (result as TurnResult.Failure).error)
+        assertEquals(4, calls, "one request plus three retries")
+    }
+
+    @Test
+    fun `other errors are not retried`() = runTest {
+        var calls = 0
+        every { client.streamGenerateContent(any(), any(), any()) } answers {
+            calls++
+            failingStream(GeminiException.RateLimited("quota exceeded"))
+        }
+
+        val result = orchestrator().sendUserMessage("hello")
+
+        assertInstanceOf(GeminiException.RateLimited::class.java, (result as TurnResult.Failure).error)
+        assertEquals(1, calls)
+    }
+
+    @Test
+    fun `a stream that fails after showing text is not replayed`() = runTest {
+        // Retrying here would put the start of the answer on screen twice.
+        var calls = 0
+        every { client.streamGenerateContent(any(), any(), any()) } answers {
+            calls++
+            flow {
+                emit(textResponse("Half an ans"))
+                throw GeminiException.Unavailable("high demand")
+            }
+        }
+
+        val result = orchestrator().sendUserMessage("hello")
+
+        assertInstanceOf(GeminiException.Unavailable::class.java, (result as TurnResult.Failure).error)
+        assertEquals(1, calls)
+    }
+
+    @Test
+    fun `a retried step after a tool call does not run the tool again`() = runTest {
+        coEvery { installedApps.search(any()) } returns emptyList()
+        every { client.streamGenerateContent(any(), any(), any()) } returns
+            chunks(functionCallResponse(AiTools.SEARCH_INSTALLED_APPS, buildJsonObject { put("query", "x") })) andThen
+            failingStream(GeminiException.Unavailable("high demand")) andThen
+            chunks(textResponse("done"))
+
+        val result = orchestrator().sendUserMessage("hello")
+
+        assertEquals("done", (result as TurnResult.Assistant).text)
+        io.mockk.coVerify(exactly = 1) { installedApps.search(any()) }
+    }
 }

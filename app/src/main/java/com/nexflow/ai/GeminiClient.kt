@@ -46,6 +46,14 @@ import kotlinx.serialization.json.contentOrNull
 sealed class GeminiException(message: String) : Exception(message) {
     class InvalidKey(message: String) : GeminiException(message)
     class RateLimited(message: String) : GeminiException(message)
+
+    /**
+     * The server side could not take the request right now — 503 "This model is currently
+     * experiencing high demand", or a 500/502. Google's error reference says to wait and retry
+     * with exponential backoff; it has nothing to do with the request, so the same request is
+     * worth sending again (see [AiChatOrchestrator]).
+     */
+    class Unavailable(message: String) : GeminiException(message)
     class ModelNotFound(message: String) : GeminiException(message)
     class Network(message: String) : GeminiException(message)
     class Unknown(message: String) : GeminiException(message)
@@ -214,6 +222,9 @@ class GeminiClient @Inject constructor(
                 GeminiException.InvalidKey(message)
             statusCode == 404 -> GeminiException.ModelNotFound(message)
             statusCode == 429 -> GeminiException.RateLimited(message)
+            // Not 504: that is the request running past its deadline, and sending the same
+            // request again runs past it again.
+            statusCode in RETRYABLE_SERVER_CODES -> GeminiException.Unavailable(message)
             else -> GeminiException.Unknown(message)
         }
     }
@@ -238,6 +249,7 @@ class GeminiClient @Inject constructor(
         private const val BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
         private const val API_KEY_HEADER = "x-goog-api-key"
         private const val SSE_DATA_PREFIX = "data: "
+        private val RETRYABLE_SERVER_CODES = setOf(500, 502, 503)
 
         // Special-purpose variants that also report generateContent but can't drive the chat
         // (image generation, TTS, native audio, Live API, embeddings).

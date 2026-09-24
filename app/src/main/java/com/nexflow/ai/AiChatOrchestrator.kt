@@ -22,7 +22,9 @@ import com.nexflow.core.flowschema.FlowJson
 import com.nexflow.prefs.AiPrefs
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import kotlin.random.Random
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
@@ -64,6 +66,9 @@ class AiChatOrchestrator @Inject constructor(
         data object SearchingShortcuts : Progress
         data object BuildingFlow : Progress
         data class Repairing(val attempt: Int) : Progress
+
+        /** Gemini answered "busy"; waiting before sending the same request again. */
+        data class Retrying(val attempt: Int, val maxAttempts: Int) : Progress
     }
 
     private val history = mutableListOf<GeminiContent>()
@@ -144,9 +149,16 @@ class AiChatOrchestrator @Inject constructor(
 
     private suspend fun runTurn(
         text: String,
-        onProgress: (Progress) -> Unit,
+        reportProgress: (Progress) -> Unit,
         onDelta: (String) -> Unit,
     ): TurnResult {
+        // Remembered so a retry's "server busy" line can be replaced by whatever the loop was
+        // doing before it, once the retried request gets through.
+        var shownProgress: Progress = Progress.Contacting
+        val onProgress: (Progress) -> Unit = {
+            shownProgress = it
+            reportProgress(it)
+        }
         val apiKey = AiPrefs.getApiKey(context)
             ?: return TurnResult.Failure(GeminiException.InvalidKey("API key not set"))
         val model = AiPrefs.getModel(context)
@@ -166,7 +178,15 @@ class AiChatOrchestrator @Inject constructor(
                 ),
                 tools = AiTools.tools(),
             )
-            val response = runCatching { streamStep(apiKey, model, request, onDelta) }.getOrElse { e ->
+            val response = runCatching {
+                streamStepWithRetry(apiKey, model, request, onDelta) { attempt ->
+                    if (attempt == null) {
+                        reportProgress(shownProgress)
+                    } else {
+                        reportProgress(Progress.Retrying(attempt, MAX_UNAVAILABLE_RETRIES))
+                    }
+                }
+            }.getOrElse { e ->
                 if (e is CancellationException) throw e
                 Log.e(TAG, "turn failed: ${e.javaClass.simpleName}: ${e.message}")
                 return TurnResult.Failure(
@@ -298,6 +318,54 @@ class AiChatOrchestrator @Inject constructor(
     /** A turn the user typed, as opposed to a functionResponse (which also uses role "user"). */
     private fun GeminiContent.isPlainUserTurn(): Boolean =
         role == "user" && parts.all { it.functionResponse == null }
+
+    /**
+     * [streamStep], sent again when Gemini says it is overloaded (503 "high demand", or a 500 /
+     * 502). Google's error reference says to wait and retry with exponential backoff for these,
+     * and the official SDKs do it by default; this client is hand-rolled, so it has to do it
+     * itself. The spikes are usually seconds long, so a turn that used to fail outright on the
+     * first 503 now mostly just takes a little longer.
+     *
+     * Only a request that failed before any text reached the screen is retried. Retrying after
+     * that would show the user the start of an answer twice; the busy error is a status code,
+     * so in practice it always arrives before any chunk. The retry sits below the
+     * tool-calling loop, so a tool the model already called is never run twice.
+     *
+     * [onRetry] gets the attempt number before each wait, then null once a retried request is
+     * through.
+     */
+    private suspend fun streamStepWithRetry(
+        apiKey: String,
+        model: String,
+        request: GenerateContentRequest,
+        onDelta: (String) -> Unit,
+        onRetry: (attempt: Int?) -> Unit,
+    ): GenerateContentResponse {
+        var attempt = 0
+        while (true) {
+            var shownText = false
+            try {
+                return streamStep(apiKey, model, request) { text ->
+                    if (!shownText && text.isNotEmpty()) {
+                        shownText = true
+                        if (attempt > 0) onRetry(null)
+                    }
+                    onDelta(text)
+                }.also { if (attempt > 0 && !shownText) onRetry(null) }
+            } catch (e: GeminiException.Unavailable) {
+                if (shownText || attempt >= MAX_UNAVAILABLE_RETRIES) throw e
+                attempt++
+                val wait = backoffMillis(attempt)
+                Log.w(TAG, "Gemini unavailable (${e.message}); retry $attempt/$MAX_UNAVAILABLE_RETRIES in ${wait}ms")
+                onRetry(attempt)
+                delay(wait)
+            }
+        }
+    }
+
+    /** 2 s, 4 s, 8 s, each plus up to a second of jitter so clients that failed together don't retry together. */
+    private fun backoffMillis(attempt: Int): Long =
+        INITIAL_BACKOFF_MS * (1L shl (attempt - 1)) + Random.nextLong(MAX_JITTER_MS)
 
     /**
      * Runs one model call as a stream and folds the chunks back into the single response the
@@ -454,6 +522,11 @@ class AiChatOrchestrator @Inject constructor(
 
         /** Upper bound on model round-trips per user turn (tool answers + repairs). */
         const val MAX_STEPS = 8
+
+        /** Three retries at 2 / 4 / 8 s: about 15 s of waiting before a busy model is reported. */
+        const val MAX_UNAVAILABLE_RETRIES = 3
+        const val INITIAL_BACKOFF_MS = 2_000L
+        const val MAX_JITTER_MS = 1_000L
         const val MAX_REPAIR_ATTEMPTS = 3
 
         /**

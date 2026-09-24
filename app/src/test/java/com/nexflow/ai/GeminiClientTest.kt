@@ -75,8 +75,25 @@ class GeminiClientTest {
     @Test
     fun `unparseable error body falls back to the status code`() {
         val mapped = client.mapHttpError(500, "<html>Internal error</html>")
-        assertInstanceOf(GeminiException.Unknown::class.java, mapped)
+        assertInstanceOf(GeminiException.Unavailable::class.java, mapped)
         assertEquals("HTTP 500", mapped.message)
+    }
+
+    @Test
+    fun `503 high demand maps to Unavailable so it gets retried`() {
+        val body = """
+            {"error": {"code": 503,
+             "message": "This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.",
+             "status": "UNAVAILABLE"}}
+        """.trimIndent()
+        assertInstanceOf(GeminiException.Unavailable::class.java, client.mapHttpError(503, body))
+        assertInstanceOf(GeminiException.Unavailable::class.java, client.mapHttpError(502, "bad gateway"))
+    }
+
+    @Test
+    fun `504 is not treated as a busy server`() {
+        // A deadline overrun repeats itself on retry; only the status code's own class applies.
+        assertInstanceOf(GeminiException.Unknown::class.java, client.mapHttpError(504, "{}"))
     }
 
     // --- Model picker filtering ---------------------------------------------

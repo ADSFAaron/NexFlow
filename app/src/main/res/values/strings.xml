@@ -180,6 +180,7 @@
     <string name="ai_step_searching_shortcuts">Searching app shortcuts…</string>
     <string name="ai_step_building_flow">Building and validating the flow…</string>
     <string name="ai_step_repairing">Fixing validation errors (attempt %1$d)…</string>
+    <string name="ai_step_retrying">Gemini is busy, retrying (%1$d/%2$d)…</string>
     <string name="ai_new_chat">New chat</string>
     <string name="ai_editing_flow_subtitle">Editing this flow with Gemini</string>
     <string name="ai_flow_header_expand">Show flow details</string>
@@ -194,6 +195,7 @@
     <string name="ai_key_missing_button">Open Settings</string>
     <string name="ai_error_invalid_key">The API key was rejected. Check the Gemini API key in Settings.</string>
     <string name="ai_error_rate_limited">Rate limit reached. Wait a moment and try again.</string>
+    <string name="ai_error_unavailable">Gemini is overloaded and didn\'t respond after several retries. This is on Google\'s side and usually clears up within minutes. Try again shortly, or pick another model in Settings.</string>
     <string name="ai_error_model_not_found">Model not found. Pick another model in Settings.</string>
     <string name="ai_error_network">Network error. Check your connection and try again.</string>
     <string name="ai_error_generic">Something went wrong: %1$s</string>

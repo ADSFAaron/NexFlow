@@ -176,6 +176,7 @@
     <string name="ai_step_searching_shortcuts">アプリのショートカットを検索中…</string>
     <string name="ai_step_building_flow">フローを生成・検証中…</string>
     <string name="ai_step_repairing">検証エラーを修正中(%1$d 回目)…</string>
+    <string name="ai_step_retrying">Gemini が混雑中のため再試行しています（%1$d/%2$d）…</string>
     <string name="ai_new_chat">新しいチャット</string>
     <string name="ai_editing_flow_subtitle">Gemini でこのフローを編集</string>
     <string name="ai_flow_header_expand">フロー情報を表示</string>
@@ -190,6 +191,7 @@
     <string name="ai_key_missing_button">設定を開く</string>
     <string name="ai_error_invalid_key">API キーが拒否されました。設定で Gemini API キーを確認してください。</string>
     <string name="ai_error_rate_limited">レート制限に達しました。しばらくしてからもう一度お試しください。</string>
+    <string name="ai_error_unavailable">Gemini が現在混雑しており、自動で再試行しても処理できませんでした。Google 側の一時的な状況で、通常は数分で解消します。しばらくしてから再度お試しいただくか、設定で別のモデルを選んでください。</string>
     <string name="ai_error_model_not_found">モデルが見つかりません。設定で別のモデルを選択してください。</string>
     <string name="ai_error_network">ネットワークエラー。接続を確認してもう一度お試しください。</string>
     <string name="ai_error_generic">エラーが発生しました:%1$s</string>

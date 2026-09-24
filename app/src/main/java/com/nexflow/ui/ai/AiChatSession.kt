@@ -279,6 +279,7 @@ class AiChatSession @Inject constructor(
     private fun GeminiException.toUserMessage(): String = when (this) {
         is GeminiException.InvalidKey -> context.getString(R.string.ai_error_invalid_key)
         is GeminiException.RateLimited -> context.getString(R.string.ai_error_rate_limited)
+        is GeminiException.Unavailable -> context.getString(R.string.ai_error_unavailable)
         is GeminiException.ModelNotFound -> context.getString(R.string.ai_error_model_not_found)
         is GeminiException.Network -> context.getString(R.string.ai_error_network)
         is GeminiException.Unknown -> context.getString(R.string.ai_error_generic, message ?: "")
