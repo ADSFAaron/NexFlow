@@ -433,6 +433,8 @@
     <string name="logs_clear_all">Clear all logs</string>
     <string name="logs_empty_title">No logs yet</string>
     <string name="logs_empty_subtitle">Flow executions will appear here</string>
+    <string name="logs_today">Today</string>
+    <string name="logs_yesterday">Yesterday</string>
 
     <!-- ===================== Trigger / Action catalog ===================== -->
 

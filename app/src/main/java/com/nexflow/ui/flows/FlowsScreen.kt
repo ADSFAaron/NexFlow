@@ -76,7 +76,6 @@ import androidx.compose.material3.FloatingActionButtonMenu
 import androidx.compose.material3.FloatingActionButtonMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -86,7 +85,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -152,6 +150,9 @@ import com.nexflow.permissions.PermissionReminder
 import com.nexflow.prefs.ServiceEnabledPrefs
 import com.nexflow.ui.common.FlowIcons
 import com.nexflow.ui.common.PermissionSetupDialogs
+import com.nexflow.ui.common.SettingsDefaults
+import com.nexflow.ui.common.SettingsSwitch
+import com.nexflow.ui.common.SettingsTopAppBar
 import com.nexflow.ui.common.geminiGradientTint
 import com.nexflow.ui.flows.detail.config.info
 import com.nexflow.service.FlowExecutionService
@@ -295,10 +296,13 @@ fun FlowsScreen(
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        // The same page and bar as the Settings and Logs tabs, so switching tabs does not
+        // change the background under the bottom bar.
+        containerColor = SettingsDefaults.pageColor,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            LargeTopAppBar(
-                title = { Text(stringResource(R.string.flows_title)) },
+            SettingsTopAppBar(
+                title = stringResource(R.string.flows_title),
                 scrollBehavior = scrollBehavior,
                 actions = {
                     IconButton(onClick = onAiClick) {
@@ -1012,7 +1016,9 @@ internal fun FlowCard(
     running: Boolean = false,
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+        // A card rather than a segmented tile (a flow has too much on it for one), but in the
+        // tiles' colour, so it stands off the page exactly as a settings tile does.
+        colors = CardDefaults.cardColors(containerColor = SettingsDefaults.tileColor),
         modifier = modifier.fillMaxWidth(),
         onClick = onClick,
     ) {
@@ -1048,7 +1054,7 @@ internal fun FlowCard(
                 // The card's own click opens the detail screen, so the row can't be the
                 // toggleable — give the bare Switch an explicit label for TalkBack instead.
                 val switchDesc = stringResource(R.string.flows_flow_switch_desc, flow.name)
-                Switch(
+                SettingsSwitch(
                     checked = flow.enabled,
                     onCheckedChange = onToggle,
                     modifier = Modifier

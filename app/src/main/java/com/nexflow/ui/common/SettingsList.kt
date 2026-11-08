@@ -17,6 +17,7 @@ package com.nexflow.ui.common
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -83,11 +84,15 @@ object SettingsDefaults {
     val pageColor: Color
         @Composable get() = MaterialTheme.colorScheme.run { if (isDark) surface else surfaceContainer }
 
-    /** Tiles sit one step brighter than [pageColor]. */
+    /**
+     * Tiles sit one step brighter than [pageColor]. Also the colour for a card standing on the
+     * page in place of a tile (the Flows list), so every tab's foreground reads the same.
+     */
+    val tileColor: Color
+        @Composable get() = MaterialTheme.colorScheme.run { if (isDark) surfaceContainerHigh else surfaceBright }
+
     @Composable
-    fun itemColors(): ListItemColors = ListItemDefaults.segmentedColors(
-        containerColor = MaterialTheme.colorScheme.run { if (isDark) surfaceContainerHigh else surfaceBright },
-    )
+    fun itemColors(): ListItemColors = ListItemDefaults.segmentedColors(containerColor = tileColor)
 
     /** The bar takes the page colour scrolled or not, so it reads as part of the page. */
     @OptIn(ExperimentalMaterial3Api::class)
@@ -101,6 +106,7 @@ object SettingsDefaults {
 /**
  * The large title that collapses as the page scrolls. [onBack] puts the back arrow in a tonal
  * circle, as Android 16's own settings pages do; a tab's root page passes null and has none.
+ * [actions] is for the page's own commands (Logs' clear, Flows' AI and service capsule).
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -108,6 +114,7 @@ fun SettingsTopAppBar(
     title: String,
     scrollBehavior: TopAppBarScrollBehavior,
     onBack: (() -> Unit)? = null,
+    actions: @Composable RowScope.() -> Unit = {},
 ) {
     LargeFlexibleTopAppBar(
         title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
@@ -126,6 +133,7 @@ fun SettingsTopAppBar(
                 }
             }
         },
+        actions = actions,
         colors = SettingsDefaults.topAppBarColors(),
         scrollBehavior = scrollBehavior,
     )
@@ -159,16 +167,7 @@ fun SettingsGroup(
     val items = SettingsGroupScope().apply(content).items
     if (items.isEmpty()) return
     Column(modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-        if (title != null) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .padding(start = 8.dp, top = 20.dp, bottom = 8.dp)
-                    .semantics { heading() },
-            )
-        }
+        if (title != null) SettingsGroupTitle(title)
         Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
             items.forEachIndexed { index, item ->
                 item(ListItemDefaults.segmentedShapes(index = index, count = items.size))
@@ -186,6 +185,35 @@ fun SettingsGroup(
 }
 
 /**
+ * A group's heading, on its own. [SettingsGroup] draws it; a list too long to compose in one
+ * go (Logs) draws it as a lazy item and gives each tile its shape with [settingsItemShapes] /
+ * [settingsItemPadding], so the group looks the same while its rows stay lazy.
+ */
+@Composable
+fun SettingsGroupTitle(title: String, modifier: Modifier = Modifier) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = modifier
+            .padding(start = 8.dp, top = 20.dp, bottom = 8.dp)
+            .semantics { heading() },
+    )
+}
+
+/** The shape of the tile at [index] of [count] in a group laid out item by item. */
+@Composable
+fun settingsItemShapes(index: Int, count: Int): ListItemShapes =
+    ListItemDefaults.segmentedShapes(index = index, count = count)
+
+/** The page margin and the gap above every tile but a group's first, as [SettingsGroup] spaces them. */
+fun Modifier.settingsItemPadding(index: Int): Modifier = padding(
+    start = 16.dp,
+    end = 16.dp,
+    top = if (index > 0) ListItemDefaults.SegmentedGap else 0.dp,
+)
+
+/**
  * A plain tile: tapping it does [onClick], or nothing at all when [onClick] is null.
  *
  * There is deliberately no slot for a button: in a settings list the row *is* the button.
@@ -201,9 +229,11 @@ fun SettingsItem(
     leading: (@Composable () -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
     enabled: Boolean = true,
+    /** In place of [summary], for a summary that is more than one plain string. */
+    summaryContent: (@Composable () -> Unit)? = null,
     onClick: (() -> Unit)? = null,
 ) {
-    val supporting: (@Composable () -> Unit)? = summary?.let { { Text(it) } }
+    val supporting: (@Composable () -> Unit)? = summary?.let { { Text(it) } } ?: summaryContent
     // Centred, not M3's top alignment for multi-line items: with summaries of two or three
     // lines, a top-pinned icon and switch drift away from the row they belong to. Android 16's
     // settings centre them.
@@ -312,13 +342,20 @@ fun ListItemDefaults.inContainerColors(): ListItemColors = colors(containerColor
 
 /**
  * The switch with a mark in its thumb — a check when on, a cross when off — as Android 16's
- * settings draw it. Display only; the tile around it handles the toggle.
+ * settings draw it. Display only by default, the tile around it handling the toggle; a card
+ * whose own click does something else (a flow card opens the flow) passes [onCheckedChange].
  */
 @Composable
-fun SettingsSwitch(checked: Boolean, enabled: Boolean = true) {
+fun SettingsSwitch(
+    checked: Boolean,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    onCheckedChange: ((Boolean) -> Unit)? = null,
+) {
     Switch(
         checked = checked,
-        onCheckedChange = null,
+        onCheckedChange = onCheckedChange,
+        modifier = modifier,
         enabled = enabled,
         thumbContent = {
             // Not focusable, so no content description (as in the official thumb-icon sample).

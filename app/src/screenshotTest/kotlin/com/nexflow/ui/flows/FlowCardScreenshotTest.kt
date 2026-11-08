@@ -21,6 +21,7 @@ import com.nexflow.core.automation.model.Flow
 import com.nexflow.core.automation.model.TriggerLogic
 import com.nexflow.ui.LocaleThemePreviews
 import com.nexflow.ui.PreviewSurface
+import com.nexflow.ui.common.SettingsDefaults
 
 /**
  * The Flows list row — the app's primary surface, and the one place a layout regression is
@@ -63,7 +64,9 @@ private fun FlowCardPreview(
     permissionWarning: Boolean = false,
     running: Boolean = false,
 ) {
-    PreviewSurface {
+    // On the page colour the Flows tab really uses, since the card's contrast against it is
+    // half of what this guards.
+    PreviewSurface(background = { SettingsDefaults.pageColor }) {
         FlowCard(
             flow = flow,
             permissionWarning = permissionWarning,

@@ -16,7 +16,6 @@
 package com.nexflow.ui
 
 import android.content.res.Configuration
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -24,6 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -67,12 +67,16 @@ const val PHONE = "spec:width=411dp,height=891dp,dpi=420"
  * which is what isSystemInDarkTheme() reads.
  */
 @Composable
-fun PreviewSurface(padding: Dp = 12.dp, content: @Composable () -> Unit) {
+fun PreviewSurface(
+    padding: Dp = 12.dp,
+    /** The page behind the content when it is not `surface`, e.g. SettingsDefaults.pageColor. */
+    background: @Composable () -> Color = { MaterialTheme.colorScheme.surface },
+    content: @Composable () -> Unit,
+) {
     NexFlowTheme(dynamicColor = false) {
         Surface(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.surface),
+            color = background(),
+            modifier = Modifier.fillMaxSize(),
         ) {
             Box(Modifier.padding(padding)) { content() }
         }

@@ -425,6 +425,8 @@
     <string name="logs_clear_all">すべてのログを消去</string>
     <string name="logs_empty_title">ログがありません</string>
     <string name="logs_empty_subtitle">フローの実行履歴がここに表示されます</string>
+    <string name="logs_today">今日</string>
+    <string name="logs_yesterday">昨日</string>
 
     <!-- ===================== Trigger / Action catalog ===================== -->
     <string name="cat_control_flow">制御フロー</string>
