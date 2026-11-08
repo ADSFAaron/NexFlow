@@ -16,6 +16,9 @@
 package com.nexflow.prefs
 
 import android.content.Context
+import com.nexflow.ai.CustomEndpoint
+
+enum class AiProvider { GEMINI, CUSTOM }
 
 object AiPrefs {
     // Separate prefs file (not "nexflow_settings") so the user-supplied API key can be
@@ -24,8 +27,48 @@ object AiPrefs {
     private const val PREFS_NAME = "nexflow_ai"
     private const val KEY_API_KEY = "gemini_api_key"
     private const val KEY_MODEL = "gemini_model"
+    private const val KEY_PROVIDER = "ai_provider"
+    private const val KEY_CUSTOM_BASE_URL = "custom_base_url"
+    private const val KEY_CUSTOM_API_KEY = "custom_api_key"
+    private const val KEY_CUSTOM_MODEL = "custom_model"
 
     const val DEFAULT_MODEL = "gemini-3.5-flash"
+
+    fun getProvider(context: Context): AiProvider =
+        if (prefs(context).getString(KEY_PROVIDER, null) == AiProvider.CUSTOM.name) {
+            AiProvider.CUSTOM
+        } else {
+            AiProvider.GEMINI
+        }
+
+    fun setProvider(context: Context, provider: AiProvider) {
+        prefs(context).edit().putString(KEY_PROVIDER, provider.name).apply()
+    }
+
+    /** The saved custom service, or null until one has been set up. */
+    fun getCustomEndpoint(context: Context): CustomEndpoint? {
+        val prefs = prefs(context)
+        val baseUrl = prefs.getString(KEY_CUSTOM_BASE_URL, null)?.takeIf { it.isNotBlank() } ?: return null
+        val model = prefs.getString(KEY_CUSTOM_MODEL, null)?.takeIf { it.isNotBlank() } ?: return null
+        val apiKey = prefs.getString(KEY_CUSTOM_API_KEY, null)?.takeIf { it.isNotBlank() }
+        return CustomEndpoint(baseUrl, apiKey, model)
+    }
+
+    fun setCustomEndpoint(context: Context, endpoint: CustomEndpoint) {
+        prefs(context).edit()
+            .putString(KEY_CUSTOM_BASE_URL, endpoint.baseUrl)
+            .putString(KEY_CUSTOM_API_KEY, endpoint.apiKey)
+            .putString(KEY_CUSTOM_MODEL, endpoint.model)
+            .apply()
+    }
+
+    /** Whether the assistant can run at all with the service that's selected. */
+    fun isConfigured(context: Context): Boolean = when (getProvider(context)) {
+        AiProvider.GEMINI -> getApiKey(context) != null
+        AiProvider.CUSTOM -> getCustomEndpoint(context) != null
+    }
+
+    private fun prefs(context: Context) = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     fun getApiKey(context: Context): String? =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)

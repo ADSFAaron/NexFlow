@@ -97,6 +97,20 @@ class AiConversationStore @Inject constructor(
         }
     }
 
+    /**
+     * Every image any stored conversation still shows, so the rest can be deleted — or null if
+     * that can't be told, in which case nothing may be deleted.
+     */
+    suspend fun referencedImages(): Set<String>? = runCatching {
+        val rows = dao.allMessagesJson()
+        withContext(Dispatchers.Default) {
+            rows.flatMapTo(mutableSetOf()) { row ->
+                json.decodeFromString(messagesSerializer, row)
+                    .flatMap { (it as? ChatMessage.UserText)?.images.orEmpty() }
+            }
+        }
+    }.onFailure { Log.w(TAG, "could not list referenced images", it) }.getOrNull()
+
     suspend fun clear(flowId: String?) {
         dao.deleteByFlowId(flowId ?: AiConversationEntity.FREE_CHAT)
     }

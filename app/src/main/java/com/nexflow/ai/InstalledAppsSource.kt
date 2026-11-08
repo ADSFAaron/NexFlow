@@ -70,6 +70,17 @@ class InstalledAppsSource @Inject constructor(
                 roles.any { it.contains(query, ignoreCase = true) }
     }
 
+    /** The packages [search] can return, without the per-app label lookups that make it slow. */
+    suspend fun launchablePackages(): Set<String> = withContext(Dispatchers.IO) {
+        launchablePackages(context.packageManager)
+    }
+
+    private fun launchablePackages(pm: PackageManager): Set<String> =
+        pm.queryIntentActivities(
+            Intent(Intent.ACTION_MAIN).also { it.addCategory(Intent.CATEGORY_LAUNCHER) },
+            0,
+        ).map { it.activityInfo.packageName }.toSet()
+
     /**
      * Off the main thread, like [AppShortcutsSource.shortcutsFor]: this enumerates every
      * launchable activity on the device and then reads a label per package, each of which opens
@@ -78,10 +89,7 @@ class InstalledAppsSource @Inject constructor(
      */
     suspend fun search(query: String, limit: Int = 20): List<AppEntry> = withContext(Dispatchers.IO) {
         val pm = context.packageManager
-        val launchablePackages = pm.queryIntentActivities(
-            Intent(Intent.ACTION_MAIN).also { it.addCategory(Intent.CATEGORY_LAUNCHER) },
-            0,
-        ).map { it.activityInfo.packageName }.toSet()
+        val launchablePackages = launchablePackages(pm)
         val rolesByPackage = rolesByPackage(pm)
 
         val trimmed = query.trim()

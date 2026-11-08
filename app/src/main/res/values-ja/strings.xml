@@ -70,7 +70,7 @@
     <string name="fd_flow_skipped">スキップしました — 条件が成立していません</string>
     <string name="fd_export_flow">フローをエクスポート</string>
     <string name="fd_export">エクスポート</string>
-    <string name="fd_edit_with_ai">Gemini で編集</string>
+    <string name="fd_edit_with_ai">AI で編集</string>
     <string name="fd_section_when">〜のとき</string>
     <string name="fd_section_only_if">しかも〜の場合だけ</string>
     <string name="fd_section_then">実行する</string>
@@ -149,6 +149,15 @@
     <string name="settings_ai_model">AI モデル</string>
     <string name="settings_ai_model_need_key">先に API キーを設定してください</string>
     <string name="settings_ai_model_load_failed">モデル一覧を読み込めませんでした</string>
+    <string name="settings_ai_provider">AI サービス</string>
+    <string name="settings_ai_provider_gemini">Google Gemini</string>
+    <string name="settings_ai_provider_custom">その他のサービス（OpenAI 互換）</string>
+    <string name="settings_ai_custom_desc">試験的な機能です。OpenAI、OpenRouter、Ollama などのサービスで使えますが、結果はモデルによって異なります。メッセージ、添付した画像、AI で編集するフローの全設定（トークンやパスワードを含む）がこのアドレスに送信されます。</string>
+    <string name="settings_ai_custom_url">ベース URL</string>
+    <string name="settings_ai_custom_url_error">https:// で始まるアドレスを入力してください。http:// は localhost でのみ使えます。</string>
+    <string name="settings_ai_custom_key">API キー（任意）</string>
+    <string name="settings_ai_custom_model">モデル名</string>
+    <string name="settings_ai_custom_model_error">モデル名を入力してください。</string>
     <string name="action_retry">再試行</string>
     <string name="ai_chat_title">AI アシスタント</string>
     <string name="ai_greeting" formatted="false">作りたい自動化を説明してください — 例:「イヤホンを接続したら、メディア音量を 80% にして Spotify を開く」</string>
@@ -171,14 +180,14 @@
     <string name="ai_retry">再試行</string>
     <string name="ai_key_get">無料で API キーを取得</string>
     <string name="ai_thinking">考え中…</string>
-    <string name="ai_step_contacting">Gemini と通信中…</string>
+    <string name="ai_step_contacting">AI サービスと通信中…</string>
     <string name="ai_step_searching_apps">インストール済みアプリを検索中…</string>
     <string name="ai_step_searching_shortcuts">アプリのショートカットを検索中…</string>
     <string name="ai_step_building_flow">フローを生成・検証中…</string>
     <string name="ai_step_repairing">検証エラーを修正中(%1$d 回目)…</string>
-    <string name="ai_step_retrying">Gemini が混雑中のため再試行しています（%1$d/%2$d）…</string>
+    <string name="ai_step_retrying">AI サービスが混雑中のため再試行しています（%1$d/%2$d）…</string>
     <string name="ai_new_chat">新しいチャット</string>
-    <string name="ai_editing_flow_subtitle">Gemini でこのフローを編集</string>
+    <string name="ai_editing_flow_subtitle">AI でこのフローを編集</string>
     <string name="ai_flow_header_expand">フロー情報を表示</string>
     <string name="ai_flow_header_collapse">フロー情報を隠す</string>
     <string name="ai_editing_flow_intro">「%1$s」を読み込みました。変更したい内容を教えてください — 例えばステップの追加、時刻の変更、開くアプリの変更などです。</string>
@@ -189,9 +198,18 @@
     <string name="ai_key_missing_title">Gemini API キーが必要です</string>
     <string name="ai_key_missing_body">設定で Gemini API キーを追加してください。aistudio.google.com で無料で取得できます。</string>
     <string name="ai_key_missing_button">設定を開く</string>
-    <string name="ai_error_invalid_key">API キーが拒否されました。設定で Gemini API キーを確認してください。</string>
-    <string name="ai_error_rate_limited">レート制限に達しました。しばらくしてからもう一度お試しください。</string>
-    <string name="ai_error_unavailable">Gemini が現在混雑しており、自動で再試行しても処理できませんでした。Google 側の一時的な状況で、通常は数分で解消します。しばらくしてから再度お試しいただくか、設定で別のモデルを選んでください。</string>
+    <string name="ai_error_invalid_key">API キーが拒否されました。設定で確認してください。</string>
+    <string name="ai_error_rate_limited">待機後も 1 分あたりのリクエスト上限を超えています。1 分ほどしてから再試行するか、設定で別のモデルを選んでください（クォータはモデルごとに別々です）。</string>
+    <string name="ai_error_quota_daily">このモデルの本日のクォータを使い切りました。%1$s にリセットされます。それまでは設定で別のモデルを選べます（クォータはモデルごとに別々です）。</string>
+    <string name="ai_error_quota_not_in_tier">お使いの API キーのプランにはこのモデルが含まれていません（クォータが 0）。設定で別のモデルを選ぶか、Google AI Studio でプロジェクトの課金を有効にしてください。</string>
+    <string name="ai_step_waiting_quota">1 分あたりの上限に達しました。%1$d 秒後に自動で続行します…</string>
+    <string name="ai_attach_image">画像を添付</string>
+    <string name="ai_remove_image">画像を削除</string>
+    <string name="ai_attached_image">添付した画像</string>
+    <plurals name="ai_image_limit">
+        <item quantity="other">1 件のメッセージに添付できる画像は %1$d 枚までです</item>
+    </plurals>
+    <string name="ai_error_unavailable">AI サービスが現在混雑しており、自動で再試行しても処理できませんでした。サービス側の一時的な状況で、通常は数分で解消します。しばらくしてから再度お試しいただくか、設定で別のモデルを選んでください。</string>
     <string name="ai_error_model_not_found">モデルが見つかりません。設定で別のモデルを選択してください。</string>
     <string name="ai_error_network">ネットワークエラー。接続を確認してもう一度お試しください。</string>
     <string name="ai_error_generic">エラーが発生しました:%1$s</string>

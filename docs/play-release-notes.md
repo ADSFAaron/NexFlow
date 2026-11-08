@@ -9,96 +9,91 @@
 
 ---
 
-# 上架用：1.6.0（versionCode 11）
+# 上架用：1.7.0（versionCode 12）
 
-前一版（1.5.1）的商店文案保留在 git 記錄裡：`git show d92d940:docs/play-release-notes.md`。
+前一版（1.6.0）的商店文案保留在 git 記錄裡：`git show 4054922:docs/play-release-notes.md`。
 
-這一版沒有需要使用者動手的項目——安裝完就生效，所以四種語言都直接從新功能開始。
-四件事的順序是：兩個看得到的新東西、一則觀念說明、然後才是修正。
+這一版沒有需要使用者動手的項目。但**上架前要到 Play 管理中心重新檢視 Data safety**：AI 助手開始
+會把使用者附加的圖片傳給 Google，傳輸內容的範圍變了。文案裡也因此明講圖片會傳給 Gemini。
 
-英文最不省字：完整版超過 500 字元，所以每一句都比中日文短一截（例如小工具那段
-不重述「拉寬拉高」，修正清單也只留關鍵詞）。四個區塊都保住了。
+「其他服務（OpenAI 相容）」只在 debug 版出現，不要寫進文案。
 
-## 繁體中文（zh-TW）— 265 字元
+## 繁體中文（zh-TW）— 231 字元
 
 ```
-【複製流程】
-流程詳細頁右上角 ⋮ →「複製流程」。副本會以停用狀態建立，等你改好再開啟。
+【AI 助手看得懂圖片】
+輸入框左側的圖片鈕，每則訊息最多附 4 張。說不清楚是哪個按鈕時，一張截圖就夠了。圖片會和訊息一起傳給 Gemini。
 
-【小工具會跟著大小變】
-欄數、列數與卡片大小依小工具的實際尺寸調整，拉寬拉高都不會再被切掉半排；能放的流程也從 4 個增加到 12 個。
+【小工具顯示你挑的流程】
+每個總覽小工具都能選擇「自動」或自己挑流程，最多 12 個。
 
-【電池：觸發器與條件的差別】
-兩者的設定畫面都加上說明。觸發器是「跨過門檻的那一刻」發生一次，條件是「每次執行前檢查」。
+【AI 助手更省也更穩】
+• 建立流程少一次請求，額度用得更慢
+• Gemini 忙碌或每分鐘額度用完時，自動等待後繼續
+• 不會再選用手機上沒有的 App
 
-【修正】
-• 淺色模式下執行中的動作不再糊成一團
-• 撥動開關後，流程不會突然跳到清單最上面
-• 快顯訊息不再比流程晚好幾秒才冒出來
-• AI 對話按「重試」時兩個泡泡重疊
+【變更】
+• AI 對話按 Enter 改為換行，送出請按送出鈕
 ```
 
 ---
 
-## English（en-US）— 496 字元
+## English（en-US）— 497 字元
 
 ```
-DUPLICATE A FLOW
-Detail screen, ⋮ → Duplicate flow. The copy starts switched off.
+AI ASSISTANT READS IMAGES
+Attach up to 4 per message with the image button. A screenshot beats describing a button. Images go to Gemini with your message.
 
-THE WIDGET FITS ITS SIZE
-Columns, rows and cards follow the widget's size — no half-cut rows — and it holds 12 flows, not 4.
+PICK WHAT A WIDGET SHOWS
+Each overview widget can stay automatic or show flows you choose, up to 12.
 
-BATTERY: TRIGGER VS CONDITION
-The trigger fires once, as the level crosses. The condition is checked before every run.
+A LEANER, STEADIER ASSISTANT
+• One request fewer per flow, so quota lasts longer
+• Waits and resumes when Gemini is busy or the minute's quota is spent
+• No more apps you don't have
 
-FIXED
-• Light theme: the running action is readable
-• Flows stay put when you flick the switch
-• Toasts keep up with the flow
-• AI chat: bubbles overlapped after Retry
-```
-
----
-
-## 日本語（ja-JP）— 338 字元
-
-```
-【フローの複製】
-詳細画面の右上 ⋮ →「フローを複製」。複製は無効の状態で作られるので、編集してから有効にできます。
-
-【ウィジェットがサイズに合わせて変化】
-列数・行数・カードの大きさがウィジェットの実際のサイズに追従し、行が途中で切れなくなりました。登録できるフローも 4 件から 12 件に。
-
-【バッテリー：トリガーと条件の違い】
-どちらの設定にも説明を追加しました。トリガーは「しきい値をまたいだ瞬間」に一度、条件は「実行前に毎回」チェックします。
-
-【修正】
-・ライトテーマで実行中のアクションが読めるように
-・スイッチを切り替えてもフローが一番上に飛ばなくなりました
-・トーストがフローより数秒遅れて出る問題
-・AI チャットの「再試行」で吹き出しが重なる問題
+CHANGED
+• Enter adds a line in AI chat; tap send to send
 ```
 
 ---
 
-## 简体中文（zh-CN）— 265 字元
+## 日本語（ja-JP）— 321 字元
 
 ```
-【复制流程】
-流程详细页右上角 ⋮ →「复制流程」。副本会以停用状态建立，等你改好再开启。
+【AI アシスタントが画像を理解】
+入力欄の画像ボタンから、1 メッセージにつき 4 枚まで添付できます。どのボタンか説明しづらいときはスクリーンショットをどうぞ。画像はメッセージと一緒に Gemini へ送信されます。
 
-【小工具会跟着大小变】
-列数、行数与卡片大小依小工具的实际尺寸调整，拉宽拉高都不会再被切掉半排；能放的流程也从 4 个增加到 12 个。
+【ウィジェットの表示を選べる】
+概要ウィジェットごとに「自動」か、自分で選んだフロー（最大 12 個）を表示できます。
 
-【电池：触发器与条件的差别】
-两者的设置画面都加上说明。触发器是「跨过门槛的那一刻」发生一次，条件是「每次执行前检查」。
+【AI アシスタントがより効率的で安定】
+・フロー作成のリクエストが 1 回減り、クォータが長持ち
+・Gemini の混雑時や 1 分あたりの上限時は、自動で待ってから続行
+・端末にないアプリを選ばなくなりました
 
-【修正】
-• 浅色模式下执行中的动作不再糊成一团
-• 拨动开关后，流程不会突然跳到列表最上面
-• 快显消息不再比流程晚好几秒才冒出来
-• AI 对话按「重试」时两个气泡重叠
+【変更】
+・AI チャットの Enter は改行になりました。送信は送信ボタンで
+```
+
+---
+
+## 简体中文（zh-CN）— 233 字元
+
+```
+【AI 助手看得懂图片】
+输入框左侧的图片按钮，每条消息最多附 4 张。说不清是哪个按钮时，一张截图就够了。图片会和消息一起发送给 Gemini。
+
+【小工具显示你挑的流程】
+每个总览小工具都能选择「自动」或自己挑流程，最多 12 个。
+
+【AI 助手更省也更稳】
+• 创建流程少一次请求，额度用得更慢
+• Gemini 繁忙或每分钟额度用完时，自动等待后继续
+• 不会再选用手机上没有的 App
+
+【变更】
+• AI 对话按 Enter 改为换行，发送请按发送按钮
 ```
 
 ---

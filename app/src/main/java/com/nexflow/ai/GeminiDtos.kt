@@ -49,6 +49,15 @@ data class GeminiPart(
      * parts are missing it, so it must survive the response→history→request round trip.
      */
     val thoughtSignature: String? = null,
+    /** An image the user attached. See [AiChatOrchestrator] for how it gets here from disk. */
+    val inlineData: GeminiBlob? = null,
+)
+
+@Serializable
+data class GeminiBlob(
+    val mimeType: String,
+    /** Base64 bytes on the wire; in the conversation history, a reference to a local file. */
+    val data: String,
 )
 
 @Serializable
@@ -103,9 +112,24 @@ data class GenerateContentResponse(
  */
 @Serializable
 data class GeminiUsageMetadata(
+    /** The whole prompt, including whatever part of it was served from cache. */
     val promptTokenCount: Int = 0,
+    /** How much of [promptTokenCount] came from cache. */
+    val cachedContentTokenCount: Int = 0,
     val candidatesTokenCount: Int = 0,
+    val toolUsePromptTokenCount: Int = 0,
+    /** Thinking is billed as output, though the user never sees it. */
+    val thoughtsTokenCount: Int = 0,
+    /** Prompt + tool-use prompt + thoughts + candidates, per the API reference. */
     val totalTokenCount: Int = 0,
+    /** [promptTokenCount] split by modality, which is how images show up as their own cost. */
+    val promptTokensDetails: List<GeminiModalityTokenCount> = emptyList(),
+)
+
+@Serializable
+data class GeminiModalityTokenCount(
+    val modality: String? = null,
+    val tokenCount: Int = 0,
 )
 
 @Serializable

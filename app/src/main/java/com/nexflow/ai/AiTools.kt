@@ -106,6 +106,15 @@ object AiTools {
                 put("type", "string")
                 put("description", "One-sentence summary of what the flow does, in the user's language")
             }
+            putJsonObject("summary") {
+                put("type", "string")
+                put(
+                    "description",
+                    "What the user reads once the flow is built, in the user's language: one or two " +
+                        "sentences on what it does, plus anything they must finish themselves. " +
+                        "No further message follows, so everything they need goes here.",
+                )
+            }
             putJsonObject("trigger_logic") {
                 put("type", "string")
                 putJsonArray("enum") { add("ANY"); add("ALL") }
@@ -125,7 +134,7 @@ object AiTools {
             }
         }
         putJsonArray("required") {
-            add("name"); add("description"); add("triggers"); add("actions")
+            add("name"); add("description"); add("summary"); add("triggers"); add("actions")
         }
     }
 

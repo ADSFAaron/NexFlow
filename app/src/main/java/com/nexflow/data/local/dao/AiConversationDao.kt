@@ -27,6 +27,10 @@ interface AiConversationDao {
     @Query("SELECT * FROM ai_conversations WHERE flow_id = :flowId")
     suspend fun getByFlowId(flowId: String): AiConversationEntity?
 
+    /** Every stored transcript, for finding which attached images are still in use. */
+    @Query("SELECT messages_json FROM ai_conversations")
+    suspend fun allMessagesJson(): List<String>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entity: AiConversationEntity)
 

@@ -13,6 +13,9 @@
         <exclude domain="database" path="nexflow.db-shm" />
         <!-- Holds the user-supplied Gemini API key. -->
         <exclude domain="sharedpref" path="nexflow_ai.xml" />
+        <!-- Images attached in the AI chat: they belong to the conversations above,
+             which stay off cloud backup too. -->
+        <exclude domain="file" path="ai_images/" />
     </cloud-backup>
     <device-transfer>
         <!-- Local transfer stays between the user's own devices; back everything up,

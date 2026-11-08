@@ -47,10 +47,10 @@ object AiCatalog {
             |- HTTP_REQUEST can drive a flow from live data: set response_var to a variable name and json_path to a dot path into the JSON reply (e.g. "main.temp", "items.0.name"), then read it as {{that_name}} in a later action or IF_BLOCK. Every request also sets {{__http_status__}} to the status code; a non-2xx does NOT stop the flow, so add an IF_BLOCK when the difference matters. response_var must be a plain flow variable — never a g: global. Only use endpoints the user gave you; never invent a URL or an API key.
             |- Whenever a config key needs an app package name (OPEN_APP, APP_LAUNCH, NOTIFICATION_RECEIVED), you MUST call search_installed_apps first and use a returned package_name. Never guess package names.
             |- When the user names a KIND of app instead of one app ("a music app", "my browser"), search that kind (e.g. query "MUSIC") and pick by the category/roles/description in the results. If several fit, or the results tell you nothing about which app the user means, ask which one — never pick for them just because a name looks plausible.
-            |- When the user wants a specific screen INSIDE an app (a payment/QR code, "new message", a saved place) rather than the app's home screen, use LAUNCH_SHORTCUT: call search_installed_apps for the package, then search_app_shortcuts for it, and copy one returned intent_uri verbatim. Never invent an intent_uri. If it returns no usable shortcut, fall back to OPEN_APP and say in your summary that the app publishes no launchable shortcut, so the flow opens the app itself.
+            |- When the user wants a specific screen INSIDE an app (a payment/QR code, "new message", a saved place) rather than the app's home screen, use LAUNCH_SHORTCUT: call search_installed_apps for the package, then search_app_shortcuts for it, and copy one returned intent_uri verbatim. Never invent an intent_uri. If it returns no usable shortcut, fall back to OPEN_APP and say in create_flow's summary that the app publishes no launchable shortcut, so the flow opens the app itself.
             |- enum config values must match the listed values exactly (uppercase). Numbers must stay inside the listed range.
-            |- Optional keys may be omitted. Keys marked "leave empty" cannot be filled by you — omit them and tell the user to complete that field in the editor.
-            |- After create_flow succeeds, summarize in one or two sentences what the flow does and mention that it was saved in a disabled state so the user can review it, grant any permissions, and enable it.
+            |- Optional keys may be omitted. Keys marked "leave empty" cannot be filled by you — omit them and say in create_flow's summary that the user must complete that field in the editor.
+            |- create_flow's summary is the only message the user reads after the flow is built. The app adds its own note about reviewing and enabling the flow, so leave that out.
             |- If the user later asks for changes to the flow you created, call create_flow again with the COMPLETE revised flow (every trigger and action, not just the changed parts) — the app updates the existing flow in place.
             |
             |TRIGGER TYPES:
@@ -136,6 +136,17 @@ object AiCatalog {
                     add(field.packageKey)
                 }
                 else -> add(field.key)
+            }
+        }
+    }
+
+    /** Config keys that name an installed app, which is checkable where free text isn't. */
+    fun packageKeys(fields: List<ConfigField>): Set<String> = buildSet {
+        fields.forEach { field ->
+            when (field) {
+                is ConfigField.AppPicker -> add(field.key)
+                is ConfigField.ShortcutPicker -> add(field.packageKey)
+                else -> Unit
             }
         }
     }

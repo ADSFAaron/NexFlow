@@ -72,7 +72,7 @@
     <string name="fd_flow_skipped">Skipped — a condition is not met</string>
     <string name="fd_export_flow">Export flow</string>
     <string name="fd_export">Export</string>
-    <string name="fd_edit_with_ai">Edit with Gemini</string>
+    <string name="fd_edit_with_ai">Edit with AI</string>
     <string name="fd_section_when">WHEN</string>
     <string name="fd_section_only_if">ONLY IF</string>
     <string name="fd_section_then">THEN</string>
@@ -152,6 +152,16 @@
     <string name="settings_ai_model">AI model</string>
     <string name="settings_ai_model_need_key">Set your API key first</string>
     <string name="settings_ai_model_load_failed">Couldn\'t load the model list</string>
+    <string name="settings_ai_provider">AI service</string>
+    <string name="settings_ai_provider_gemini">Google Gemini</string>
+    <string name="settings_ai_provider_custom">Other service (OpenAI-compatible)</string>
+    <string name="settings_ai_custom_desc">Experimental. Works with OpenAI, OpenRouter, Ollama and similar services; how well depends on the model. Your messages, any images you attach, and the full settings of flows you edit with AI, including tokens or passwords in them, go to this address.</string>
+    <string name="settings_ai_custom_url">Base URL</string>
+    <string name="settings_ai_custom_url_error">Enter an https:// address. http:// only works for localhost.</string>
+    <string name="settings_ai_custom_key">API key (optional)</string>
+    <string name="settings_ai_custom_model">Model name</string>
+    <string name="settings_ai_custom_model_error">Enter the model name.</string>
+    <string name="settings_ai_custom_url_hint" translatable="false">https://api.openai.com/v1</string>
     <string name="action_retry">Retry</string>
     <string name="ai_chat_title">AI assistant</string>
     <string name="ai_greeting" formatted="false">Describe the automation you want — for example: \"When I plug in headphones, set media volume to 80% and open Spotify.\"</string>
@@ -175,14 +185,14 @@
     <string name="ai_retry">Retry</string>
     <string name="ai_key_get">Get a free API key</string>
     <string name="ai_thinking">Thinking…</string>
-    <string name="ai_step_contacting">Contacting Gemini…</string>
+    <string name="ai_step_contacting">Contacting the AI service…</string>
     <string name="ai_step_searching_apps">Searching installed apps…</string>
     <string name="ai_step_searching_shortcuts">Searching app shortcuts…</string>
     <string name="ai_step_building_flow">Building and validating the flow…</string>
     <string name="ai_step_repairing">Fixing validation errors (attempt %1$d)…</string>
-    <string name="ai_step_retrying">Gemini is busy, retrying (%1$d/%2$d)…</string>
+    <string name="ai_step_retrying">The AI service is busy, retrying (%1$d/%2$d)…</string>
     <string name="ai_new_chat">New chat</string>
-    <string name="ai_editing_flow_subtitle">Editing this flow with Gemini</string>
+    <string name="ai_editing_flow_subtitle">Editing this flow with AI</string>
     <string name="ai_flow_header_expand">Show flow details</string>
     <string name="ai_flow_header_collapse">Hide flow details</string>
     <string name="ai_editing_flow_intro">I\'ve loaded \"%1$s\". Tell me what you\'d like to change — for example add a step, change a time, or swap the app it opens.</string>
@@ -193,9 +203,19 @@
     <string name="ai_key_missing_title">Gemini API key required</string>
     <string name="ai_key_missing_body">Add your Gemini API key in Settings to use the AI assistant. You can get a free key at aistudio.google.com.</string>
     <string name="ai_key_missing_button">Open Settings</string>
-    <string name="ai_error_invalid_key">The API key was rejected. Check the Gemini API key in Settings.</string>
-    <string name="ai_error_rate_limited">Rate limit reached. Wait a moment and try again.</string>
-    <string name="ai_error_unavailable">Gemini is overloaded and didn\'t respond after several retries. This is on Google\'s side and usually clears up within minutes. Try again shortly, or pick another model in Settings.</string>
+    <string name="ai_error_invalid_key">The API key was rejected. Check it in Settings.</string>
+    <string name="ai_error_rate_limited">The service\'s per-minute request limit was still reached after waiting. Try again in a minute, or pick another model in Settings — each model has its own quota.</string>
+    <string name="ai_error_quota_daily">Today\'s quota for this model is used up. It resets at %1$s. Meanwhile you can pick another model in Settings — each model has its own quota.</string>
+    <string name="ai_error_quota_not_in_tier">Your API key\'s plan doesn\'t include this model (its quota is 0). Pick another model in Settings, or enable billing for the project in Google AI Studio.</string>
+    <string name="ai_step_waiting_quota">Per-minute limit reached, continuing in %1$ds…</string>
+    <string name="ai_attach_image">Attach image</string>
+    <string name="ai_remove_image">Remove image</string>
+    <string name="ai_attached_image">Attached image</string>
+    <plurals name="ai_image_limit">
+        <item quantity="one">Up to %1$d image per message</item>
+        <item quantity="other">Up to %1$d images per message</item>
+    </plurals>
+    <string name="ai_error_unavailable">The AI service is overloaded and didn\'t respond after several retries. This is on the service\'s side and usually clears up within minutes. Try again shortly, or pick another model in Settings.</string>
     <string name="ai_error_model_not_found">Model not found. Pick another model in Settings.</string>
     <string name="ai_error_network">Network error. Check your connection and try again.</string>
     <string name="ai_error_generic">Something went wrong: %1$s</string>

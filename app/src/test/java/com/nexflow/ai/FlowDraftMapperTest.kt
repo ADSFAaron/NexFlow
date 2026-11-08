@@ -120,6 +120,31 @@ class FlowDraftMapperTest {
     }
 
     @Test
+    fun `a package name has to be installed, wherever the catalog asks for one`() {
+        val openApp = listOf("OPEN_APP" to buildJsonObject { put("package_name", "com.made.up") })
+        val shortcut = listOf(
+            "LAUNCH_SHORTCUT" to buildJsonObject {
+                put("intent_uri", "intent:#Intent;end")
+                put("label", "Pay")
+                put("package_name", "com.made.up")
+            },
+        )
+
+        listOf(openApp, shortcut).forEach { actions ->
+            val rejected = FlowDraftMapper.fromArgs(validArgs(actions = actions), context, isInstalled = { false })
+            assertTrue(rejected.errors.any { "com.made.up" in it && "not installed" in it }, "$rejected")
+            assertTrue(FlowDraftMapper.fromArgs(validArgs(actions = actions), context, isInstalled = { true }).isValid)
+        }
+    }
+
+    @Test
+    fun `an empty optional package is left alone`() {
+        val toast = listOf("NOTIFICATION" to buildJsonObject { put("title", "t"); put("tap_package", "") })
+
+        assertTrue(FlowDraftMapper.fromArgs(validArgs(actions = toast), context, isInstalled = { false }).isValid)
+    }
+
+    @Test
     fun `writing an undeclared global is an error, a declared one and a local are fine`() {
         val setGlobal = listOf(
             "SET_VARIABLE" to buildJsonObject { put("variable_name", "g:counter"); put("value", "1") },

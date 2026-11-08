@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Everything stays https-only except loopback, so a model server reached through `adb reverse`
+    or running on the phone itself works. Android 17 allows this implicitly; minSdk is 30.
+    CustomEndpoint.normalizeBaseUrl enforces the same two hosts.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+    </domain-config>
+</network-security-config>

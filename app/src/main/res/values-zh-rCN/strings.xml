@@ -70,7 +70,7 @@
     <string name="fd_flow_skipped">已跳过 — 限制条件不成立</string>
     <string name="fd_export_flow">导出流程</string>
     <string name="fd_export">导出</string>
-    <string name="fd_edit_with_ai">用 Gemini 修改</string>
+    <string name="fd_edit_with_ai">用 AI 修改</string>
     <string name="fd_section_when">当…的时候</string>
     <string name="fd_section_only_if">而且只有在</string>
     <string name="fd_section_then">就执行</string>
@@ -149,6 +149,15 @@
     <string name="settings_ai_model">AI 模型</string>
     <string name="settings_ai_model_need_key">请先设置 API 密钥</string>
     <string name="settings_ai_model_load_failed">无法加载模型列表</string>
+    <string name="settings_ai_provider">AI 服务</string>
+    <string name="settings_ai_provider_gemini">Google Gemini</string>
+    <string name="settings_ai_provider_custom">其他服务（OpenAI 兼容）</string>
+    <string name="settings_ai_custom_desc">实验功能。适用于 OpenAI、OpenRouter、Ollama 等服务，效果取决于模型。您的消息、附加的图片，以及用 AI 修改的流程的完整设置（包括其中的令牌或密码）都会发送到这个地址。</string>
+    <string name="settings_ai_custom_url">服务地址</string>
+    <string name="settings_ai_custom_url_error">请输入以 https:// 开头的地址。http:// 只能用于 localhost。</string>
+    <string name="settings_ai_custom_key">API 密钥（选填）</string>
+    <string name="settings_ai_custom_model">模型名称</string>
+    <string name="settings_ai_custom_model_error">请输入模型名称。</string>
     <string name="action_retry">重试</string>
     <string name="ai_chat_title">AI 助手</string>
     <string name="ai_greeting" formatted="false">描述您想要的自动化 — 例如:"插上耳机时,把媒体音量调到 80% 并打开 Spotify。"</string>
@@ -171,14 +180,14 @@
     <string name="ai_retry">重试</string>
     <string name="ai_key_get">免费获取 API 密钥</string>
     <string name="ai_thinking">思考中…</string>
-    <string name="ai_step_contacting">正在与 Gemini 通信…</string>
+    <string name="ai_step_contacting">正在与 AI 服务通信…</string>
     <string name="ai_step_searching_apps">正在搜索已安装的应用…</string>
     <string name="ai_step_searching_shortcuts">正在搜索应用快捷方式…</string>
     <string name="ai_step_building_flow">正在生成并验证流程…</string>
     <string name="ai_step_repairing">正在修正验证错误(第 %1$d 次)…</string>
-    <string name="ai_step_retrying">Gemini 繁忙，正在重试（%1$d/%2$d）…</string>
+    <string name="ai_step_retrying">AI 服务繁忙，正在重试（%1$d/%2$d）…</string>
     <string name="ai_new_chat">新对话</string>
-    <string name="ai_editing_flow_subtitle">用 Gemini 修改这个流程</string>
+    <string name="ai_editing_flow_subtitle">用 AI 修改这个流程</string>
     <string name="ai_flow_header_expand">显示流程信息</string>
     <string name="ai_flow_header_collapse">收起流程信息</string>
     <string name="ai_editing_flow_intro">我已载入“%1$s”。告诉我你想怎么调整 — 例如新增一个步骤、改时间,或换成打开另一个 App。</string>
@@ -189,9 +198,18 @@
     <string name="ai_key_missing_title">需要 Gemini API 密钥</string>
     <string name="ai_key_missing_body">请先在设置中添加您的 Gemini API 密钥。可在 aistudio.google.com 免费获取。</string>
     <string name="ai_key_missing_button">打开设置</string>
-    <string name="ai_error_invalid_key">API 密钥被拒绝。请到设置检查 Gemini API 密钥。</string>
-    <string name="ai_error_rate_limited">已达速率限制。请稍候再试。</string>
-    <string name="ai_error_unavailable">Gemini 当前负载过高，自动重试后仍无法处理。这是 Google 端的情况，通常几分钟内就会恢复。请稍后再试，或到设置中改用其他模型。</string>
+    <string name="ai_error_invalid_key">API 密钥被拒绝。请到设置检查。</string>
+    <string name="ai_error_rate_limited">等待后仍超过服务每分钟的请求上限。请过一分钟再试，或到设置换一个模型——每个模型的额度是分开计算的。</string>
+    <string name="ai_error_quota_daily">这个模型今天的额度已用完，将于 %1$s 重置。在那之前可以到设置换另一个模型——每个模型的额度是分开计算的。</string>
+    <string name="ai_error_quota_not_in_tier">您的 API 密钥方案不包含这个模型（额度为 0）。请到设置换一个模型，或在 Google AI Studio 为项目启用结算。</string>
+    <string name="ai_step_waiting_quota">已达每分钟上限，%1$d 秒后自动继续…</string>
+    <string name="ai_attach_image">添加图片</string>
+    <string name="ai_remove_image">移除图片</string>
+    <string name="ai_attached_image">附加的图片</string>
+    <plurals name="ai_image_limit">
+        <item quantity="other">每条消息最多添加 %1$d 张图片</item>
+    </plurals>
+    <string name="ai_error_unavailable">AI 服务当前负载过高，自动重试后仍无法处理。这是服务端的情况，通常几分钟内就会恢复。请稍后再试，或到设置中改用其他模型。</string>
     <string name="ai_error_model_not_found">找不到模型。请到设置选择其他模型。</string>
     <string name="ai_error_network">网络错误。请检查连接后再试。</string>
     <string name="ai_error_generic">发生错误:%1$s</string>

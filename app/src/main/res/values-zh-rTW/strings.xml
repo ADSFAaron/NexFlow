@@ -70,7 +70,7 @@
     <string name="fd_flow_skipped">已跳過 — 限制條件不成立</string>
     <string name="fd_export_flow">匯出流程</string>
     <string name="fd_export">匯出</string>
-    <string name="fd_edit_with_ai">用 Gemini 修改</string>
+    <string name="fd_edit_with_ai">用 AI 修改</string>
     <string name="fd_section_when">當…的時候</string>
     <string name="fd_section_only_if">而且只有在</string>
     <string name="fd_section_then">就執行</string>
@@ -149,6 +149,15 @@
     <string name="settings_ai_model">AI 模型</string>
     <string name="settings_ai_model_need_key">請先設定 API 金鑰</string>
     <string name="settings_ai_model_load_failed">無法載入模型清單</string>
+    <string name="settings_ai_provider">AI 服務</string>
+    <string name="settings_ai_provider_gemini">Google Gemini</string>
+    <string name="settings_ai_provider_custom">其他服務（OpenAI 相容）</string>
+    <string name="settings_ai_custom_desc">實驗功能。適用於 OpenAI、OpenRouter、Ollama 等服務，效果取決於模型。您的訊息、附加的圖片，以及用 AI 修改的流程的完整設定（包含其中的權杖或密碼）都會傳送到這個位址。</string>
+    <string name="settings_ai_custom_url">服務網址</string>
+    <string name="settings_ai_custom_url_error">請輸入 https:// 開頭的網址。http:// 只能用於 localhost。</string>
+    <string name="settings_ai_custom_key">API 金鑰（選填）</string>
+    <string name="settings_ai_custom_model">模型名稱</string>
+    <string name="settings_ai_custom_model_error">請輸入模型名稱。</string>
     <string name="action_retry">重試</string>
     <string name="ai_chat_title">AI 助手</string>
     <string name="ai_greeting" formatted="false">描述您想要的自動化 — 例如:「插上耳機時,把媒體音量調到 80% 並打開 Spotify。」</string>
@@ -171,14 +180,14 @@
     <string name="ai_retry">重試</string>
     <string name="ai_key_get">免費取得 API 金鑰</string>
     <string name="ai_thinking">思考中…</string>
-    <string name="ai_step_contacting">正在與 Gemini 溝通…</string>
+    <string name="ai_step_contacting">正在與 AI 服務溝通…</string>
     <string name="ai_step_searching_apps">正在搜尋已安裝的應用程式…</string>
     <string name="ai_step_searching_shortcuts">正在搜尋應用程式捷徑…</string>
     <string name="ai_step_building_flow">正在產生並驗證流程…</string>
     <string name="ai_step_repairing">正在修正驗證錯誤(第 %1$d 次)…</string>
-    <string name="ai_step_retrying">Gemini 忙碌中，重試中（%1$d/%2$d）…</string>
+    <string name="ai_step_retrying">AI 服務忙碌中，重試中（%1$d/%2$d）…</string>
     <string name="ai_new_chat">新對話</string>
-    <string name="ai_editing_flow_subtitle">用 Gemini 修改這個流程</string>
+    <string name="ai_editing_flow_subtitle">用 AI 修改這個流程</string>
     <string name="ai_flow_header_expand">顯示流程資訊</string>
     <string name="ai_flow_header_collapse">收合流程資訊</string>
     <string name="ai_editing_flow_intro">我已載入「%1$s」。告訴我你想怎麼調整 — 例如新增一個步驟、改時間,或換成開啟另一個 App。</string>
@@ -189,9 +198,18 @@
     <string name="ai_key_missing_title">需要 Gemini API 金鑰</string>
     <string name="ai_key_missing_body">請先在設定中加入您的 Gemini API 金鑰。可在 aistudio.google.com 免費取得。</string>
     <string name="ai_key_missing_button">開啟設定</string>
-    <string name="ai_error_invalid_key">API 金鑰被拒絕。請到設定檢查 Gemini API 金鑰。</string>
-    <string name="ai_error_rate_limited">已達速率限制。請稍候再試。</string>
-    <string name="ai_error_unavailable">Gemini 目前使用量過高，自動重試後仍然無法處理。這是 Google 端的狀況，通常幾分鐘內就會恢復。請稍後再試，或到設定改用其他模型。</string>
+    <string name="ai_error_invalid_key">API 金鑰被拒絕。請到設定檢查。</string>
+    <string name="ai_error_rate_limited">等待後仍超過服務每分鐘的請求上限。請過一分鐘再試，或到設定換一個模型——每個模型的額度是分開計算的。</string>
+    <string name="ai_error_quota_daily">這個模型今天的額度已用完，將於 %1$s 重置。在那之前可以到設定換另一個模型——每個模型的額度是分開計算的。</string>
+    <string name="ai_error_quota_not_in_tier">您的 API 金鑰方案不包含這個模型（額度為 0）。請到設定換一個模型，或在 Google AI Studio 為專案啟用計費。</string>
+    <string name="ai_step_waiting_quota">已達每分鐘上限，%1$d 秒後自動繼續…</string>
+    <string name="ai_attach_image">附加圖片</string>
+    <string name="ai_remove_image">移除圖片</string>
+    <string name="ai_attached_image">附加的圖片</string>
+    <plurals name="ai_image_limit">
+        <item quantity="other">每則訊息最多附加 %1$d 張圖片</item>
+    </plurals>
+    <string name="ai_error_unavailable">AI 服務目前使用量過高，自動重試後仍然無法處理。這是服務端的狀況，通常幾分鐘內就會恢復。請稍後再試，或到設定改用其他模型。</string>
     <string name="ai_error_model_not_found">找不到模型。請到設定選擇其他模型。</string>
     <string name="ai_error_network">網路錯誤。請檢查連線後再試。</string>
     <string name="ai_error_generic">發生錯誤:%1$s</string>

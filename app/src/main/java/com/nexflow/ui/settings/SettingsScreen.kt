@@ -54,6 +54,7 @@ import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Hub
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Lock
@@ -105,10 +106,12 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.nexflow.BuildConfig
 import com.nexflow.R
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.nexflow.prefs.AiPrefs
+import com.nexflow.prefs.AiProvider
 import com.nexflow.prefs.AutoStartPrefs
 import com.nexflow.prefs.DetailedLogPrefs
 import com.nexflow.prefs.ExecutionFeedbackPrefs
@@ -133,6 +136,9 @@ fun SettingsScreen(
     var logRetention by remember { mutableStateOf(LogRetentionPrefs.get(context)) }
     var showLogRetentionDialog by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
+    var aiProvider by remember { mutableStateOf(AiPrefs.getProvider(context)) }
+    var aiCustomEndpoint by remember { mutableStateOf(AiPrefs.getCustomEndpoint(context)) }
+    var showAiProviderDialog by remember { mutableStateOf(false) }
     var aiApiKey by remember { mutableStateOf(AiPrefs.getApiKey(context)) }
     var aiModel by remember { mutableStateOf(AiPrefs.getModel(context)) }
     var showApiKeyDialog by remember { mutableStateOf(false) }
@@ -331,6 +337,17 @@ fun SettingsScreen(
         }
     }
 
+    if (showAiProviderDialog) {
+        AiProviderDialog(
+            onDismiss = { showAiProviderDialog = false },
+            onSaved = {
+                aiProvider = AiPrefs.getProvider(context)
+                aiCustomEndpoint = AiPrefs.getCustomEndpoint(context)
+                showAiProviderDialog = false
+            },
+        )
+    }
+
     if (showApiKeyDialog) {
         var keyInput by remember { mutableStateOf(aiApiKey ?: "") }
         var keyVisible by remember { mutableStateOf(false) }
@@ -483,7 +500,23 @@ fun SettingsScreen(
 
             // ----- AI assistant -----
             item { SectionHeader(stringResource(R.string.settings_section_ai)) }
-            item {
+            // Debug only until it has been proven against real servers. Release builds can't set
+            // a provider, so they stay on Gemini.
+            if (BuildConfig.DEBUG) item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.settings_ai_provider)) },
+                    supportingContent = {
+                        val custom = aiCustomEndpoint
+                        Text(
+                            if (aiProvider == AiProvider.CUSTOM && custom != null) custom.model
+                            else aiProvider.label(),
+                        )
+                    },
+                    leadingContent = { Icon(Icons.Outlined.Hub, contentDescription = null) },
+                    modifier = Modifier.clickable { showAiProviderDialog = true },
+                )
+            }
+            if (aiProvider == AiProvider.GEMINI) item {
                 ListItem(
                     headlineContent = { Text(stringResource(R.string.settings_ai_api_key)) },
                     supportingContent = {
@@ -496,7 +529,7 @@ fun SettingsScreen(
                     modifier = Modifier.clickable { showApiKeyDialog = true },
                 )
             }
-            item {
+            if (aiProvider == AiProvider.GEMINI) item {
                 ListItem(
                     headlineContent = { Text(stringResource(R.string.settings_ai_model)) },
                     supportingContent = {

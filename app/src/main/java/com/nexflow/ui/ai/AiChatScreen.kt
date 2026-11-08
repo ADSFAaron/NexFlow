@@ -22,6 +22,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.text.format.DateUtils
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -46,6 +47,7 @@ import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
@@ -67,12 +69,12 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.AddComment
+import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Close
@@ -91,6 +93,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -123,6 +126,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
@@ -134,6 +138,7 @@ import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -146,7 +151,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
@@ -161,7 +165,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.nexflow.R
+import coil3.compose.AsyncImage
 import com.nexflow.ai.AiChatOrchestrator
+import com.nexflow.ai.AiImageStore
 import com.nexflow.core.automation.model.ActionType
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.flowschema.FlowJson
@@ -171,6 +177,7 @@ import com.nexflow.ui.common.MarkdownText
 import com.nexflow.ui.common.geminiGradientTint
 import com.nexflow.ui.flows.detail.config.configSummary
 import com.nexflow.ui.flows.detail.config.info
+import java.io.File
 import java.time.Instant
 import java.time.ZoneId
 import kotlinx.coroutines.launch
@@ -206,6 +213,23 @@ fun AiChatScreen(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+
+    val pendingImages by vm.pendingImages.collectAsState()
+    val imageLimitText = pluralStringResource(
+        R.plurals.ai_image_limit,
+        AiImageStore.MAX_PER_MESSAGE,
+        AiImageStore.MAX_PER_MESSAGE,
+    )
+    // The system photo picker: no storage permission, and the user hands over only what they
+    // chose. Picking more than there is room for keeps the first ones and says why.
+    val pickImages = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickMultipleVisualMedia(AiImageStore.MAX_PER_MESSAGE),
+    ) { uris ->
+        if (uris.size > AiImageStore.MAX_PER_MESSAGE - vm.pendingImages.value.size) {
+            scope.launch { snackbarHostState.showSnackbar(imageLimitText) }
+        }
+        vm.attachImages(uris)
+    }
 
     val voice = remember { VoiceInputController(context) }
     DisposableEffect(voice) { onDispose { voice.destroy() } }
@@ -473,6 +497,7 @@ fun AiChatScreen(
                                 when (message) {
                                     is ChatMessage.UserText -> MessageBubble(
                                         text = message.text,
+                                        images = message.images.map(vm::imageFile),
                                         timestamp = message.timestamp,
                                         fromUser = true,
                                         // Long-press → Edit reloads the sent text into the input field
@@ -496,7 +521,10 @@ fun AiChatScreen(
 
                                     is ChatMessage.Error -> ErrorBubble(
                                         text = message.text,
-                                        onRetry = if (message.retryText.isNotBlank() && !uiState.isThinking) {
+                                        onRetry = if (
+                                            (message.retryText.isNotBlank() || message.retryImages.isNotEmpty()) &&
+                                            !uiState.isThinking
+                                        ) {
                                             { vm.retry(message.id) }
                                         } else {
                                             null
@@ -569,6 +597,13 @@ fun AiChatScreen(
                     )
                 }
 
+                if (!uiState.apiKeyMissing && pendingImages.isNotEmpty()) {
+                    PendingImages(
+                        files = pendingImages.map { it to vm.imageFile(it) },
+                        onRemove = vm::removePendingImage,
+                    )
+                }
+
                 if (!uiState.apiKeyMissing) {
                     Row(
                         modifier = Modifier
@@ -594,6 +629,28 @@ fun AiChatScreen(
                                 }
                             },
                             shape = RoundedCornerShape(28.dp),
+                            // A screenshot often says what a sentence can't — which button, which
+                            // field. Attaching sits opposite the mic, inside the same pill.
+                            leadingIcon = {
+                                IconButton(
+                                    onClick = {
+                                        if (pendingImages.size >= AiImageStore.MAX_PER_MESSAGE) {
+                                            scope.launch { snackbarHostState.showSnackbar(imageLimitText) }
+                                        } else {
+                                            pickImages.launch(
+                                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                                            )
+                                        }
+                                    },
+                                    enabled = !uiState.isThinking,
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.AddPhotoAlternate,
+                                        contentDescription = stringResource(R.string.ai_attach_image),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            },
                             // The mic lives inside the pill, so the input row reads as one control
                             // with the send button beside it rather than three floating pieces.
                             trailingIcon = {
@@ -641,18 +698,12 @@ fun AiChatScreen(
                                 // Typing needs the room the expanded card is holding.
                                 .onFocusChanged { if (it.isFocused) headerExpanded = false }
                                 .then(if (voice.isListening) Modifier.voiceListeningGlow() else Modifier),
-                            maxLines = 4,
-                            // A chat's keyboard ends in send, not a newline nobody wants here.
+                            maxLines = 6,
+                            // Enter is a newline. What gets typed here is often several lines —
+                            // a URL, then what to fill in where — and a keyboard that sends on
+                            // Enter fires off half a request. Sending is the button's job.
                             keyboardOptions = KeyboardOptions(
                                 capitalization = KeyboardCapitalization.Sentences,
-                                imeAction = ImeAction.Send,
-                            ),
-                            keyboardActions = KeyboardActions(
-                                onSend = {
-                                    if (fieldValue.text.isNotBlank() && !uiState.isThinking) {
-                                        vm.sendMessage(fieldValue.text)
-                                    }
-                                },
                             ),
                         )
                         // While a turn runs, send becomes stop — aborting a bad answer has to
@@ -661,7 +712,7 @@ fun AiChatScreen(
                             onClick = {
                                 if (uiState.isThinking) vm.stop() else vm.sendMessage(fieldValue.text)
                             },
-                            enabled = uiState.isThinking || fieldValue.text.isNotBlank(),
+                            enabled = uiState.isThinking || fieldValue.text.isNotBlank() || pendingImages.isNotEmpty(),
                             modifier = Modifier.padding(bottom = 4.dp),
                         ) {
                             Icon(
@@ -1270,6 +1321,8 @@ private fun MessageBubble(
     /** The user stopped this reply part-way — say so instead of pretending it's complete. */
     stopped: Boolean = false,
     showTimestamp: Boolean = true,
+    /** Images the user attached, shown above the text. */
+    images: List<File> = emptyList(),
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -1320,9 +1373,27 @@ private fun MessageBubble(
                     ),
             ) {
                 Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                    if (images.isNotEmpty()) {
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.padding(bottom = if (text.isNotEmpty()) 8.dp else 0.dp),
+                        ) {
+                            images.forEach { file ->
+                                AsyncImage(
+                                    model = file,
+                                    contentDescription = stringResource(R.string.ai_attached_image),
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .size(if (images.size == 1) 200.dp else 96.dp)
+                                        .clip(RoundedCornerShape(14.dp)),
+                                )
+                            }
+                        }
+                    }
                     if (renderMarkdown) {
                         MarkdownText(markdown = text, style = MaterialTheme.typography.bodyLarge)
-                    } else {
+                    } else if (text.isNotEmpty()) {
                         Text(text = text, style = MaterialTheme.typography.bodyLarge)
                     }
                     Row(
@@ -1347,6 +1418,46 @@ private fun MessageBubble(
                 onCopy = { copyToClipboard(context, text) },
                 onEdit = onEdit,
             )
+        }
+    }
+}
+
+/** Images picked for the next message, each with a way to take it back out. */
+@Composable
+private fun PendingImages(
+    files: List<Pair<String, File>>,
+    onRemove: (String) -> Unit,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(start = 16.dp, end = 16.dp, top = 8.dp),
+    ) {
+        files.forEach { (name, file) ->
+            Box {
+                AsyncImage(
+                    model = file,
+                    contentDescription = stringResource(R.string.ai_attached_image),
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(72.dp)
+                        .clip(RoundedCornerShape(14.dp)),
+                )
+                FilledTonalIconButton(
+                    onClick = { onRemove(name) },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .size(28.dp),
+                ) {
+                    Icon(
+                        Icons.Outlined.Close,
+                        contentDescription = stringResource(R.string.ai_remove_image),
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
         }
     }
 }
@@ -1548,6 +1659,8 @@ private fun ThinkingBubble(step: AiChatOrchestrator.Progress?, modifier: Modifie
                         stringResource(R.string.ai_step_repairing, step.attempt)
                     is AiChatOrchestrator.Progress.Retrying ->
                         stringResource(R.string.ai_step_retrying, step.attempt, step.maxAttempts)
+                    is AiChatOrchestrator.Progress.WaitingForQuota ->
+                        stringResource(R.string.ai_step_waiting_quota, step.secondsLeft)
                     null -> null
                 }
                 if (stepText != null) {

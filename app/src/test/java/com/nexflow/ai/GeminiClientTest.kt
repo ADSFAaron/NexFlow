@@ -73,6 +73,46 @@ class GeminiClientTest {
     }
 
     @Test
+    fun `429 on a per-minute quota carries Google's retry delay`() {
+        val body = """
+            {"error": {"code": 429, "message": "You exceeded your current quota.", "status": "RESOURCE_EXHAUSTED",
+             "details": [
+               {"@type": "type.googleapis.com/google.rpc.QuotaFailure",
+                "violations": [{"quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",
+                                "quotaId": "GenerateRequestsPerMinutePerProjectPerModel-FreeTier",
+                                "quotaDimensions": {"location": "global", "model": "gemini-3.5-flash"},
+                                "quotaValue": "10"}]},
+               {"@type": "type.googleapis.com/google.rpc.Help", "links": []},
+               {"@type": "type.googleapis.com/google.rpc.RetryInfo", "retryDelay": "37.5s"}]}}
+        """.trimIndent()
+        val mapped = client.mapHttpError(429, body) as GeminiException.RateLimited
+        assertEquals(37_500L, mapped.retryAfterMillis)
+        assertEquals(false, mapped.daily)
+        assertEquals(false, mapped.noQuota)
+    }
+
+    @Test
+    fun `429 on a daily quota is told apart even when RetryInfo says seconds`() {
+        val body = """
+            {"error": {"code": 429, "message": "quota", "details": [
+               {"@type": "type.googleapis.com/google.rpc.QuotaFailure",
+                "violations": [{"quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier", "quotaValue": "250"}]},
+               {"@type": "type.googleapis.com/google.rpc.RetryInfo", "retryDelay": "1s"}]}}
+        """.trimIndent()
+        assertEquals(true, (client.mapHttpError(429, body) as GeminiException.RateLimited).daily)
+    }
+
+    @Test
+    fun `429 with a quota of zero means the model is not in the plan`() {
+        val body = """
+            {"error": {"code": 429, "message": "limit: 0", "details": [
+               {"@type": "type.googleapis.com/google.rpc.QuotaFailure",
+                "violations": [{"quotaId": "GenerateRequestsPerMinutePerProjectPerModel-FreeTier", "quotaValue": "0"}]}]}}
+        """.trimIndent()
+        assertEquals(true, (client.mapHttpError(429, body) as GeminiException.RateLimited).noQuota)
+    }
+
+    @Test
     fun `unparseable error body falls back to the status code`() {
         val mapped = client.mapHttpError(500, "<html>Internal error</html>")
         assertInstanceOf(GeminiException.Unavailable::class.java, mapped)
@@ -198,5 +238,19 @@ class GeminiClientTest {
     fun `usage metadata rides along on the chunk that carries it`() {
         val line = """data: {"candidates":[],"usageMetadata":{"totalTokenCount":1234}}"""
         assertEquals(1234, client.parseSseLine(line)?.usageMetadata?.totalTokenCount)
+    }
+
+    @Test
+    fun `usage metadata keeps the thinking, cache and per-modality counts`() {
+        val line = """data: {"candidates":[],"usageMetadata":{"promptTokenCount":5000,""" +
+            """"cachedContentTokenCount":4096,"candidatesTokenCount":80,"thoughtsTokenCount":320,""" +
+            """"totalTokenCount":5400,"promptTokensDetails":[{"modality":"TEXT","tokenCount":3800},""" +
+            """{"modality":"IMAGE","tokenCount":1200}]}}"""
+
+        val usage = client.parseSseLine(line)?.usageMetadata
+
+        assertEquals(4096, usage?.cachedContentTokenCount)
+        assertEquals(320, usage?.thoughtsTokenCount)
+        assertEquals(listOf("TEXT", "IMAGE"), usage?.promptTokensDetails?.map { it.modality })
     }
 }
