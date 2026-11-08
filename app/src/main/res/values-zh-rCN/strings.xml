@@ -160,7 +160,7 @@
     <string name="settings_ai_custom_model_error">请输入模型名称。</string>
     <string name="action_retry">重试</string>
     <string name="ai_chat_title">AI 助手</string>
-    <string name="ai_greeting" formatted="false">描述您想要的自动化 — 例如:"插上耳机时,把媒体音量调到 80% 并打开 Spotify。"</string>
+    <string name="ai_greeting">想让手机帮您做什么？</string>
     <string name="ai_input_hint">描述您的自动化…</string>
     <string name="ai_send">发送</string>
     <string name="ai_stop">停止</string>
@@ -176,7 +176,6 @@
     <plurals name="ai_tokens_used">
         <item quantity="other">已用 %1$d tokens</item>
     </plurals>
-    <string name="ai_suggestions_dismiss">隐藏建议</string>
     <string name="ai_retry">重试</string>
     <string name="ai_key_get">免费获取 API 密钥</string>
     <string name="ai_thinking">思考中…</string>

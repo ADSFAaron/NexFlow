@@ -160,7 +160,7 @@
     <string name="settings_ai_custom_model_error">モデル名を入力してください。</string>
     <string name="action_retry">再試行</string>
     <string name="ai_chat_title">AI アシスタント</string>
-    <string name="ai_greeting" formatted="false">作りたい自動化を説明してください — 例:「イヤホンを接続したら、メディア音量を 80% にして Spotify を開く」</string>
+    <string name="ai_greeting">スマホに何を任せますか？</string>
     <string name="ai_input_hint">自動化の内容を入力…</string>
     <string name="ai_send">送信</string>
     <string name="ai_stop">停止</string>
@@ -176,7 +176,6 @@
     <plurals name="ai_tokens_used">
         <item quantity="other">%1$d トークン使用</item>
     </plurals>
-    <string name="ai_suggestions_dismiss">候補を隠す</string>
     <string name="ai_retry">再試行</string>
     <string name="ai_key_get">無料で API キーを取得</string>
     <string name="ai_thinking">考え中…</string>

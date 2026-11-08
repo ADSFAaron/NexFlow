@@ -18,11 +18,11 @@
 
 「其他服務（OpenAI 相容）」只在 debug 版出現，不要寫進文案。
 
-## 繁體中文（zh-TW）— 231 字元
+## 繁體中文（zh-TW）— 232 字元
 
 ```
 【AI 助手看得懂圖片】
-輸入框左側的圖片鈕，每則訊息最多附 4 張。說不清楚是哪個按鈕時，一張截圖就夠了。圖片會和訊息一起傳給 Gemini。
+輸入框左側的「+」鈕，每則訊息最多附 4 張。說不清楚是哪個按鈕時，一張截圖就夠了。圖片會和訊息一起傳給 Gemini。
 
 【小工具顯示你挑的流程】
 每個總覽小工具都能選擇「自動」或自己挑流程，最多 12 個。
@@ -38,11 +38,11 @@
 
 ---
 
-## English（en-US）— 497 字元
+## English（en-US）— 493 字元
 
 ```
 AI ASSISTANT READS IMAGES
-Attach up to 4 per message with the image button. A screenshot beats describing a button. Images go to Gemini with your message.
+Attach up to 4 per message with the + button. A screenshot beats describing a button. Images go to Gemini with your message.
 
 PICK WHAT A WIDGET SHOWS
 Each overview widget can stay automatic or show flows you choose, up to 12.
@@ -58,11 +58,11 @@ CHANGED
 
 ---
 
-## 日本語（ja-JP）— 321 字元
+## 日本語（ja-JP）— 322 字元
 
 ```
 【AI アシスタントが画像を理解】
-入力欄の画像ボタンから、1 メッセージにつき 4 枚まで添付できます。どのボタンか説明しづらいときはスクリーンショットをどうぞ。画像はメッセージと一緒に Gemini へ送信されます。
+入力欄の「+」ボタンから、1 メッセージにつき 4 枚まで添付できます。どのボタンか説明しづらいときはスクリーンショットをどうぞ。画像はメッセージと一緒に Gemini へ送信されます。
 
 【ウィジェットの表示を選べる】
 概要ウィジェットごとに「自動」か、自分で選んだフロー（最大 12 個）を表示できます。
@@ -78,11 +78,11 @@ CHANGED
 
 ---
 
-## 简体中文（zh-CN）— 233 字元
+## 简体中文（zh-CN）— 234 字元
 
 ```
 【AI 助手看得懂图片】
-输入框左侧的图片按钮，每条消息最多附 4 张。说不清是哪个按钮时，一张截图就够了。图片会和消息一起发送给 Gemini。
+输入框左侧的「+」按钮，每条消息最多附 4 张。说不清是哪个按钮时，一张截图就够了。图片会和消息一起发送给 Gemini。
 
 【小工具显示你挑的流程】
 每个总览小工具都能选择「自动」或自己挑流程，最多 12 个。

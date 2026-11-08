@@ -164,7 +164,7 @@
     <string name="settings_ai_custom_url_hint" translatable="false">https://api.openai.com/v1</string>
     <string name="action_retry">Retry</string>
     <string name="ai_chat_title">AI assistant</string>
-    <string name="ai_greeting" formatted="false">Describe the automation you want — for example: \"When I plug in headphones, set media volume to 80% and open Spotify.\"</string>
+    <string name="ai_greeting">What should your phone do for you?</string>
     <string name="ai_input_hint">Describe your automation…</string>
     <string name="ai_send">Send</string>
     <string name="ai_stop">Stop</string>
@@ -181,7 +181,6 @@
         <item quantity="one">%1$d token used</item>
         <item quantity="other">%1$d tokens used</item>
     </plurals>
-    <string name="ai_suggestions_dismiss">Hide suggestions</string>
     <string name="ai_retry">Retry</string>
     <string name="ai_key_get">Get a free API key</string>
     <string name="ai_thinking">Thinking…</string>

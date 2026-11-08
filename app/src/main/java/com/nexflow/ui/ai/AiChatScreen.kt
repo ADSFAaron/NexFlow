@@ -32,8 +32,12 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
@@ -43,8 +47,11 @@ import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.interaction.DragInteraction
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.FlowRow
@@ -63,19 +70,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.AddComment
-import androidx.compose.material.icons.outlined.AddPhotoAlternate
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ArrowDownward
+import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ContentCopy
@@ -97,6 +106,7 @@ import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
@@ -110,7 +120,6 @@ import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -134,11 +143,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -148,16 +159,20 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -308,9 +323,23 @@ fun AiChatScreen(
     // soon as the user engages with the conversation — otherwise it would eat half the screen
     // the moment the keyboard opens.
     var headerExpanded by rememberSaveable { mutableStateOf(true) }
-    var suggestionsDismissed by rememberSaveable { mutableStateOf(false) }
 
-    val itemCount = uiState.messages.size + if (uiState.isThinking) 1 else 0
+    // Openers, for the blank page. They stop once the user has said something — suggestions
+    // help someone who is exploring and annoy someone who already knows what they want — so
+    // they need no dismiss button: the first message is what ends them. A new chat shows them
+    // under the greeting; a flow-edit chat opens with the assistant's intro, so there they
+    // follow it as replies to it.
+    val suggestions = stringArrayResource(
+        if (editingFlow != null) R.array.ai_suggestions_edit else R.array.ai_suggestions_new,
+    ).toList()
+    val showSuggestions = !uiState.apiKeyMissing &&
+        !uiState.isThinking &&
+        uiState.messages.none { it is ChatMessage.UserText }
+    val showQuickReplies = showSuggestions && uiState.messages.isNotEmpty()
+
+    val itemCount = uiState.messages.size +
+        (if (uiState.isThinking) 1 else 0) +
+        (if (showQuickReplies) 1 else 0)
 
     // Following the conversation means staying at the bottom; reading back through it means
     // being left alone. `canScrollForward` is false exactly when the last item is fully shown.
@@ -459,7 +488,11 @@ fun AiChatScreen(
                             modifier = Modifier.fillMaxSize(),
                         )
 
-                        uiState.messages.isEmpty() -> GreetingContent(modifier = Modifier.fillMaxSize())
+                        uiState.messages.isEmpty() -> GreetingContent(
+                            suggestions = if (showSuggestions) suggestions else emptyList(),
+                            onPick = { vm.sendMessage(it) },
+                            modifier = Modifier.fillMaxSize(),
+                        )
 
                         else -> LazyColumn(
                             state = listState,
@@ -542,6 +575,20 @@ fun AiChatScreen(
                                     )
                                 }
                             }
+                            if (showQuickReplies) {
+                                item(key = "quick-replies") {
+                                    QuickReplies(
+                                        suggestions = suggestions,
+                                        onPick = { vm.sendMessage(it) },
+                                        modifier = Modifier.animateItem(
+                                            fadeInSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
+                                            placementSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
+                                            // Leaves at once: the user's message takes its place.
+                                            fadeOutSpec = null,
+                                        ),
+                                    )
+                                }
+                            }
                             // While a turn runs the tail of the list is either the answer
                             // forming in place, or — before the first token — the indicator.
                             if (uiState.isThinking) {
@@ -576,153 +623,201 @@ fun AiChatScreen(
                     )
                 }
 
-                // Openers, for the blank page. They stop once the user has said something —
-                // suggestions help someone who is exploring and annoy someone who already
-                // knows what they want — and the dismiss button ends them for good.
-                if (!uiState.apiKeyMissing &&
-                    !suggestionsDismissed &&
-                    !uiState.isThinking &&
-                    uiState.messages.none { it is ChatMessage.UserText }
-                ) {
-                    SuggestionChips(
-                        suggestions = stringArrayResource(
-                            if (editingFlow != null) {
-                                R.array.ai_suggestions_edit
-                            } else {
-                                R.array.ai_suggestions_new
-                            },
-                        ).toList(),
-                        onPick = { vm.sendMessage(it) },
-                        onDismiss = { suggestionsDismissed = true },
-                    )
-                }
-
-                if (!uiState.apiKeyMissing && pendingImages.isNotEmpty()) {
-                    PendingImages(
-                        files = pendingImages.map { it to vm.imageFile(it) },
-                        onRemove = vm::removePendingImage,
-                    )
-                }
-
                 if (!uiState.apiKeyMissing) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.Bottom,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        // Expressive pill-shaped input, matching the M3 conversation pattern.
-                        // While dictating, a sweeping Gemini-gradient border + shimmering
-                        // placeholder signal "listening" (per the Gemini visual design language).
-                        TextField(
-                            value = fieldValue,
-                            onValueChange = {
-                                fieldValue = it
-                                vm.updateDraft(it.text)
-                            },
+                    ChatInputBar(
+                        value = fieldValue,
+                        onValueChange = {
+                            fieldValue = it
+                            vm.updateDraft(it.text)
+                        },
+                        pendingImages = pendingImages.map { it to vm.imageFile(it) },
+                        onRemoveImage = vm::removePendingImage,
+                        isThinking = uiState.isThinking,
+                        isListening = voice.isListening,
+                        canSend = fieldValue.text.isNotBlank() || pendingImages.isNotEmpty(),
+                        onAttach = {
+                            if (pendingImages.size >= AiImageStore.MAX_PER_MESSAGE) {
+                                scope.launch { snackbarHostState.showSnackbar(imageLimitText) }
+                            } else {
+                                pickImages.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                                )
+                            }
+                        },
+                        onMic = {
+                            if (voice.isListening) {
+                                voice.stop()
+                            } else if (
+                                ContextCompat.checkSelfPermission(
+                                    context,
+                                    Manifest.permission.RECORD_AUDIO,
+                                ) == PackageManager.PERMISSION_GRANTED
+                            ) {
+                                voiceBaseline = fieldValue.text
+                                voice.start()
+                            } else {
+                                micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                            }
+                        },
+                        onSendOrStop = {
+                            if (uiState.isThinking) vm.stop() else vm.sendMessage(fieldValue.text)
+                        },
+                        // Typing needs the room the expanded card is holding.
+                        onFocused = { headerExpanded = false },
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The composer: one rounded surface that holds everything about the next message — what's
+ * attached, what's typed, and the controls to add to it or send it.
+ *
+ * Earlier this was a filled text field with icons tucked into its slots and the send button
+ * floating beside it, with attachments in a strip of their own above. Each piece was fine, but
+ * together they read as parts laid next to each other rather than one control. Here the surface
+ * *is* the control: attachments sit inside it above the text, and send lives in its corner.
+ *
+ * Send only appears once there is something to send. An always-present, greyed-out button is
+ * a control that does nothing most of the time; letting it arrive with the first character is
+ * the cue that the message is ready. While a turn runs the same slot is stop — aborting a bad
+ * answer has to be the most obvious control on screen, not something buried in a menu.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+internal fun ChatInputBar(
+    value: TextFieldValue,
+    onValueChange: (TextFieldValue) -> Unit,
+    pendingImages: List<Pair<String, File>>,
+    onRemoveImage: (String) -> Unit,
+    isThinking: Boolean,
+    isListening: Boolean,
+    canSend: Boolean,
+    onAttach: () -> Unit,
+    onMic: () -> Unit,
+    onSendOrStop: () -> Unit,
+    onFocused: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val interactionSource = remember { MutableInteractionSource() }
+    // Text field look without the text field's container: the surface below is the container.
+    val fieldColors = TextFieldDefaults.colors(
+        focusedContainerColor = Color.Transparent,
+        unfocusedContainerColor = Color.Transparent,
+        disabledContainerColor = Color.Transparent,
+        focusedIndicatorColor = Color.Transparent,
+        unfocusedIndicatorColor = Color.Transparent,
+        disabledIndicatorColor = Color.Transparent,
+    )
+    // Through the button's colours rather than the icon's tint, so the disabled state (while a
+    // turn runs) still dims them — an explicit tint would override that and leave them looking live.
+    val quietIconColors = IconButtonDefaults.iconButtonColors(contentColor = colorScheme.onSurfaceVariant)
+    Surface(
+        shape = RoundedCornerShape(InputBarCorner),
+        color = colorScheme.surfaceContainerHigh,
+        shadowElevation = 2.dp,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            // While dictating, a sweeping Gemini-gradient border + shimmering placeholder signal
+            // "listening" (per the Gemini visual design language).
+            .then(if (isListening) Modifier.voiceListeningGlow(InputBarCorner) else Modifier),
+    ) {
+        Column {
+            if (pendingImages.isNotEmpty()) {
+                PendingImages(
+                    files = pendingImages,
+                    onRemove = onRemoveImage,
+                    modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 12.dp),
+                )
+            }
+            val textStyle = MaterialTheme.typography.bodyLarge
+            ComposerLayout(lineHeight = textStyle.lineHeight, modifier = Modifier.padding(4.dp)) {
+                // A screenshot often says what a sentence can't — which button, which field.
+                IconButton(onClick = onAttach, enabled = !isThinking, colors = quietIconColors) {
+                    Icon(
+                        Icons.Outlined.Add,
+                        contentDescription = stringResource(R.string.ai_attach_image),
+                    )
+                }
+                // Official pattern for a custom-container field: BasicTextField + the M3
+                // decoration box, with text colour and cursor passed to the BasicTextField.
+                // It stays the same child of the same layout in both arrangements — moving it
+                // between a Row and a Column would recreate it and drop focus and the keyboard.
+                BasicTextField(
+                    value = value,
+                    onValueChange = onValueChange,
+                    interactionSource = interactionSource,
+                    textStyle = textStyle.copy(color = colorScheme.onSurface),
+                    cursorBrush = SolidColor(colorScheme.primary),
+                    maxLines = 6,
+                    // Enter is a newline. What gets typed here is often several lines — a URL,
+                    // then what to fill in where — and a keyboard that sends on Enter fires off
+                    // half a request. Sending is the button's job.
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                    ),
+                    modifier = Modifier.onFocusChanged { if (it.isFocused) onFocused() },
+                    decorationBox = { innerTextField ->
+                        TextFieldDefaults.DecorationBox(
+                            value = value.text,
+                            innerTextField = innerTextField,
+                            enabled = true,
+                            singleLine = false,
+                            visualTransformation = VisualTransformation.None,
+                            interactionSource = interactionSource,
                             placeholder = {
-                                if (voice.isListening) {
+                                if (isListening) {
                                     Text(stringResource(R.string.ai_listening), style = voiceShimmerTextStyle())
                                 } else {
                                     Text(stringResource(R.string.ai_input_hint))
                                 }
                             },
-                            shape = RoundedCornerShape(28.dp),
-                            // A screenshot often says what a sentence can't — which button, which
-                            // field. Attaching sits opposite the mic, inside the same pill.
-                            leadingIcon = {
-                                IconButton(
-                                    onClick = {
-                                        if (pendingImages.size >= AiImageStore.MAX_PER_MESSAGE) {
-                                            scope.launch { snackbarHostState.showSnackbar(imageLimitText) }
-                                        } else {
-                                            pickImages.launch(
-                                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-                                            )
-                                        }
-                                    },
-                                    enabled = !uiState.isThinking,
-                                ) {
-                                    Icon(
-                                        Icons.Outlined.AddPhotoAlternate,
-                                        contentDescription = stringResource(R.string.ai_attach_image),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                            },
-                            // The mic lives inside the pill, so the input row reads as one control
-                            // with the send button beside it rather than three floating pieces.
-                            trailingIcon = {
-                                IconButton(
-                                    onClick = {
-                                        if (voice.isListening) {
-                                            voice.stop()
-                                        } else if (
-                                            ContextCompat.checkSelfPermission(
-                                                context,
-                                                Manifest.permission.RECORD_AUDIO,
-                                            ) == PackageManager.PERMISSION_GRANTED
-                                        ) {
-                                            voiceBaseline = fieldValue.text
-                                            voice.start()
-                                        } else {
-                                            micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                                        }
-                                    },
-                                    enabled = !uiState.isThinking,
-                                ) {
-                                    Icon(
-                                        if (voice.isListening) Icons.Outlined.Stop else Icons.Outlined.Mic,
-                                        contentDescription = stringResource(
-                                            if (voice.isListening) R.string.ai_mic_stop_content_desc
-                                            else R.string.ai_mic_content_desc,
-                                        ),
-                                        tint = if (voice.isListening) {
-                                            MaterialTheme.colorScheme.primary
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurfaceVariant
-                                        },
-                                    )
-                                }
-                            },
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent,
-                                disabledIndicatorColor = Color.Transparent,
-                            ),
-                            modifier = Modifier
-                                .weight(1f)
-                                // Typing needs the room the expanded card is holding.
-                                .onFocusChanged { if (it.isFocused) headerExpanded = false }
-                                .then(if (voice.isListening) Modifier.voiceListeningGlow() else Modifier),
-                            maxLines = 6,
-                            // Enter is a newline. What gets typed here is often several lines —
-                            // a URL, then what to fill in where — and a keyboard that sends on
-                            // Enter fires off half a request. Sending is the button's job.
-                            keyboardOptions = KeyboardOptions(
-                                capitalization = KeyboardCapitalization.Sentences,
-                            ),
+                            colors = fieldColors,
+                            // 12dp above and below one 24sp line = the 48dp of the buttons
+                            // beside it, so a one-line draft sits level with them.
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = FieldVerticalPadding),
+                            container = {},
                         )
-                        // While a turn runs, send becomes stop — aborting a bad answer has to
-                        // be the most obvious control on screen, not something buried in a menu.
-                        FilledIconButton(
-                            onClick = {
-                                if (uiState.isThinking) vm.stop() else vm.sendMessage(fieldValue.text)
-                            },
-                            enabled = uiState.isThinking || fieldValue.text.isNotBlank() || pendingImages.isNotEmpty(),
-                            modifier = Modifier.padding(bottom = 4.dp),
-                        ) {
+                    },
+                )
+                IconButton(
+                    onClick = onMic,
+                    enabled = !isThinking,
+                    colors = if (isListening) {
+                        IconButtonDefaults.iconButtonColors(contentColor = colorScheme.primary)
+                    } else {
+                        quietIconColors
+                    },
+                ) {
+                    Icon(
+                        if (isListening) Icons.Outlined.Stop else Icons.Outlined.Mic,
+                        contentDescription = stringResource(
+                            if (isListening) R.string.ai_mic_stop_content_desc else R.string.ai_mic_content_desc,
+                        ),
+                    )
+                }
+                // Always one child, even while the button is hidden, so the layout below can
+                // count on four. The call is qualified because the enclosing Column's scope would
+                // otherwise pick ColumnScope.AnimatedVisibility, which can't be used from here.
+                Box {
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = isThinking || canSend,
+                        enter = scaleIn(MaterialTheme.motionScheme.fastSpatialSpec()) +
+                            expandHorizontally(MaterialTheme.motionScheme.fastSpatialSpec()) +
+                            fadeIn(MaterialTheme.motionScheme.fastEffectsSpec()),
+                        exit = scaleOut(MaterialTheme.motionScheme.fastSpatialSpec()) +
+                            shrinkHorizontally(MaterialTheme.motionScheme.fastSpatialSpec()) +
+                            fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()),
+                    ) {
+                        FilledIconButton(onClick = onSendOrStop) {
                             Icon(
-                                if (uiState.isThinking) {
-                                    Icons.Outlined.Stop
-                                } else {
-                                    Icons.AutoMirrored.Outlined.Send
-                                },
+                                if (isThinking) Icons.Outlined.Stop else Icons.Outlined.ArrowUpward,
                                 contentDescription = stringResource(
-                                    if (uiState.isThinking) R.string.ai_stop else R.string.ai_send,
+                                    if (isThinking) R.string.ai_stop else R.string.ai_send,
                                 ),
                             )
                         }
@@ -732,6 +827,88 @@ fun AiChatScreen(
         }
     }
 }
+
+/**
+ * Places the composer's four children — leading button, text field, mic, send — in one of two
+ * arrangements without ever changing which child is which. (Moving the field between a Row and
+ * a Column would recreate it and drop focus and the keyboard.)
+ *
+ * Compact is one row, everything centred on the row's height. A draft that would wrap in that
+ * row gets the full width instead, with the buttons in a row beneath it: squeezed between + on one side and mic and send on the other, a long request wraps every
+ * few words into a narrow column that is hard to read back before sending.
+ *
+ * Which arrangement is decided here, from the field's height *at the compact width*, rather
+ * than from a line count reported back after layout. Both directions use that same measure, so
+ * the switch happens at the same point whether the draft is growing or shrinking — judging by
+ * the line count in the current arrangement would oscillate, since text that wraps at the
+ * compact width fits on one line at the full width. And it costs no extra frame: the layout
+ * that shows the draft is already the right one.
+ */
+@Composable
+private fun ComposerLayout(
+    lineHeight: TextUnit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Layout(content = content, modifier = modifier) { measurables, constraints ->
+        check(measurables.size == 4) { "ComposerLayout expects exactly four children" }
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val leading = measurables[0].measure(loose)
+        val mic = measurables[2].measure(loose)
+        val send = measurables[3].measure(loose)
+        val width = constraints.maxWidth
+        val buttonsHeight = maxOf(leading.height, mic.height, send.height)
+
+        val compactFieldWidth = (width - leading.width - mic.width - send.width).coerceAtLeast(0)
+        // Half a line of slack, so rounding never mistakes one line for two.
+        val oneLine = lineHeight.toPx() + FieldVerticalPadding.toPx() * 2
+        val expanded = measurables[1].minIntrinsicHeight(compactFieldWidth) > oneLine + lineHeight.toPx() / 2
+
+        // Expanded, the field is inset so its text starts where the + glyph does.
+        val inset = ExpandedFieldInset.roundToPx()
+        val fieldWidth = if (expanded) width - inset * 2 else compactFieldWidth
+        val field = measurables[1].measure(
+            Constraints(minWidth = fieldWidth, maxWidth = fieldWidth, maxHeight = constraints.maxHeight),
+        )
+        if (expanded) {
+            // The button row tucks into the field's bottom padding rather than stacking below it.
+            val rowTop = field.height - FieldVerticalPadding.roundToPx() / 2
+            val height = rowTop + buttonsHeight
+            layout(width, height) {
+                field.placeRelative(inset, 0)
+                fun yOf(childHeight: Int) = rowTop + (buttonsHeight - childHeight) / 2
+                leading.placeRelative(0, yOf(leading.height))
+                mic.placeRelative(width - send.width - mic.width, yOf(mic.height))
+                send.placeRelative(width - send.width, yOf(send.height))
+            }
+        } else {
+            // Compact only ever holds one line (more would have expanded), so centring is right
+            // — and it matters, because one line isn't always the 48dp of the buttons: on some
+            // phones the CJK system font sets a line a few dp taller than Latin text does.
+            // Bottom-aligned, that difference all lands above the buttons and they sit visibly
+            // low beside a Chinese placeholder.
+            val height = maxOf(buttonsHeight, field.height)
+            layout(width, height) {
+                fun yOf(childHeight: Int) = (height - childHeight) / 2
+                leading.placeRelative(0, yOf(leading.height))
+                field.placeRelative(leading.width, yOf(field.height))
+                mic.placeRelative(width - send.width - mic.width, yOf(mic.height))
+                send.placeRelative(width - send.width, yOf(send.height))
+            }
+        }
+    }
+}
+
+private val FieldVerticalPadding = 12.dp
+
+/**
+ * Field's own 4dp start padding + this = 16dp: where the + glyph's stroke starts (its 24dp
+ * icon sits 12dp into the 48dp button, and the glyph is drawn 4–5dp inside the icon).
+ */
+private val ExpandedFieldInset = 12.dp
+
+/** Corner of the composer: half its one-line height, so an empty composer is a true pill. */
+private val InputBarCorner = 28.dp
 
 /**
  * Sweeping Gemini-gradient border around the input pill while dictation is active —
@@ -793,12 +970,29 @@ private fun voiceShimmerTextStyle(): TextStyle {
 
 private const val SHIMMER_WIDTH_PX = 600f
 
+/**
+ * The blank page of a new chat: a short, large greeting that hands the turn to the user, and
+ * under it a few things they could ask — each one sends as-is when tapped.
+ *
+ * The greeting is deliberately a headline rather than a paragraph of instructions; the
+ * suggestions below it are the examples, and they can be acted on instead of only read.
+ * Scrolls when the keyboard leaves too little room, centred otherwise.
+ */
 @Composable
-private fun GreetingContent(modifier: Modifier = Modifier) {
-    Box(modifier = modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+internal fun GreetingContent(
+    suggestions: List<String>,
+    onPick: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(32.dp),
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .heightIn(min = maxHeight)
+                .padding(horizontal = 24.dp, vertical = 32.dp),
         ) {
             Icon(
                 Icons.Outlined.AutoAwesome,
@@ -811,9 +1005,32 @@ private fun GreetingContent(modifier: Modifier = Modifier) {
             Spacer(Modifier.height(16.dp))
             Text(
                 text = stringResource(R.string.ai_greeting),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.headlineSmall,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.semantics { heading() },
             )
+            if (suggestions.isNotEmpty()) {
+                Spacer(Modifier.height(32.dp))
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.widthIn(max = 480.dp),
+                ) {
+                    suggestions.forEach { suggestion ->
+                        Surface(
+                            onClick = { onPick(suggestion) },
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainer,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                text = suggestion,
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -1159,39 +1376,24 @@ private fun bubbleMaxWidth(): Dp = 340.dp * LocalDensity.current.fontScale
 private fun bubbleGutter(): Dp = (56.dp / LocalDensity.current.fontScale).coerceAtLeast(28.dp)
 
 /**
- * Tappable openers above the input. Horizontally scrollable rather than wrapped, so a long
- * suggestion never pushes the input row off a small screen.
+ * Suggested replies to the assistant's opening message in a flow-edit chat, wrapped under it
+ * the way quick replies sit under a message — part of the conversation, not a strip bolted
+ * onto the input. Tapping one sends it.
  */
 @Composable
-private fun SuggestionChips(
+internal fun QuickReplies(
     suggestions: List<String>,
     onPick: (String) -> Unit,
-    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth(),
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier.fillMaxWidth(),
     ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier
-                .weight(1f)
-                .horizontalScroll(rememberScrollState())
-                .padding(start = 16.dp),
-        ) {
-            suggestions.forEach { suggestion ->
-                SuggestionChip(
-                    onClick = { onPick(suggestion) },
-                    label = { Text(suggestion) },
-                )
-            }
-        }
-        IconButton(onClick = onDismiss) {
-            Icon(
-                Icons.Outlined.Close,
-                contentDescription = stringResource(R.string.ai_suggestions_dismiss),
-                modifier = Modifier.size(18.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        suggestions.forEach { suggestion ->
+            SuggestionChip(
+                onClick = { onPick(suggestion) },
+                label = { Text(suggestion) },
             )
         }
     }
@@ -1427,13 +1629,13 @@ private fun MessageBubble(
 private fun PendingImages(
     files: List<Pair<String, File>>,
     onRemove: (String) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(start = 16.dp, end = 16.dp, top = 8.dp),
+            .horizontalScroll(rememberScrollState()),
     ) {
         files.forEach { (name, file) ->
             Box {
