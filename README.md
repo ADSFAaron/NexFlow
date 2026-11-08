@@ -191,8 +191,8 @@ flowchart LR
 | 項目 | 版本 |
 |------|------|
 | Kotlin | 2.4.10（KSP 2.3.11，無 kapt） |
-| AGP / Gradle | 9.3.1 / 9.7.0 |
-| UI | Jetpack Compose（BOM 2026.08.00）+ Material 3 1.5.0-alpha26（含 Expressive API） |
+| AGP / Gradle | 9.4.0 / 9.7.0 |
+| UI | Jetpack Compose（BOM 2026.08.00）+ Material 3 1.5.0-rc01（含 Expressive API） |
 | DI | Hilt 2.60.1 |
 | 資料庫 | Room 2.8.4 |
 | 網路 | Ktor 3.5.2、kotlinx.serialization 1.11.0 |

@@ -133,6 +133,7 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
+import androidx.compose.material3.rememberSliderState
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -154,6 +155,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -1797,11 +1799,10 @@ internal fun ConfigDialog(
                                             color = MaterialTheme.colorScheme.primary,
                                         )
                                     }
-                                    Slider(
+                                    ConfigSlider(
                                         value = current,
                                         onValueChange = { values[field.key] = it.toInt().toString() },
                                         valueRange = field.min.toFloat()..field.max.toFloat(),
-                                        steps = 0,
                                     )
                                     // What the number lands on here, for a value whose meaning
                                     // depends on the device rather than on the flow.
@@ -2400,7 +2401,7 @@ internal fun ConfigDialog(
                                             ) { Text(udef.displayLabel) }
                                         }
                                     }
-                                    Slider(
+                                    ConfigSlider(
                                         value = current,
                                         onValueChange = {
                                             val intVal = it.toInt().toString()
@@ -2408,7 +2409,6 @@ internal fun ConfigDialog(
                                             inputText = intVal
                                         },
                                         valueRange = unitDef.min.toFloat()..unitDef.max.toFloat(),
-                                        steps = 0,
                                     )
                                 }
                             }
@@ -3108,4 +3108,35 @@ private fun EditFlowDialog(
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
         },
     )
+}
+
+/**
+ * A slider over a config value that lives in the field map rather than in the slider.
+ *
+ * Material3 1.5 deprecates the `Slider(value, onValueChange)` overload for one that takes a
+ * [androidx.compose.material3.SliderState], which holds its own value. Here the map is the source
+ * of truth and other controls write to it too — the number field beside the duration slider, a
+ * unit switch that resets it — so the state is brought in line with [value] on every
+ * composition, exactly as the deprecated overload did internally. A state's track range is fixed
+ * when it is created, so it is keyed on [valueRange]: switching seconds to minutes builds a new one.
+ */
+@Composable
+internal fun ConfigSlider(
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    valueRange: ClosedFloatingPointRange<Float>,
+    modifier: Modifier = Modifier,
+) {
+    key(valueRange) {
+        val state = rememberSliderState(value = value, trackRange = valueRange)
+        state.value = value
+        Slider(
+            state = state,
+            onValueChange = {
+                state.value = it
+                onValueChange(it)
+            },
+            modifier = modifier,
+        )
+    }
 }
