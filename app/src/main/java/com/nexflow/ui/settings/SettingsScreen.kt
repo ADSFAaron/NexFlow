@@ -28,14 +28,8 @@ import android.os.Process
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -49,15 +43,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Autorenew
 import androidx.compose.material.icons.outlined.Campaign
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Hub
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Language
-import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Troubleshoot
 import androidx.compose.material.icons.outlined.Visibility
@@ -65,7 +56,6 @@ import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -78,10 +68,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -94,7 +82,6 @@ import androidx.compose.runtime.setValue
 import com.nexflow.prefs.LogRetentionOption
 import com.nexflow.prefs.LogRetentionPrefs
 import kotlinx.coroutines.launch
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -109,15 +96,35 @@ import androidx.compose.ui.unit.dp
 import com.nexflow.BuildConfig
 import com.nexflow.R
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.nexflow.prefs.AiPrefs
 import com.nexflow.prefs.AiProvider
 import com.nexflow.prefs.AutoStartPrefs
 import com.nexflow.prefs.DetailedLogPrefs
 import com.nexflow.prefs.ExecutionFeedbackPrefs
-import com.nexflow.ui.common.PermissionStatusIcon
 import com.nexflow.ui.flowimport.ImportReviewDialog
 import com.nexflow.ui.flowimport.ImportViewModel
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material.icons.outlined.AccessibilityNew
+import androidx.compose.material.icons.outlined.BrightnessMedium
+import androidx.compose.material.icons.outlined.DoNotDisturbOn
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material.icons.outlined.Terminal
+import androidx.compose.material3.ListItemShapes
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.nexflow.ui.common.SettingsDefaults
+import com.nexflow.ui.common.SettingsGroup
+import com.nexflow.ui.common.SettingsItem
+import com.nexflow.ui.common.SettingsSwitchItem
+import com.nexflow.ui.common.SettingsTopAppBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -147,76 +154,44 @@ fun SettingsScreen(
     // does (and consent) before sending the user to enable it.
     var showAccessibilityDisclosure by remember { mutableStateOf(false) }
     val currentLanguage = remember { AppLanguage.current() }
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
-    val notifGranted = remember {
-        mutableStateOf(
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.POST_NOTIFICATIONS,
-                ) == PackageManager.PERMISSION_GRANTED
-            } else {
-                true
-            },
-        )
+    // Every permission is re-read on resume, not only when one of our own launchers returns:
+    // the user can just as well revoke one in system settings and come back through Recents,
+    // and a row that still says "granted" then is worse than no row at all.
+    var notifGranted by remember { mutableStateOf(context.notificationsGranted()) }
+    var notifListenerGranted by remember { mutableStateOf(context.notificationListenerGranted()) }
+    var accessibilityGranted by remember { mutableStateOf(context.accessibilityGranted()) }
+    var writeSettingsGranted by remember { mutableStateOf(Settings.System.canWrite(context)) }
+    val nm = remember { context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager }
+    var dndGranted by remember { mutableStateOf(nm.isNotificationPolicyAccessGranted) }
+    // Granted from a computer while the app is open, so it is worth re-reading too.
+    var hasWriteSecure by remember { mutableStateOf(context.writeSecureSettingsGranted()) }
+    fun refreshPermissions() {
+        notifGranted = context.notificationsGranted()
+        notifListenerGranted = context.notificationListenerGranted()
+        accessibilityGranted = context.accessibilityGranted()
+        writeSettingsGranted = Settings.System.canWrite(context)
+        dndGranted = nm.isNotificationPolicyAccessGranted
+        hasWriteSecure = context.writeSecureSettingsGranted()
     }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) refreshPermissions()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     val notifPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
-    ) { granted -> notifGranted.value = granted }
-
-    val writeSettingsGranted = remember { mutableStateOf(Settings.System.canWrite(context)) }
-    val writeSettingsLauncher = rememberLauncherForActivityResult(
+    ) { granted -> notifGranted = granted }
+    // For everything that is granted on a system screen: come back, look again.
+    val systemSettingsLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
-    ) { writeSettingsGranted.value = Settings.System.canWrite(context) }
-
-    val nm = remember { context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager }
-    val dndGranted = remember { mutableStateOf(nm.isNotificationPolicyAccessGranted) }
-    val dndLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult(),
-    ) { dndGranted.value = nm.isNotificationPolicyAccessGranted }
-
-    val accessibilityGranted = remember {
-        mutableStateOf(
-            Settings.Secure.getString(
-                context.contentResolver,
-                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
-            )?.contains(context.packageName) ?: false,
-        )
-    }
-    val accessibilityLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult(),
-    ) {
-        accessibilityGranted.value = Settings.Secure.getString(
-            context.contentResolver,
-            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
-        )?.contains(context.packageName) ?: false
-    }
-
-    val notifListenerGranted = remember {
-        mutableStateOf(
-            Settings.Secure.getString(
-                context.contentResolver,
-                "enabled_notification_listeners",
-            )?.contains(context.packageName) ?: false,
-        )
-    }
-    val notifListenerLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult(),
-    ) {
-        notifListenerGranted.value = Settings.Secure.getString(
-            context.contentResolver,
-            "enabled_notification_listeners",
-        )?.contains(context.packageName) ?: false
-    }
-
-    val hasWriteSecure = remember {
-        context.checkPermission(
-            "android.permission.WRITE_SECURE_SETTINGS",
-            Process.myPid(),
-            Process.myUid(),
-        ) == PackageManager.PERMISSION_GRANTED
-    }
+    ) { refreshPermissions() }
+    var showAdbDialog by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -249,7 +224,7 @@ fun SettingsScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showAccessibilityDisclosure = false
-                    accessibilityLauncher.launch(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                    systemSettingsLauncher.launch(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                 }) { Text(stringResource(R.string.accessibility_disclosure_continue)) }
             },
             dismissButton = {
@@ -471,403 +446,370 @@ fun SettingsScreen(
         }
     }
 
+    if (showAdbDialog) {
+        val clipboard = remember { context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager }
+        val adbCommand = "adb shell pm grant ${context.packageName} android.permission.WRITE_SECURE_SETTINGS"
+        AlertDialog(
+            onDismissRequest = { showAdbDialog = false },
+            icon = { Icon(Icons.Outlined.Terminal, contentDescription = null) },
+            title = { Text(stringResource(R.string.settings_adb)) },
+            text = {
+                Column {
+                    Text(stringResource(R.string.settings_adb_required))
+                    Spacer(Modifier.height(12.dp))
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        shape = MaterialTheme.shapes.small,
+                    ) {
+                        SelectionContainer {
+                            Text(
+                                text = adbCommand,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontFamily = FontFamily.Monospace,
+                                modifier = Modifier.padding(12.dp),
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    clipboard.setPrimaryClip(ClipData.newPlainText("ADB command", adbCommand))
+                    showAdbDialog = false
+                    scope.launch {
+                        snackbarHostState.showSnackbar(context.getString(R.string.settings_command_copied))
+                    }
+                }) { Text(stringResource(R.string.settings_copy_command)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAdbDialog = false }) { Text(stringResource(R.string.action_close)) }
+            },
+        )
+    }
+
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        topBar = { TopAppBar(title = { Text(stringResource(R.string.settings_title)) }, scrollBehavior = scrollBehavior) },
+        containerColor = SettingsDefaults.pageColor,
+        topBar = { SettingsTopAppBar(stringResource(R.string.settings_title), scrollBehavior) },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
-        LazyColumn(contentPadding = innerPadding) {
-
-            // ----- General -----
-            item { SectionHeader(stringResource(R.string.settings_section_general)) }
+        LazyColumn(
+            contentPadding = PaddingValues(
+                top = innerPadding.calculateTopPadding(),
+                bottom = innerPadding.calculateBottomPadding() + 24.dp,
+            ),
+        ) {
             item {
-                val languageLabel = if (currentLanguage == AppLanguage.SYSTEM) {
-                    stringResource(R.string.language_system_default)
-                } else {
-                    currentLanguage.displayName
+                SettingsGroup(stringResource(R.string.settings_section_general)) {
+                    item { shapes ->
+                        SettingsItem(
+                            shapes = shapes,
+                            title = stringResource(R.string.settings_language),
+                            summary = if (currentLanguage == AppLanguage.SYSTEM) {
+                                stringResource(R.string.language_system_default)
+                            } else {
+                                currentLanguage.displayName
+                            },
+                            leading = { Icon(Icons.Outlined.Language, contentDescription = null) },
+                            onClick = { showLanguageDialog = true },
+                        )
+                    }
                 }
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.settings_language)) },
-                    supportingContent = { Text(languageLabel) },
-                    leadingContent = {
-                        Icon(Icons.Outlined.Language, contentDescription = null)
-                    },
-                    modifier = Modifier.clickable { showLanguageDialog = true },
-                )
             }
 
-            item { HorizontalDivider() }
-
-            // ----- AI assistant -----
-            item { SectionHeader(stringResource(R.string.settings_section_ai)) }
-            // Debug only until it has been proven against real servers. Release builds can't set
-            // a provider, so they stay on Gemini.
-            if (BuildConfig.DEBUG) item {
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.settings_ai_provider)) },
-                    supportingContent = {
+            item {
+                SettingsGroup(stringResource(R.string.settings_section_ai)) {
+                    // Debug only until it has been proven against real servers. Release builds
+                    // can't set a provider, so they stay on Gemini.
+                    if (BuildConfig.DEBUG) item { shapes ->
                         val custom = aiCustomEndpoint
-                        Text(
-                            if (aiProvider == AiProvider.CUSTOM && custom != null) custom.model
-                            else aiProvider.label(),
+                        SettingsItem(
+                            shapes = shapes,
+                            title = stringResource(R.string.settings_ai_provider),
+                            summary = if (aiProvider == AiProvider.CUSTOM && custom != null) {
+                                custom.model
+                            } else {
+                                aiProvider.label()
+                            },
+                            leading = { Icon(Icons.Outlined.Hub, contentDescription = null) },
+                            onClick = { showAiProviderDialog = true },
                         )
-                    },
-                    leadingContent = { Icon(Icons.Outlined.Hub, contentDescription = null) },
-                    modifier = Modifier.clickable { showAiProviderDialog = true },
-                )
-            }
-            if (aiProvider == AiProvider.GEMINI) item {
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.settings_ai_api_key)) },
-                    supportingContent = {
-                        Text(
-                            if (aiApiKey != null) stringResource(R.string.settings_ai_api_key_set)
-                            else stringResource(R.string.settings_ai_api_key_unset),
-                        )
-                    },
-                    leadingContent = { Icon(Icons.Outlined.Key, contentDescription = null) },
-                    modifier = Modifier.clickable { showApiKeyDialog = true },
-                )
-            }
-            if (aiProvider == AiProvider.GEMINI) item {
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.settings_ai_model)) },
-                    supportingContent = {
-                        Text(
-                            if (aiApiKey != null) aiModel
-                            else stringResource(R.string.settings_ai_model_need_key),
-                        )
-                    },
-                    leadingContent = { Icon(Icons.Outlined.AutoAwesome, contentDescription = null) },
-                    modifier = Modifier.clickable(enabled = aiApiKey != null) { showModelSheet = true },
-                )
-            }
-
-            item { HorizontalDivider() }
-
-            // ----- Permissions -----
-            item { SectionHeader(stringResource(R.string.settings_section_permissions)) }
-            item {
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.settings_notifications)) },
-                    supportingContent = {
-                        Text(if (notifGranted.value) stringResource(R.string.settings_granted) else stringResource(R.string.settings_notifications_required))
-                    },
-                    leadingContent = { PermissionStatusIcon(notifGranted.value) },
-                    trailingContent = {
-                        AnimatedVisibility(
-                            visible = !notifGranted.value && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU,
-                            enter = expandHorizontally() + fadeIn(),
-                            exit = shrinkHorizontally() + fadeOut(),
-                        ) {
-                            OutlinedButton(
-                                onClick = {
-                                    notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                },
-                            ) { Text(stringResource(R.string.action_grant)) }
+                    }
+                    if (aiProvider == AiProvider.GEMINI) {
+                        item { shapes ->
+                            SettingsItem(
+                                shapes = shapes,
+                                title = stringResource(R.string.settings_ai_api_key),
+                                summary = stringResource(
+                                    if (aiApiKey != null) R.string.settings_ai_api_key_set
+                                    else R.string.settings_ai_api_key_unset,
+                                ),
+                                leading = { Icon(Icons.Outlined.Key, contentDescription = null) },
+                                onClick = { showApiKeyDialog = true },
+                            )
                         }
-                    },
-                )
-            }
-
-            item {
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.settings_notif_access)) },
-                    supportingContent = {
-                        Text(
-                            if (notifListenerGranted.value) stringResource(R.string.settings_notif_access_granted)
-                            else stringResource(R.string.settings_notif_access_required),
-                        )
-                    },
-                    leadingContent = { PermissionStatusIcon(notifListenerGranted.value) },
-                    trailingContent = {
-                        AnimatedVisibility(
-                            visible = !notifListenerGranted.value,
-                            enter = expandHorizontally() + fadeIn(),
-                            exit = shrinkHorizontally() + fadeOut(),
-                        ) {
-                            OutlinedButton(
-                                onClick = {
-                                    notifListenerLauncher.launch(
-                                        Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"),
-                                    )
-                                },
-                            ) { Text(stringResource(R.string.action_enable)) }
+                        item { shapes ->
+                            SettingsItem(
+                                shapes = shapes,
+                                title = stringResource(R.string.settings_ai_model),
+                                summary = if (aiApiKey != null) aiModel
+                                else stringResource(R.string.settings_ai_model_need_key),
+                                leading = { Icon(Icons.Outlined.AutoAwesome, contentDescription = null) },
+                                enabled = aiApiKey != null,
+                                onClick = { showModelSheet = true },
+                            )
                         }
-                    },
-                )
-            }
-
-            item {
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.settings_accessibility)) },
-                    supportingContent = {
-                        Text(
-                            if (accessibilityGranted.value) stringResource(R.string.settings_accessibility_granted)
-                            else stringResource(R.string.settings_accessibility_required),
-                        )
-                    },
-                    leadingContent = { PermissionStatusIcon(accessibilityGranted.value) },
-                    trailingContent = {
-                        AnimatedVisibility(
-                            visible = !accessibilityGranted.value,
-                            enter = expandHorizontally() + fadeIn(),
-                            exit = shrinkHorizontally() + fadeOut(),
-                        ) {
-                            OutlinedButton(
-                                onClick = { showAccessibilityDisclosure = true },
-                            ) { Text(stringResource(R.string.action_enable)) }
-                        }
-                    },
-                )
-            }
-
-            item {
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.settings_write_settings)) },
-                    supportingContent = {
-                        Text(
-                            if (writeSettingsGranted.value) stringResource(R.string.settings_granted)
-                            else stringResource(R.string.settings_write_settings_required),
-                        )
-                    },
-                    leadingContent = { PermissionStatusIcon(writeSettingsGranted.value) },
-                    trailingContent = {
-                        AnimatedVisibility(
-                            visible = !writeSettingsGranted.value,
-                            enter = expandHorizontally() + fadeIn(),
-                            exit = shrinkHorizontally() + fadeOut(),
-                        ) {
-                            OutlinedButton(
-                                onClick = {
-                                    writeSettingsLauncher.launch(
-                                        Intent(
-                                            Settings.ACTION_MANAGE_WRITE_SETTINGS,
-                                            Uri.parse("package:${context.packageName}"),
-                                        ),
-                                    )
-                                },
-                            ) { Text(stringResource(R.string.action_grant)) }
-                        }
-                    },
-                )
-            }
-
-            item {
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.settings_dnd)) },
-                    supportingContent = {
-                        Text(
-                            if (dndGranted.value) stringResource(R.string.settings_granted)
-                            else stringResource(R.string.settings_dnd_required),
-                        )
-                    },
-                    leadingContent = { PermissionStatusIcon(dndGranted.value) },
-                    trailingContent = {
-                        AnimatedVisibility(
-                            visible = !dndGranted.value,
-                            enter = expandHorizontally() + fadeIn(),
-                            exit = shrinkHorizontally() + fadeOut(),
-                        ) {
-                            OutlinedButton(
-                                onClick = {
-                                    dndLauncher.launch(
-                                        Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS),
-                                    )
-                                },
-                            ) { Text(stringResource(R.string.action_grant)) }
-                        }
-                    },
-                )
-            }
-
-            item {
-                val clipboard = remember {
-                    context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    }
                 }
-                val adbCommand =
-                    "adb shell pm grant ${context.packageName} android.permission.WRITE_SECURE_SETTINGS"
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.settings_adb)) },
-                    leadingContent = {
-                        Icon(
-                            if (hasWriteSecure) Icons.Outlined.CheckCircle else Icons.Outlined.Lock,
-                            contentDescription = null,
-                            tint = if (hasWriteSecure) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    },
-                    supportingContent = {
-                        if (hasWriteSecure) {
-                            Text(stringResource(R.string.settings_adb_granted))
-                        } else {
-                            Column {
-                                Text(stringResource(R.string.settings_adb_required))
-                                Spacer(Modifier.height(6.dp))
-                                Surface(
-                                    color = MaterialTheme.colorScheme.surfaceVariant,
-                                    shape = MaterialTheme.shapes.small,
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(start = 10.dp, top = 4.dp, bottom = 4.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        Text(
-                                            text = adbCommand,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            fontFamily = FontFamily.Monospace,
-                                            modifier = Modifier.weight(1f),
-                                        )
-                                        IconButton(
-                                            onClick = {
-                                                clipboard.setPrimaryClip(
-                                                    ClipData.newPlainText("ADB command", adbCommand),
-                                                )
-                                                scope.launch {
-                                                    snackbarHostState.showSnackbar(context.getString(R.string.settings_command_copied))
-                                                }
-                                            },
-                                        ) {
-                                            Icon(Icons.Outlined.ContentCopy, contentDescription = stringResource(R.string.settings_copy_command))
-                                        }
-                                    }
+            }
+
+            // Each row is the way in to its system screen, granted or not — before, a granted
+            // permission left a row that did nothing, with no way to revoke it from here.
+            item {
+                SettingsGroup(stringResource(R.string.settings_section_permissions)) {
+                    item { shapes ->
+                        PermissionItem(
+                            shapes = shapes,
+                            title = stringResource(R.string.settings_notifications),
+                            icon = Icons.Outlined.Notifications,
+                            granted = notifGranted,
+                            grantedSummary = stringResource(R.string.settings_granted),
+                            requiredSummary = stringResource(R.string.settings_notifications_required),
+                            onClick = {
+                                if (!notifGranted && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                } else {
+                                    systemSettingsLauncher.launch(
+                                        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
+                                    )
                                 }
-                            }
-                        }
-                    },
-                )
-            }
-
-            item { HorizontalDivider() }
-
-            // ----- Import / Export -----
-            item { SectionHeader(stringResource(R.string.settings_section_import_export)) }
-            item {
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.settings_import_flow)) },
-                    supportingContent = { Text(stringResource(R.string.settings_import_flow_desc)) },
-                    leadingContent = {
-                        Icon(Icons.Outlined.FileDownload, contentDescription = null)
-                    },
-                    trailingContent = {
-                        OutlinedButton(onClick = { filePicker.launch(arrayOf("*/*")) }) {
-                            Text(stringResource(R.string.action_import))
-                        }
-                    },
-                )
-            }
-
-            item { HorizontalDivider() }
-
-            // ----- Automation -----
-            item { SectionHeader(stringResource(R.string.settings_section_automation)) }
-            item {
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.settings_global_variables)) },
-                    supportingContent = { Text(stringResource(R.string.settings_global_variables_desc)) },
-                    leadingContent = {
-                        Icon(Icons.Outlined.Public, contentDescription = null)
-                    },
-                    modifier = Modifier.clickable { onGlobalVariablesClick() },
-                )
-            }
-            item {
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.settings_autostart)) },
-                    supportingContent = { Text(stringResource(R.string.settings_autostart_desc)) },
-                    leadingContent = {
-                        Icon(Icons.Outlined.Autorenew, contentDescription = null)
-                    },
-                    trailingContent = {
-                        // onCheckedChange = null: the row itself is the toggleable, so the
-                        // whole row is one 48dp+ target and TalkBack reads label + state.
-                        Switch(checked = autoStart, onCheckedChange = null)
-                    },
-                    modifier = Modifier.toggleable(
-                        value = autoStart,
-                        role = Role.Switch,
-                        onValueChange = { value ->
-                            autoStart = value
-                            AutoStartPrefs.set(context, value)
-                        },
-                    ),
-                )
-            }
-            item {
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.settings_execution_toast)) },
-                    supportingContent = { Text(stringResource(R.string.settings_execution_toast_desc)) },
-                    leadingContent = {
-                        Icon(Icons.Outlined.Campaign, contentDescription = null)
-                    },
-                    trailingContent = {
-                        Switch(checked = executionToast, onCheckedChange = null)
-                    },
-                    modifier = Modifier.toggleable(
-                        value = executionToast,
-                        role = Role.Switch,
-                        onValueChange = { value ->
-                            executionToast = value
-                            ExecutionFeedbackPrefs.setToastEnabled(context, value)
-                        },
-                    ),
-                )
-            }
-            item {
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.settings_detailed_log)) },
-                    supportingContent = { Text(stringResource(R.string.settings_detailed_log_desc)) },
-                    leadingContent = {
-                        Icon(Icons.Outlined.Troubleshoot, contentDescription = null)
-                    },
-                    trailingContent = {
-                        Switch(checked = detailedLog, onCheckedChange = null)
-                    },
-                    modifier = Modifier.toggleable(
-                        value = detailedLog,
-                        role = Role.Switch,
-                        onValueChange = { value ->
-                            detailedLog = value
-                            DetailedLogPrefs.setEnabled(context, value)
-                        },
-                    ),
-                )
-            }
-            item { HorizontalDivider() }
-            item {
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.settings_log_retention)) },
-                    supportingContent = {
-                        Text(
-                            stringResource(logRetention.displayNameRes) + " — " +
-                                logRetentionDetail(logRetention.days, logRetention.maxCount),
+                            },
                         )
-                    },
-                    leadingContent = {
-                        Icon(Icons.Outlined.History, contentDescription = null)
-                    },
-                    modifier = Modifier.clickable { showLogRetentionDialog = true },
-                )
+                    }
+                    item { shapes ->
+                        PermissionItem(
+                            shapes = shapes,
+                            title = stringResource(R.string.settings_notif_access),
+                            icon = Icons.Outlined.NotificationsActive,
+                            granted = notifListenerGranted,
+                            grantedSummary = stringResource(R.string.settings_notif_access_granted),
+                            requiredSummary = stringResource(R.string.settings_notif_access_required),
+                            onClick = {
+                                systemSettingsLauncher.launch(
+                                    Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"),
+                                )
+                            },
+                        )
+                    }
+                    item { shapes ->
+                        PermissionItem(
+                            shapes = shapes,
+                            title = stringResource(R.string.settings_accessibility),
+                            icon = Icons.Outlined.AccessibilityNew,
+                            granted = accessibilityGranted,
+                            grantedSummary = stringResource(R.string.settings_accessibility_granted),
+                            requiredSummary = stringResource(R.string.settings_accessibility_required),
+                            onClick = {
+                                // The disclosure is owed before enabling, not before turning it off.
+                                if (accessibilityGranted) {
+                                    systemSettingsLauncher.launch(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                                } else {
+                                    showAccessibilityDisclosure = true
+                                }
+                            },
+                        )
+                    }
+                    item { shapes ->
+                        PermissionItem(
+                            shapes = shapes,
+                            title = stringResource(R.string.settings_write_settings),
+                            icon = Icons.Outlined.BrightnessMedium,
+                            granted = writeSettingsGranted,
+                            grantedSummary = stringResource(R.string.settings_granted),
+                            requiredSummary = stringResource(R.string.settings_write_settings_required),
+                            onClick = {
+                                systemSettingsLauncher.launch(
+                                    Intent(
+                                        Settings.ACTION_MANAGE_WRITE_SETTINGS,
+                                        "package:${context.packageName}".toUri(),
+                                    ),
+                                )
+                            },
+                        )
+                    }
+                    item { shapes ->
+                        PermissionItem(
+                            shapes = shapes,
+                            title = stringResource(R.string.settings_dnd),
+                            icon = Icons.Outlined.DoNotDisturbOn,
+                            granted = dndGranted,
+                            grantedSummary = stringResource(R.string.settings_granted),
+                            requiredSummary = stringResource(R.string.settings_dnd_required),
+                            onClick = {
+                                systemSettingsLauncher.launch(
+                                    Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS),
+                                )
+                            },
+                        )
+                    }
+                    // Optional, unlike the rows above — nothing breaks without it, so a missing
+                    // grant is not flagged as a problem. The command lives in a dialog: a block of
+                    // monospace in the middle of the list was the one thing on the page no
+                    // settings screen has.
+                    item { shapes ->
+                        SettingsItem(
+                            shapes = shapes,
+                            title = stringResource(R.string.settings_adb),
+                            summary = stringResource(
+                                if (hasWriteSecure) R.string.settings_adb_granted else R.string.settings_adb_summary,
+                            ),
+                            leading = { Icon(Icons.Outlined.Terminal, contentDescription = null) },
+                            onClick = if (hasWriteSecure) null else ({ showAdbDialog = true }),
+                        )
+                    }
+                }
             }
 
-            item { HorizontalDivider() }
-
-            // ----- About -----
-            item { SectionHeader(stringResource(R.string.settings_section_about)) }
             item {
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.settings_about_nexflow)) },
-                    supportingContent = { Text(stringResource(R.string.settings_about_desc)) },
-                    leadingContent = {
-                        Icon(Icons.Outlined.Info, contentDescription = null)
-                    },
-                    modifier = Modifier.clickable { onAboutClick() },
-                )
+                SettingsGroup(stringResource(R.string.settings_section_import_export)) {
+                    item { shapes ->
+                        SettingsItem(
+                            shapes = shapes,
+                            title = stringResource(R.string.settings_import_flow),
+                            summary = stringResource(R.string.settings_import_flow_desc),
+                            leading = { Icon(Icons.Outlined.FileDownload, contentDescription = null) },
+                            onClick = { filePicker.launch(arrayOf("*/*")) },
+                        )
+                    }
+                }
+            }
+
+            item {
+                SettingsGroup(stringResource(R.string.settings_section_automation)) {
+                    item { shapes ->
+                        SettingsItem(
+                            shapes = shapes,
+                            title = stringResource(R.string.settings_global_variables),
+                            summary = stringResource(R.string.settings_global_variables_desc),
+                            leading = { Icon(Icons.Outlined.Public, contentDescription = null) },
+                            onClick = onGlobalVariablesClick,
+                        )
+                    }
+                    item { shapes ->
+                        SettingsSwitchItem(
+                            shapes = shapes,
+                            title = stringResource(R.string.settings_autostart),
+                            summary = stringResource(R.string.settings_autostart_desc),
+                            leading = { Icon(Icons.Outlined.Autorenew, contentDescription = null) },
+                            checked = autoStart,
+                            onCheckedChange = { value ->
+                                autoStart = value
+                                AutoStartPrefs.set(context, value)
+                            },
+                        )
+                    }
+                    item { shapes ->
+                        SettingsSwitchItem(
+                            shapes = shapes,
+                            title = stringResource(R.string.settings_execution_toast),
+                            summary = stringResource(R.string.settings_execution_toast_desc),
+                            leading = { Icon(Icons.Outlined.Campaign, contentDescription = null) },
+                            checked = executionToast,
+                            onCheckedChange = { value ->
+                                executionToast = value
+                                ExecutionFeedbackPrefs.setToastEnabled(context, value)
+                            },
+                        )
+                    }
+                }
+            }
+
+            // Its own group so the privacy note can sit under it as a footer: five lines of it
+            // as the switch's summary buried the switch, and it applies to the retention row too.
+            item {
+                SettingsGroup(
+                    title = stringResource(R.string.nav_logs),
+                    footer = stringResource(R.string.settings_detailed_log_desc),
+                ) {
+                    item { shapes ->
+                        SettingsSwitchItem(
+                            shapes = shapes,
+                            title = stringResource(R.string.settings_detailed_log),
+                            summary = stringResource(R.string.settings_detailed_log_summary),
+                            leading = { Icon(Icons.Outlined.Troubleshoot, contentDescription = null) },
+                            checked = detailedLog,
+                            onCheckedChange = { value ->
+                                detailedLog = value
+                                DetailedLogPrefs.setEnabled(context, value)
+                            },
+                        )
+                    }
+                    item { shapes ->
+                        SettingsItem(
+                            shapes = shapes,
+                            title = stringResource(R.string.settings_log_retention),
+                            summary = stringResource(logRetention.displayNameRes) + " — " +
+                                logRetentionDetail(logRetention.days, logRetention.maxCount),
+                            leading = { Icon(Icons.Outlined.History, contentDescription = null) },
+                            onClick = { showLogRetentionDialog = true },
+                        )
+                    }
+                }
+            }
+
+            item {
+                SettingsGroup(stringResource(R.string.settings_section_about)) {
+                    item { shapes ->
+                        SettingsItem(
+                            shapes = shapes,
+                            title = stringResource(R.string.settings_about_nexflow),
+                            summary = stringResource(R.string.settings_about_desc),
+                            leading = { Icon(Icons.Outlined.Info, contentDescription = null) },
+                            onClick = onAboutClick,
+                        )
+                    }
+                }
             }
         }
     }
+}
+
+/**
+ * A permission the app needs for some of its triggers or actions. The leading icon says what
+ * it is for — the same kind of icon as every other row on the page — and what state it is in
+ * goes in the summary, with a warning at the end only while it is missing, so the rows that
+ * need attention still stand out at a glance.
+ */
+@Composable
+private fun PermissionItem(
+    shapes: ListItemShapes,
+    title: String,
+    icon: ImageVector,
+    granted: Boolean,
+    grantedSummary: String,
+    requiredSummary: String,
+    onClick: () -> Unit,
+) {
+    SettingsItem(
+        shapes = shapes,
+        title = title,
+        summary = if (granted) grantedSummary else requiredSummary,
+        leading = { Icon(icon, contentDescription = null) },
+        trailing = if (granted) {
+            null
+        } else {
+            {
+                // The summary already says it is missing; this is for the eye, not TalkBack.
+                Icon(
+                    Icons.Outlined.ErrorOutline,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                )
+            }
+        },
+        onClick = onClick,
+    )
 }
 
 /**
@@ -881,12 +823,22 @@ private fun logRetentionDetail(days: Int, entries: Int): String = stringResource
     pluralStringResource(R.plurals.log_retention_entries, entries, entries),
 )
 
-@Composable
-private fun SectionHeader(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp),
-    )
-}
+private fun Context.notificationsGranted(): Boolean =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
+    } else {
+        true
+    }
+
+private fun Context.accessibilityGranted(): Boolean =
+    Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+        ?.contains(packageName) ?: false
+
+private fun Context.notificationListenerGranted(): Boolean =
+    Settings.Secure.getString(contentResolver, "enabled_notification_listeners")
+        ?.contains(packageName) ?: false
+
+private fun Context.writeSecureSettingsGranted(): Boolean =
+    checkPermission("android.permission.WRITE_SECURE_SETTINGS", Process.myPid(), Process.myUid()) ==
+        PackageManager.PERMISSION_GRANTED

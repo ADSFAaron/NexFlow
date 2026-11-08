@@ -263,6 +263,7 @@
     <string name="settings_adb">Wi-Fi 与飞行模式（ADB）</string>
     <string name="settings_adb_granted">已授予 WRITE_SECURE_SETTINGS — 可静默切换</string>
     <string name="settings_adb_required">通过 ADB 运行一次以启用静默切换 Wi-Fi／飞行模式：</string>
+    <string name="settings_adb_summary">通过 ADB 授权一次，即可静默切换 Wi-Fi／飞行模式</string>
     <string name="settings_command_copied">命令已复制到剪贴板</string>
     <string name="settings_copy_command">复制命令</string>
     <string name="settings_import_flow">导入流程</string>
@@ -868,6 +869,7 @@
     </plurals>
     <string name="settings_detailed_log">详细执行记录</string>
     <string name="settings_detailed_log_desc">连每个动作的设置代入变量后的结果一起记下来——实际调用的网址、实际发出的文字。只存在这台设备上，内容会包含你的流程处理到的任何数据。</string>
+    <string name="settings_detailed_log_summary">连同每个动作代入变量后的设置一起记录</string>
     <string name="run_step_menu_cancelled">没有选择就关闭</string>
     <string name="widget_preview_flow_a">早安日常</string>
     <string name="widget_preview_flow_b">通勤模式</string>

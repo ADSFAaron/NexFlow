@@ -269,6 +269,7 @@
     <string name="settings_adb">Wi-Fi &amp; Airplane mode (ADB)</string>
     <string name="settings_adb_granted">WRITE_SECURE_SETTINGS granted — silent toggling active</string>
     <string name="settings_adb_required">Run once via ADB to enable silent Wi-Fi / Airplane mode toggling:</string>
+    <string name="settings_adb_summary">Grant once over ADB to toggle Wi-Fi and Airplane mode silently</string>
     <string name="settings_command_copied">Command copied to clipboard</string>
     <string name="settings_copy_command">Copy command</string>
     <string name="settings_import_flow">Import flow</string>
@@ -890,6 +891,7 @@
     </plurals>
     <string name="settings_detailed_log">Detailed execution log</string>
     <string name="settings_detailed_log_desc">Also record what each action’s settings came out as — the address actually called, the text actually sent. Stored on this device, and it will include whatever your flows handle.</string>
+    <string name="settings_detailed_log_summary">Also records each action\'s settings after variables are filled in</string>
     <string name="run_step_menu_cancelled">Closed without choosing</string>
     <string name="widget_preview_count">4 of 6 on</string>
     <string name="widget_preview_flow_a">Morning routine</string>

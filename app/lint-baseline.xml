@@ -14,17 +14,6 @@
 
     <issue
         id="InlinedApi"
-        message="Field requires API level 33 (current min is 30): `android.Manifest.permission#POST_NOTIFICATIONS`"
-        errorLine1="                                    notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)"
-        errorLine2="                                                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/nexflow/ui/settings/SettingsScreen.kt"
-            line="528"
-            column="68"/>
-    </issue>
-
-    <issue
-        id="InlinedApi"
         message="Field requires API level 31 (current min is 30): `android.provider.Settings#ACTION_REQUEST_SCHEDULE_EXACT_ALARM`"
         errorLine1="            Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)"
         errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
@@ -718,28 +707,6 @@
     <issue
         id="UseKtx"
         message="Use the KTX extension function `String.toUri` instead?"
-        errorLine1="                                    Uri.parse(&quot;https://github.com/ADSFAaron/NexFlow/blob/master/TERMS.md&quot;),"
-        errorLine2="                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/nexflow/ui/about/AboutScreen.kt"
-            line="233"
-            column="37"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `String.toUri` instead?"
-        errorLine1="                                    Uri.parse(&quot;https://github.com/ADSFAaron/NexFlow/blob/master/PRIVACY.md&quot;),"
-        errorLine2="                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/nexflow/ui/about/AboutScreen.kt"
-            line="249"
-            column="37"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `String.toUri` instead?"
         errorLine1="                                android.net.Uri.parse(&quot;https://aistudio.google.com/apikey&quot;),"
         errorLine2="                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
@@ -911,17 +878,6 @@
             file="src/main/java/com/nexflow/executor/SetWallpaperActionExecutor.kt"
             line="73"
             column="53"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `String.toUri` instead?"
-        errorLine1="                                            Uri.parse(&quot;package:${context.packageName}&quot;),"
-        errorLine2="                                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/nexflow/ui/settings/SettingsScreen.kt"
-            line="609"
-            column="45"/>
     </issue>
 
     <issue
