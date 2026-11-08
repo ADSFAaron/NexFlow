@@ -230,6 +230,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.util.UUID
+import com.nexflow.ui.common.inContainerColors
 
 // ---------------------------------------------------------------------------
 // Public entry point
@@ -1597,6 +1598,7 @@ private fun <T> PickerRow(
     modifier: Modifier = Modifier,
 ) {
     ListItem(
+        colors = ListItemDefaults.inContainerColors(),
         leadingContent = {
             Box(
                 contentAlignment = Alignment.Center,

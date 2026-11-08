@@ -16,6 +16,7 @@
 package com.nexflow.prefs
 
 import android.content.Context
+import androidx.core.content.edit
 import com.nexflow.ai.CustomEndpoint
 
 enum class AiProvider { GEMINI, CUSTOM }
@@ -42,7 +43,7 @@ object AiPrefs {
         }
 
     fun setProvider(context: Context, provider: AiProvider) {
-        prefs(context).edit().putString(KEY_PROVIDER, provider.name).apply()
+        prefs(context).edit { putString(KEY_PROVIDER, provider.name) }
     }
 
     /** The saved custom service, or null until one has been set up. */
@@ -55,11 +56,42 @@ object AiPrefs {
     }
 
     fun setCustomEndpoint(context: Context, endpoint: CustomEndpoint) {
-        prefs(context).edit()
-            .putString(KEY_CUSTOM_BASE_URL, endpoint.baseUrl)
-            .putString(KEY_CUSTOM_API_KEY, endpoint.apiKey)
-            .putString(KEY_CUSTOM_MODEL, endpoint.model)
-            .apply()
+        prefs(context).edit {
+            putString(KEY_CUSTOM_BASE_URL, endpoint.baseUrl)
+            putString(KEY_CUSTOM_API_KEY, endpoint.apiKey)
+            putString(KEY_CUSTOM_MODEL, endpoint.model)
+        }
+    }
+
+    /*
+     * The custom service's three fields one at a time, for the AI settings page, which edits
+     * each in its own dialog. A half-filled service is fine to store — getCustomEndpoint stays
+     * null, and so isConfigured false, until both the address and the model are there.
+     */
+
+    fun getCustomBaseUrl(context: Context): String? =
+        prefs(context).getString(KEY_CUSTOM_BASE_URL, null)?.takeIf { it.isNotBlank() }
+
+    /** [baseUrl] must already be normalized by [CustomEndpoint.normalizeBaseUrl]. */
+    fun setCustomBaseUrl(context: Context, baseUrl: String) {
+        prefs(context).edit { putString(KEY_CUSTOM_BASE_URL, baseUrl) }
+    }
+
+    fun getCustomApiKey(context: Context): String? =
+        prefs(context).getString(KEY_CUSTOM_API_KEY, null)?.takeIf { it.isNotBlank() }
+
+    /** Blank clears it: the key is optional, a local server takes none. */
+    fun setCustomApiKey(context: Context, key: String?) {
+        prefs(context).edit {
+            if (key.isNullOrBlank()) remove(KEY_CUSTOM_API_KEY) else putString(KEY_CUSTOM_API_KEY, key.trim())
+        }
+    }
+
+    fun getCustomModel(context: Context): String? =
+        prefs(context).getString(KEY_CUSTOM_MODEL, null)?.takeIf { it.isNotBlank() }
+
+    fun setCustomModel(context: Context, model: String) {
+        prefs(context).edit { putString(KEY_CUSTOM_MODEL, model.trim()) }
     }
 
     /** Whether the assistant can run at all with the service that's selected. */
@@ -76,10 +108,9 @@ object AiPrefs {
             ?.takeIf { it.isNotBlank() }
 
     fun setApiKey(context: Context, key: String?) {
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit()
-            .apply { if (key.isNullOrBlank()) remove(KEY_API_KEY) else putString(KEY_API_KEY, key.trim()) }
-            .apply()
+        prefs(context).edit {
+            if (key.isNullOrBlank()) remove(KEY_API_KEY) else putString(KEY_API_KEY, key.trim())
+        }
     }
 
     fun getModel(context: Context): String =
@@ -89,9 +120,6 @@ object AiPrefs {
             ?: DEFAULT_MODEL
 
     fun setModel(context: Context, model: String) {
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit()
-            .putString(KEY_MODEL, model.trim())
-            .apply()
+        prefs(context).edit { putString(KEY_MODEL, model.trim()) }
     }
 }

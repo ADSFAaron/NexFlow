@@ -35,6 +35,7 @@ import androidx.compose.material3.ListItemColors
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.ListItemShapes
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -270,6 +271,44 @@ fun SettingsSwitchItem(
         },
     )
 }
+
+/**
+ * One choice of several, made right on the page rather than in a dialog. Put the group in a
+ * `Modifier.selectableGroup()` so TalkBack reads "n of m". As in the official single-selection
+ * sample: the radio is display-only, the tile is the target, and the chosen tile takes the
+ * selected colour, so which one is on reads at a glance without hunting for the small dot.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun SettingsRadioItem(
+    shapes: ListItemShapes,
+    title: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    summary: String? = null,
+) {
+    SegmentedListItem(
+        selected = selected,
+        onClick = onClick,
+        shapes = shapes,
+        modifier = modifier,
+        leadingContent = { RadioButton(selected = selected, onClick = null) },
+        supportingContent = summary?.let { { Text(it) } },
+        verticalAlignment = Alignment.CenterVertically,
+        colors = SettingsDefaults.itemColors(),
+        content = { Text(title) },
+    )
+}
+
+/**
+ * The colours for a plain [androidx.compose.material3.ListItem] inside a dialog or bottom sheet.
+ * ListItem paints its own `surface` container, which inside a dialog's brighter
+ * surfaceContainerHigh (or a sheet's surfaceContainerLow) shows up as a darker band behind the
+ * options. Transparent lets the options share their container's colour.
+ */
+@Composable
+fun ListItemDefaults.inContainerColors(): ListItemColors = colors(containerColor = Color.Transparent)
 
 /**
  * The switch with a mark in its thumb — a check when on, a cross when off — as Android 16's

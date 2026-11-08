@@ -150,6 +150,11 @@
     <string name="settings_ai_model_need_key">請先設定 API 金鑰</string>
     <string name="settings_ai_model_load_failed">無法載入模型清單</string>
     <string name="settings_ai_provider">AI 服務</string>
+    <string name="settings_ai_section_service">服務</string>
+    <string name="settings_ai_value_unset">未設定</string>
+    <string name="settings_ai_not_configured">尚未設定 — AI 助手需要先設定</string>
+    <!-- "Google Gemini · gemini-3.5-flash": the service in use and its model -->
+    <string name="settings_ai_summary">%1$s · %2$s</string>
     <string name="settings_ai_provider_gemini">Google Gemini</string>
     <string name="settings_ai_provider_custom">其他服務（OpenAI 相容）</string>
     <string name="settings_ai_custom_desc">實驗功能。適用於 OpenAI、OpenRouter、Ollama 等服務，效果取決於模型。您的訊息、附加的圖片，以及用 AI 修改的流程的完整設定（包含其中的權杖或密碼）都會傳送到這個位址。</string>

@@ -153,6 +153,11 @@
     <string name="settings_ai_model_need_key">Set your API key first</string>
     <string name="settings_ai_model_load_failed">Couldn\'t load the model list</string>
     <string name="settings_ai_provider">AI service</string>
+    <string name="settings_ai_section_service">Service</string>
+    <string name="settings_ai_value_unset">Not set</string>
+    <string name="settings_ai_not_configured">Not set up — the AI assistant needs this</string>
+    <!-- "Google Gemini · gemini-3.5-flash": the service in use and its model -->
+    <string name="settings_ai_summary">%1$s · %2$s</string>
     <string name="settings_ai_provider_gemini">Google Gemini</string>
     <string name="settings_ai_provider_custom">Other service (OpenAI-compatible)</string>
     <string name="settings_ai_custom_desc">Experimental. Works with OpenAI, OpenRouter, Ollama and similar services; how well depends on the model. Your messages, any images you attach, and the full settings of flows you edit with AI, including tokens or passwords in them, go to this address.</string>

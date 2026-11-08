@@ -30,13 +30,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -46,23 +42,15 @@ import androidx.compose.material.icons.outlined.Campaign
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Hub
-import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Troubleshoot
-import androidx.compose.material.icons.outlined.Visibility
-import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -72,7 +60,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -90,15 +77,11 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import com.nexflow.BuildConfig
 import com.nexflow.R
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.nexflow.prefs.AiPrefs
 import com.nexflow.prefs.AiProvider
 import com.nexflow.prefs.AutoStartPrefs
 import com.nexflow.prefs.DetailedLogPrefs
@@ -125,16 +108,18 @@ import com.nexflow.ui.common.SettingsGroup
 import com.nexflow.ui.common.SettingsItem
 import com.nexflow.ui.common.SettingsSwitchItem
 import com.nexflow.ui.common.SettingsTopAppBar
+import androidx.compose.material3.ListItemDefaults
+import com.nexflow.ui.common.inContainerColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onAboutClick: () -> Unit = {},
     onGlobalVariablesClick: () -> Unit = {},
+    onAiSettingsClick: () -> Unit = {},
     /** [focusItemId] opens that trigger/condition/action's settings on arrival. */
     onOpenFlow: (flowId: String, focusItemId: String?) -> Unit = { _, _ -> },
     importVm: ImportViewModel = hiltViewModel(),
-    aiVm: AiSettingsViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     var autoStart by remember { mutableStateOf(AutoStartPrefs.get(context)) }
@@ -143,13 +128,8 @@ fun SettingsScreen(
     var logRetention by remember { mutableStateOf(LogRetentionPrefs.get(context)) }
     var showLogRetentionDialog by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
-    var aiProvider by remember { mutableStateOf(AiPrefs.getProvider(context)) }
-    var aiCustomEndpoint by remember { mutableStateOf(AiPrefs.getCustomEndpoint(context)) }
-    var showAiProviderDialog by remember { mutableStateOf(false) }
-    var aiApiKey by remember { mutableStateOf(AiPrefs.getApiKey(context)) }
-    var aiModel by remember { mutableStateOf(AiPrefs.getModel(context)) }
-    var showApiKeyDialog by remember { mutableStateOf(false) }
-    var showModelSheet by remember { mutableStateOf(false) }
+    // What the AI row says; re-read on resume, which is also the way back from the AI page.
+    var aiState by remember { mutableStateOf(AiSettingsState.read(context)) }
     // Google Play accessibility policy requires a prominent disclosure of what the service
     // does (and consent) before sending the user to enable it.
     var showAccessibilityDisclosure by remember { mutableStateOf(false) }
@@ -178,7 +158,10 @@ fun SettingsScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) refreshPermissions()
+            if (event == Lifecycle.Event.ON_RESUME) {
+                refreshPermissions()
+                aiState = AiSettingsState.read(context)
+            }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
@@ -253,6 +236,7 @@ fun SettingsScreen(
             )
             LogRetentionOption.entries.forEach { option ->
                 ListItem(
+                    colors = ListItemDefaults.inContainerColors(),
                     headlineContent = { Text(stringResource(option.displayNameRes)) },
                     supportingContent = {
                         Text(
@@ -294,6 +278,7 @@ fun SettingsScreen(
                     language.displayName
                 }
                 ListItem(
+                    colors = ListItemDefaults.inContainerColors(),
                     headlineContent = { Text(label) },
                     leadingContent = {
                         RadioButton(selected = currentLanguage == language, onClick = null)
@@ -307,140 +292,6 @@ fun SettingsScreen(
                         },
                     ),
                 )
-            }
-            Spacer(Modifier.height(16.dp))
-        }
-    }
-
-    if (showAiProviderDialog) {
-        AiProviderDialog(
-            onDismiss = { showAiProviderDialog = false },
-            onSaved = {
-                aiProvider = AiPrefs.getProvider(context)
-                aiCustomEndpoint = AiPrefs.getCustomEndpoint(context)
-                showAiProviderDialog = false
-            },
-        )
-    }
-
-    if (showApiKeyDialog) {
-        var keyInput by remember { mutableStateOf(aiApiKey ?: "") }
-        var keyVisible by remember { mutableStateOf(false) }
-        AlertDialog(
-            onDismissRequest = { showApiKeyDialog = false },
-            title = { Text(stringResource(R.string.settings_ai_api_key)) },
-            text = {
-                Column {
-                    Text(
-                        text = stringResource(R.string.settings_ai_api_key_desc),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = keyInput,
-                        onValueChange = { keyInput = it },
-                        singleLine = true,
-                        placeholder = { Text(stringResource(R.string.settings_ai_api_key_hint)) },
-                        visualTransformation = if (keyVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                        trailingIcon = {
-                            IconButton(onClick = { keyVisible = !keyVisible }) {
-                                Icon(
-                                    if (keyVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
-                                    contentDescription = stringResource(
-                                        if (keyVisible) R.string.settings_ai_api_key_hide else R.string.settings_ai_api_key_show,
-                                    ),
-                                )
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    AiPrefs.setApiKey(context, keyInput)
-                    aiApiKey = AiPrefs.getApiKey(context)
-                    // Model availability depends on the key; force a refetch next time.
-                    aiVm.resetModels()
-                    showApiKeyDialog = false
-                }) { Text(stringResource(R.string.action_save)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showApiKeyDialog = false }) {
-                    Text(stringResource(R.string.action_cancel))
-                }
-            },
-        )
-    }
-
-    if (showModelSheet) {
-        val modelsState by aiVm.modelsState.collectAsState()
-        val apiKey = aiApiKey
-        LaunchedEffect(apiKey) { apiKey?.let { aiVm.loadModels(it) } }
-        ModalBottomSheet(
-            onDismissRequest = {
-                showModelSheet = false
-                aiVm.resetModels()
-            },
-            scrimColor = Color.Transparent,
-        ) {
-            Text(
-                text = stringResource(R.string.settings_ai_model),
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 8.dp),
-            )
-            when (val state = modelsState) {
-                AiSettingsViewModel.ModelsState.Idle,
-                AiSettingsViewModel.ModelsState.Loading,
-                -> Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 32.dp),
-                    horizontalArrangement = Arrangement.Center,
-                ) { CircularProgressIndicator() }
-
-                is AiSettingsViewModel.ModelsState.Error -> Column(
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
-                ) {
-                    Text(
-                        text = stringResource(R.string.settings_ai_model_load_failed) +
-                            (state.message?.let { "\n$it" } ?: ""),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    OutlinedButton(onClick = { apiKey?.let { aiVm.loadModels(it) } }) {
-                        Text(stringResource(R.string.action_retry))
-                    }
-                }
-
-                is AiSettingsViewModel.ModelsState.Loaded -> LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 480.dp),
-                ) {
-                    items(state.models.size) { index ->
-                        val model = state.models[index]
-                        ListItem(
-                            headlineContent = { Text(model.displayName ?: model.modelId) },
-                            supportingContent = { Text(model.modelId) },
-                            leadingContent = {
-                                RadioButton(selected = aiModel == model.modelId, onClick = null)
-                            },
-                            modifier = Modifier.selectable(
-                                selected = aiModel == model.modelId,
-                                role = Role.RadioButton,
-                                onClick = {
-                                    aiModel = model.modelId
-                                    AiPrefs.setModel(context, model.modelId)
-                                    showModelSheet = false
-                                    aiVm.resetModels()
-                                },
-                            ),
-                        )
-                    }
-                }
             }
             Spacer(Modifier.height(16.dp))
         }
@@ -517,48 +368,38 @@ fun SettingsScreen(
                 }
             }
 
+            // One row into the AI page: which service is in use and with what model, or that
+            // nothing is set up yet — the one state worth flagging from here.
             item {
                 SettingsGroup(stringResource(R.string.settings_section_ai)) {
-                    // Debug only until it has been proven against real servers. Release builds
-                    // can't set a provider, so they stay on Gemini.
-                    if (BuildConfig.DEBUG) item { shapes ->
-                        val custom = aiCustomEndpoint
+                    item { shapes ->
+                        val state = aiState
+                        val model = when (state.provider) {
+                            AiProvider.GEMINI -> state.geminiModel
+                            AiProvider.CUSTOM -> state.customModel.orEmpty()
+                        }
                         SettingsItem(
                             shapes = shapes,
                             title = stringResource(R.string.settings_ai_provider),
-                            summary = if (aiProvider == AiProvider.CUSTOM && custom != null) {
-                                custom.model
+                            summary = if (state.configured) {
+                                stringResource(R.string.settings_ai_summary, state.provider.label(), model)
                             } else {
-                                aiProvider.label()
+                                stringResource(R.string.settings_ai_not_configured)
                             },
-                            leading = { Icon(Icons.Outlined.Hub, contentDescription = null) },
-                            onClick = { showAiProviderDialog = true },
+                            leading = { Icon(Icons.Outlined.AutoAwesome, contentDescription = null) },
+                            trailing = if (state.configured) {
+                                null
+                            } else {
+                                {
+                                    Icon(
+                                        Icons.Outlined.ErrorOutline,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.error,
+                                    )
+                                }
+                            },
+                            onClick = onAiSettingsClick,
                         )
-                    }
-                    if (aiProvider == AiProvider.GEMINI) {
-                        item { shapes ->
-                            SettingsItem(
-                                shapes = shapes,
-                                title = stringResource(R.string.settings_ai_api_key),
-                                summary = stringResource(
-                                    if (aiApiKey != null) R.string.settings_ai_api_key_set
-                                    else R.string.settings_ai_api_key_unset,
-                                ),
-                                leading = { Icon(Icons.Outlined.Key, contentDescription = null) },
-                                onClick = { showApiKeyDialog = true },
-                            )
-                        }
-                        item { shapes ->
-                            SettingsItem(
-                                shapes = shapes,
-                                title = stringResource(R.string.settings_ai_model),
-                                summary = if (aiApiKey != null) aiModel
-                                else stringResource(R.string.settings_ai_model_need_key),
-                                leading = { Icon(Icons.Outlined.AutoAwesome, contentDescription = null) },
-                                enabled = aiApiKey != null,
-                                onClick = { showModelSheet = true },
-                            )
-                        }
                     }
                 }
             }

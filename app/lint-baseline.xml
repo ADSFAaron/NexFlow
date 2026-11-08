@@ -717,28 +717,6 @@
 
     <issue
         id="UseKtx"
-        message="Use the KTX extension function `SharedPreferences.edit` instead?"
-        errorLine1="        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)"
-        errorLine2="        ^">
-        <location
-            file="src/main/java/com/nexflow/prefs/AiPrefs.kt"
-            line="36"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `SharedPreferences.edit` instead?"
-        errorLine1="        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)"
-        errorLine2="        ^">
-        <location
-            file="src/main/java/com/nexflow/prefs/AiPrefs.kt"
-            line="49"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
         message="Use the KTX function `createBitmap` instead?"
         errorLine1="    val bmp = Bitmap.createBitmap("
         errorLine2="              ^">

@@ -70,6 +70,7 @@ import com.nexflow.shortcut.ConfigurableShortcutSource
 import com.nexflow.shortcut.StaticShortcut
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import androidx.compose.material3.ListItemDefaults
 
 /** Result of picking a shortcut: everything the LAUNCH_SHORTCUT action needs to persist. */
 data class ShortcutSelection(
@@ -155,6 +156,7 @@ fun ShortcutPickerDialog(
                 LazyColumn {
                     items(filtered, key = { it.packageName }) { item ->
                         ListItem(
+                            colors = ListItemDefaults.inContainerColors(),
                             leadingContent = { AppIcon(item.icon) },
                             headlineContent = {
                                 Text(item.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -261,6 +263,7 @@ private fun ShortcutList(
             item { SectionHeader(stringResource(R.string.sp_static_section)) }
             items(staticShortcuts, key = { "s:${it.id}" }) { shortcut ->
                 ListItem(
+                    colors = ListItemDefaults.inContainerColors(),
                     leadingContent = { AppIcon(shortcut.icon ?: app.icon) },
                     headlineContent = {
                         Text(shortcut.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -275,6 +278,7 @@ private fun ShortcutList(
             item { SectionHeader(stringResource(R.string.sp_configurable_section)) }
             items(configurable, key = { "c:${it.launchIntent.component}" }) { source ->
                 ListItem(
+                    colors = ListItemDefaults.inContainerColors(),
                     leadingContent = { AppIcon(source.icon ?: app.icon) },
                     headlineContent = {
                         Text(source.label, maxLines = 1, overflow = TextOverflow.Ellipsis)

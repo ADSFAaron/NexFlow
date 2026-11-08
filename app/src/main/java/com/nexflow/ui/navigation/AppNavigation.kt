@@ -62,6 +62,7 @@ import com.nexflow.ui.globalvars.GlobalVariablesScreen
 import com.nexflow.ui.logs.LogsScreen
 import com.nexflow.ui.logs.RunDetailScreen
 import com.nexflow.ui.logs.RunDetailViewModel
+import com.nexflow.ui.settings.AiSettingsScreen
 import com.nexflow.ui.settings.SettingsScreen
 
 sealed class Screen(
@@ -79,6 +80,7 @@ val bottomNavScreens = listOf(Screen.Flows, Screen.Logs, Screen.Settings)
 
 /** Route pattern — `flowId` is optional and only set by a flow's "edit with Gemini" button. */
 private const val AI_CHAT_ROUTE = "ai_chat?flowId={flowId}"
+private const val AI_SETTINGS_ROUTE = "ai_settings"
 
 /**
  * A flow's detail screen, optionally opening one item's settings on arrival — how the import
@@ -167,6 +169,7 @@ fun NexFlowNavHost(navController: NavHostController, modifier: Modifier = Modifi
             SettingsScreen(
                 onAboutClick = { navController.navigate("about") },
                 onGlobalVariablesClick = { navController.navigate("global_variables") },
+                onAiSettingsClick = { navController.navigate(AI_SETTINGS_ROUTE) },
                 onOpenFlow = { flowId, focusItemId -> navController.navigate(flowRoute(flowId, focusItemId)) },
             )
         }
@@ -195,6 +198,9 @@ fun NexFlowNavHost(navController: NavHostController, modifier: Modifier = Modifi
         }
         composable("global_variables") {
             GlobalVariablesScreen(onBack = { navController.popBackStack() })
+        }
+        composable(AI_SETTINGS_ROUTE) {
+            AiSettingsScreen(onBack = { navController.popBackStack() })
         }
         composable(
             AI_CHAT_ROUTE,
@@ -233,13 +239,9 @@ fun NexFlowNavHost(navController: NavHostController, modifier: Modifier = Modifi
                         popUpTo(Screen.Flows.route)
                     }
                 },
-                onOpenSettings = {
-                    navController.navigate(Screen.Settings.route) {
-                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                },
+                // Straight to the AI page — the key, the service, the model — rather than to the
+                // Settings tab with the user left to find the right row. Back returns to the chat.
+                onOpenSettings = { navController.navigate(AI_SETTINGS_ROUTE) },
             )
         }
     }

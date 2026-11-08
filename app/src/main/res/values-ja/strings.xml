@@ -150,6 +150,11 @@
     <string name="settings_ai_model_need_key">先に API キーを設定してください</string>
     <string name="settings_ai_model_load_failed">モデル一覧を読み込めませんでした</string>
     <string name="settings_ai_provider">AI サービス</string>
+    <string name="settings_ai_section_service">サービス</string>
+    <string name="settings_ai_value_unset">未設定</string>
+    <string name="settings_ai_not_configured">未設定 — AI アシスタントを使うには設定が必要です</string>
+    <!-- "Google Gemini · gemini-3.5-flash": the service in use and its model -->
+    <string name="settings_ai_summary">%1$s · %2$s</string>
     <string name="settings_ai_provider_gemini">Google Gemini</string>
     <string name="settings_ai_provider_custom">その他のサービス（OpenAI 互換）</string>
     <string name="settings_ai_custom_desc">試験的な機能です。OpenAI、OpenRouter、Ollama などのサービスで使えますが、結果はモデルによって異なります。メッセージ、添付した画像、AI で編集するフローの全設定（トークンやパスワードを含む）がこのアドレスに送信されます。</string>
