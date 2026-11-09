@@ -43,8 +43,58 @@ object TextMatcher {
         if (needle.isEmpty()) return true
         return when (mode?.trim()?.uppercase()) {
             MODE_EXACT -> text.trim().equals(needle, ignoreCase = true)
-            MODE_REGEX -> runCatching { Regex(needle).containsMatchIn(text) }.getOrDefault(false)
+            MODE_REGEX -> regexMatches(needle, text)
             else -> text.contains(needle, ignoreCase = true)
         }
+    }
+
+    /** Longest pattern accepted; real keyword filters are a few dozen characters. */
+    const val MAX_PATTERN_LENGTH = 500
+
+    /**
+     * Character reads one match may make before it is abandoned. Ordinary patterns on a long
+     * notification need a few thousand; a catastrophically backtracking one like `(a+)+$` blows
+     * through a million in milliseconds, which is the point of counting reads instead of time.
+     */
+    const val MAX_CHAR_READS = 1_000_000
+
+    /**
+     * java.util.regex backtracks, so a hostile pattern (shipped inside a shared flow) plus a
+     * crafted notification can pin the trigger stream for minutes. The pattern and text both come
+     * from outside the app, so the match gets a budget, and running out means "no match".
+     */
+    private fun regexMatches(pattern: String, text: String): Boolean {
+        if (pattern.length > MAX_PATTERN_LENGTH) return false
+        val regex = runCatching { Regex(pattern) }.getOrElse { return false }
+        return try {
+            regex.containsMatchIn(BudgetedCharSequence(text, ReadBudget(MAX_CHAR_READS)))
+        } catch (e: ReadBudgetExceeded) {
+            false
+        } catch (e: StackOverflowError) {
+            // Deeply nested groups recurse in the matcher; same verdict as running out of budget.
+            false
+        }
+    }
+
+    private class ReadBudgetExceeded : RuntimeException(null, null, false, false)
+
+    private class ReadBudget(private var remaining: Int) {
+        fun spend() {
+            if (--remaining < 0) throw ReadBudgetExceeded()
+        }
+    }
+
+    private class BudgetedCharSequence(
+        private val text: CharSequence,
+        private val budget: ReadBudget,
+    ) : CharSequence {
+        override val length: Int get() = text.length
+        override fun get(index: Int): Char {
+            budget.spend()
+            return text[index]
+        }
+        override fun subSequence(startIndex: Int, endIndex: Int): CharSequence =
+            BudgetedCharSequence(text.subSequence(startIndex, endIndex), budget)
+        override fun toString(): String = text.toString()
     }
 }

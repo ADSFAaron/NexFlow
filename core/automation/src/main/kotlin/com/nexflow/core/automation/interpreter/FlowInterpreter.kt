@@ -53,7 +53,11 @@ data class StepReport(
  */
 class FlowInterpreter(
     private val executors: Map<com.nexflow.core.automation.model.ActionType, ActionExecutor>,
+    private val rateLimiter: ActionRateLimiter = ActionRateLimiter.UNLIMITED,
 ) {
+    /** State that lives for one run and has to follow the recursion into IF/REPEAT/MENU bodies. */
+    private class RunState(val flow: Flow)
+
     /**
      * @param globalVariables cross-flow variables (name -> current value). They are merged into
      *   the run's variable map under the [GLOBAL_PREFIX] namespace, so a flow references them as
@@ -90,6 +94,7 @@ class FlowInterpreter(
         globalVariables.forEach { (name, value) -> variables["$GLOBAL_PREFIX$name"] = value }
         triggerVariables.forEach { (name, value) -> variables["$TRIGGER_PREFIX$name"] = value }
         val actions = flow.actions.sortedBy { it.order }
+        val run = RunState(flow)
         return executeBlock(
             actions = actions,
             variables = variables,
@@ -99,6 +104,7 @@ class FlowInterpreter(
             onActionStart = onActionStart,
             onGlobalVariableSet = onGlobalVariableSet,
             sink = onStep?.let { StepSink(recordResolvedConfig, it) },
+            run = run,
         )
     }
 
@@ -165,6 +171,7 @@ class FlowInterpreter(
         sink: StepSink? = null,
         depth: Int = 0,
         iteration: Int = 0,
+        run: RunState,
     ): InterpreterResult {
         var i = startIndex
         while (i < endIndex) {
@@ -214,10 +221,10 @@ class FlowInterpreter(
 
                     if (conditionMet) {
                         val blockEnd = if (elseIndex != -1) elseIndex else endIfIndex
-                        val result = executeBlock(actions, variables, i + 1, blockEnd, knownGlobals, onActionStart, onGlobalVariableSet, sink, depth + 1, iteration)
+                        val result = executeBlock(actions, variables, i + 1, blockEnd, knownGlobals, onActionStart, onGlobalVariableSet, sink, depth + 1, iteration, run = run)
                         if (result !is InterpreterResult.Success) return result
                     } else if (elseIndex != -1) {
-                        val result = executeBlock(actions, variables, elseIndex + 1, endIfIndex, knownGlobals, onActionStart, onGlobalVariableSet, sink, depth + 1, iteration)
+                        val result = executeBlock(actions, variables, elseIndex + 1, endIfIndex, knownGlobals, onActionStart, onGlobalVariableSet, sink, depth + 1, iteration, run = run)
                         if (result !is InterpreterResult.Success) return result
                     }
                     i = endIfIndex + 1
@@ -246,7 +253,7 @@ class FlowInterpreter(
                         yield()
                         // The round number rides down with the block: it is what lets the log
                         // group a loop's steps by pass instead of listing count × body rows flat.
-                        val result = executeBlock(actions, variables, i + 1, endRepeatIndex, knownGlobals, onActionStart, onGlobalVariableSet, sink, depth + 1, round)
+                        val result = executeBlock(actions, variables, i + 1, endRepeatIndex, knownGlobals, onActionStart, onGlobalVariableSet, sink, depth + 1, round, run = run)
                         if (result !is InterpreterResult.Success) return result
                     }
                     i = endRepeatIndex + 1
@@ -360,7 +367,7 @@ class FlowInterpreter(
                     )
                     if (caseIndex != -1) {
                         val nextBoundary = findNextMenuCaseOrEnd(actions, caseIndex + 1, endMenuIndex)
-                        val blockResult = executeBlock(actions, variables, caseIndex + 1, nextBoundary, knownGlobals, onActionStart, onGlobalVariableSet, sink, depth + 1, iteration)
+                        val blockResult = executeBlock(actions, variables, caseIndex + 1, nextBoundary, knownGlobals, onActionStart, onGlobalVariableSet, sink, depth + 1, iteration, run = run)
                         if (blockResult !is InterpreterResult.Success) return blockResult
                     }
                     i = endMenuIndex + 1
@@ -370,6 +377,26 @@ class FlowInterpreter(
                 ActionType.MENU_CASE, ActionType.END_MENU -> i++
 
                 else -> {
+                    policyViolation(action)?.let { message ->
+                        return reportFailure(sink, action, depth, iteration, startedAt, message)
+                    }
+                    val category = RateLimitCategory.of(action)
+                    if (category != null && !rateLimiter.tryAcquire(run.flow, action, category)) {
+                        // Skipped, not failed: the rest of the flow (a notification, a log line)
+                        // is still worth running, and a limit is not an error in the flow.
+                        sink?.emit(
+                            StepReport(
+                                actionId = action.id,
+                                actionType = action.type,
+                                depth = depth,
+                                iteration = iteration,
+                                status = ExecutionStatus.SKIPPED,
+                                note = "$NOTE_RATE_LIMITED${category.perMinute}",
+                            ),
+                        )
+                        i++
+                        continue
+                    }
                     val interpolatedAction = interpolateAction(action, variables)
                     val executor = executors[action.type]
                         ?: return reportFailure(sink, action, depth, iteration, startedAt, "No executor for ${action.type}")
@@ -492,6 +519,15 @@ class FlowInterpreter(
         return endMenuIndex
     }
 
+    /** The [ActionPolicy] rule [action] breaks as configured, checked before interpolation. */
+    private fun policyViolation(action: Action): String? {
+        ActionPolicy.LITERAL_ONLY_KEYS[action.type]?.forEach { key ->
+            val raw = action.config[key].orEmpty()
+            if (ExpressionEvaluator.references(raw).isNotEmpty()) return ActionPolicy.literalOnlyMessage(key)
+        }
+        return null
+    }
+
     private fun buildVariableMap(variables: List<Variable>): MutableMap<String, String> =
         variables.associate { it.name to it.defaultValue }.toMutableMap()
 
@@ -522,6 +558,9 @@ class FlowInterpreter(
         const val NOTE_REPEAT = "repeat:"
         const val NOTE_MENU = "menu:"
         const val NOTE_MENU_CANCELLED = "menu_cancelled"
+
+        /** Followed by the per-minute limit that was hit, e.g. `rate_limited:5`. */
+        const val NOTE_RATE_LIMITED = "rate_limited:"
     }
 }
 

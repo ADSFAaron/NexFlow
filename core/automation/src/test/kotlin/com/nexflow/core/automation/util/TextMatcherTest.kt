@@ -22,6 +22,27 @@ import org.junit.jupiter.api.Test
 class TextMatcherTest {
 
     @Test
+    fun `a catastrophically backtracking pattern gives up instead of hanging`() {
+        // (a+)+$ against a run of a's ending in a mismatch is exponential in a backtracking engine.
+        val started = System.nanoTime()
+        assertFalse(TextMatcher.matches("a".repeat(40) + "!", "(a+)+$", TextMatcher.MODE_REGEX))
+        val elapsedMs = (System.nanoTime() - started) / 1_000_000
+        assertTrue(elapsedMs < 2_000, "took ${elapsedMs}ms")
+    }
+
+    @Test
+    fun `an overlong pattern never matches`() {
+        val pattern = "a".repeat(TextMatcher.MAX_PATTERN_LENGTH + 1)
+        assertFalse(TextMatcher.matches(pattern, pattern, TextMatcher.MODE_REGEX))
+    }
+
+    @Test
+    fun `an ordinary regex on a long text still matches`() {
+        val text = "x".repeat(20_000) + " code 4821"
+        assertTrue(TextMatcher.matches(text, """code \d{4}""", TextMatcher.MODE_REGEX))
+    }
+
+    @Test
     fun `a blank pattern matches everything`() {
         // Every keyword field in the UI is optional — an empty one must not silence the trigger.
         assertTrue(TextMatcher.matches("anything", null))

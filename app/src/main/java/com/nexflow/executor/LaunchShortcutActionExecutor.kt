@@ -42,10 +42,10 @@ class LaunchShortcutActionExecutor @Inject constructor(
             ?: return ActionResult.Failure("No shortcut configured")
         val label = action.config["label"] ?: uri
 
-        val intent = try {
-            Intent.parseUri(uri, Intent.URI_INTENT_SCHEME)
-        } catch (e: Exception) {
-            return ActionResult.Failure("Invalid shortcut intent: ${e.message}", e)
+        val intent = when (val parsed = SafeIntents.parse(context, uri)) {
+            is SafeIntents.Parsed.Ok -> parsed.intent
+            is SafeIntents.Parsed.Invalid -> return ActionResult.Failure("Invalid shortcut intent: ${parsed.reason}")
+            SafeIntents.Parsed.Blocked -> return ActionResult.Failure("Shortcut not launchable from outside its app: $label")
         }
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 

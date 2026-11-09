@@ -53,6 +53,11 @@ core/macrodroid-compat/     # MacroDroid .mdr 格式解析
 | NFC `tech-list` 匹配語意 | **反直覺**：官方定義是「tech-list 是標籤所報技術的 subset 才算匹配」，所以**列愈少技術匹配愈廣**。同一個 `<tech-list>` 內是 AND，多個 `<tech-list>` 之間是 OR。很多人以為列一個就是「只收這種」，其實是「所有帶這種的都收」 | 想收窄就多列幾個技術；想分開涵蓋就開多個 `<tech-list>` |
 | `android.nfc.tech.Mifare*` 放進 tech-list | `MifareClassic`／`MifareUltralight` 的實作在 Android 上是**選配**的（javadoc：「If it is not implemented, then MifareClassic will never be enumerated in `getTechList`」），非 NXP 晶片的手機上永遠不會出現 → tech-list 安靜地永不匹配，不報錯也沒 log | tech-list 只用 `Ndef`／`NdefFormatable`／`NfcA`~`NfcV`。`Ndef` 是唯一「所有支援 NFC 的裝置都必須正確列舉」的，跨機一致 |
 | `SCHEDULE_EXACT_ALARM` | targetSdk 33+ 的 App **全新安裝時預設拒絕**（備份還原到新機也是拒絕），但從舊版升級的裝置會保留已授予的 → 同一版有人正常有人遲到。沒授權時退回不精確鬧鐘，官方保證只有「一小時內」，排 9:00 的流程 9:10 才跑 | 宣告不等於拿到：一定要 `canScheduleExactAlarms()` 檢查 + 用 `ACTION_REQUEST_SCHEDULE_EXACT_ALARM` 引導。並且要收 `ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED` 重排——鬧鐘的精度是排定當下決定的，授權後既有鬧鐘不會自己升級 |
+| 流程 config 的威脅模型 | 流程可以用 `.flow` 檔分享，**作者不一定是執行的人**。而 `FlowInterpreter.interpolateAction` 會內插**所有** config 值，`{{trigger.body}}`、`{{trigger.text}}` 是傳簡訊、發通知的陌生人決定的 | 新增「完整描述要啟動什麼」的 key（intent URI 這類，能指定確切畫面、ACTION_CALL、extras）時，加進 `ActionPolicy.LITERAL_ONLY_KEYS`：只能是選擇器選出的固定值，不能含任何 `{{變數}}`。只開 App 首頁的 `package_name` 不在此列 |
+| `Intent.parseUri()` + `startActivity` / `PendingIntent` | NexFlow 用自己的身分啟動 → 可以開到自己**非 exported** 的 activity；`FLAG_GRANT_*_URI_PERMISSION` 會把我們 FileProvider 的存取權交出去；selector 會取代外層 intent 被解析 | 一律走 `SafeIntents.parse()`。別人 App 的非 exported activity 系統本來就會擋，缺口只在自己的 |
+| 寫檔路徑來自流程 | 擋 `..` 不夠：絕對路徑就能寫進 `dataDir`（`shared_prefs/nexflow_ai.xml` 存著 AI key 與 endpoint），影響在流程刪除後仍存在 | `WriteFileActionExecutor.isAppPrivate()` 用 canonicalPath 比對 `dataDir` 與 device-protected `dataDir` |
+| `Regex(使用者的 pattern)` 比對外部文字 | java.util.regex 會回溯，`(a+)+$` 加一則特製通知就能卡住觸發器串流 | 用 `TextMatcher.matches`：pattern 長度上限、比對有字元讀取預算，用完就當不符合 |
+| SMS／撥號／HTTP 的次數 | REPEAT 上限 10 000，疊在 SEND_SMS 上就是帳單 | `SlidingWindowRateLimiter`（每流程每分鐘：SMS 5、撥號 5、HTTP 60），超過就略過那一步、不中止流程；`LAUNCH_SHORTCUT` 的 ACTION_CALL 也算撥號 |
 
 ### 3. 測試
 

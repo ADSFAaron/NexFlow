@@ -23,6 +23,7 @@ import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import com.nexflow.executor.NotificationActionExecutor.Companion.CHANNEL_ACTIONS
 import com.nexflow.service.FlowExecutionService.Companion.CHANNEL_SERVICE
+import com.nexflow.service.RateLimitNotifier.Companion.CHANNEL_ALERTS
 import com.nexflow.work.LogPrunerWorker
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
@@ -57,6 +58,11 @@ class NexFlowApplication : Application(), Configuration.Provider {
                     "Flow Notifications",
                     NotificationManager.IMPORTANCE_DEFAULT,
                 ).apply { description = "Notifications triggered by your automations" },
+                NotificationChannel(
+                    CHANNEL_ALERTS,
+                    getString(R.string.channel_alerts_name),
+                    NotificationManager.IMPORTANCE_DEFAULT,
+                ).apply { description = getString(R.string.channel_alerts_description) },
             ),
         )
     }

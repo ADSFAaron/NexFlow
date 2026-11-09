@@ -25,6 +25,7 @@ import com.nexflow.core.automation.condition.ConditionResult
 import com.nexflow.core.automation.executor.ActionExecutor
 import com.nexflow.core.automation.interpreter.FlowInterpreter
 import com.nexflow.core.automation.interpreter.InterpreterResult
+import com.nexflow.core.automation.interpreter.SlidingWindowRateLimiter
 import com.nexflow.core.automation.model.ExecutionLog
 import com.nexflow.core.automation.model.ExecutionStatus
 import com.nexflow.core.automation.model.Flow as AutomationFlow
@@ -70,13 +71,20 @@ class FlowEngine @Inject constructor(
     private val timeTriggerScheduler: TimeTriggerScheduler,
     private val nfcBackgroundDispatch: NfcBackgroundDispatch,
     @param:ApplicationContext private val context: Context,
+    // Nullable with a default so engine tests that build FlowEngine by hand need not supply it.
+    private val rateLimitNotifier: RateLimitNotifier? = null,
 ) {
     private companion object {
         const val TAG = "FlowEngine"
     }
 
     private val triggerHandlers = triggerHandlerSet.associateBy { it.supportedType }
-    private val interpreter by lazy { FlowInterpreter(actionExecutorSet.associateBy { it.supportedType }) }
+    private val interpreter by lazy {
+        FlowInterpreter(
+            actionExecutorSet.associateBy { it.supportedType },
+            SlidingWindowRateLimiter(onLimited = { flow, category -> rateLimitNotifier?.onLimited(flow, category) }),
+        )
+    }
     private val conditionGate by lazy { ConditionGate(conditionEvaluatorSet.associateBy { it.supportedType }) }
     private val allTriggersGate = AllTriggersGate()
 

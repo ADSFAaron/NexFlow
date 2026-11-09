@@ -565,6 +565,10 @@ private fun noteText(context: Context, step: ExecutionStep, repeatRounds: Int): 
             context.resources.getQuantityString(R.plurals.run_step_repeat, repeatRounds, repeatRounds)
         note.startsWith(FlowInterpreter.NOTE_MENU) ->
             context.getString(R.string.run_step_menu, note.removePrefix(FlowInterpreter.NOTE_MENU))
+        note.startsWith(FlowInterpreter.NOTE_RATE_LIMITED) ->
+            note.removePrefix(FlowInterpreter.NOTE_RATE_LIMITED).toIntOrNull()
+                ?.let { context.resources.getQuantityString(R.plurals.run_step_rate_limited, it, it) }
+                ?: note
         // A token this build does not recognize is still better shown than swallowed.
         else -> note
     }

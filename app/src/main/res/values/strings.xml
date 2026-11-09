@@ -885,6 +885,25 @@
     <string name="run_detail_steps">Steps</string>
     <string name="run_no_steps">This run was recorded before step logging existed, so only its result was saved.</string>
     <string name="run_step_disabled">Turned off — skipped</string>
+    <plurals name="run_step_rate_limited">
+        <item quantity="one">Skipped — over the limit of %1$d per minute</item>
+        <item quantity="other">Skipped — over the limit of %1$d per minute</item>
+    </plurals>
+    <string name="rate_limit_notification_title">Action limit reached</string>
+    <plurals name="rate_limit_notification_sms">
+        <item quantity="one">“%2$s” tried to send more than %1$d SMS in a minute. The extra messages were skipped.</item>
+        <item quantity="other">“%2$s” tried to send more than %1$d SMS in a minute. The extra messages were skipped.</item>
+    </plurals>
+    <plurals name="rate_limit_notification_call">
+        <item quantity="one">“%2$s” tried to place more than %1$d call in a minute. The extra calls were skipped.</item>
+        <item quantity="other">“%2$s” tried to place more than %1$d calls in a minute. The extra calls were skipped.</item>
+    </plurals>
+    <plurals name="rate_limit_notification_http">
+        <item quantity="one">“%2$s” tried to make more than %1$d web request in a minute. The extra requests were skipped.</item>
+        <item quantity="other">“%2$s” tried to make more than %1$d web requests in a minute. The extra requests were skipped.</item>
+    </plurals>
+    <string name="channel_alerts_name">Safety alerts</string>
+    <string name="channel_alerts_description">Shown when NexFlow stops a flow from repeating an action too often</string>
     <string name="run_step_if_true">Condition met</string>
     <string name="run_step_if_false">Condition not met</string>
     <plurals name="run_step_repeat">
