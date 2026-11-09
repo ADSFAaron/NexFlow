@@ -29,6 +29,7 @@ import com.nexflow.core.flowschema.FlowSerializer
 import com.nexflow.core.flowschema.ImportItemKind
 import com.nexflow.core.flowschema.ImportWarning
 import com.nexflow.core.flowschema.ImportWarnings
+import com.nexflow.core.flowschema.ValidationError
 import com.nexflow.core.macrodroid.MdrToFlowConverter
 import com.nexflow.core.macrodroid.parser.MdrParser
 import com.nexflow.data.toDomain
@@ -74,17 +75,17 @@ class ImportViewModel @Inject constructor(
 
             var imported = 0
             val allWarnings = mutableListOf<ImportWarning>()
+            val taken = mutableSetOf<String>()
 
             root.macros.forEach { macro ->
                 val conversion = MdrToFlowConverter.convert(macro)
-                // The id comes from the macro's guid, so importing the same file twice would
-                // otherwise land on the first copy — see withFreeId.
-                val flow = conversion.flow.withFreeId()
+                // The flow id comes from the macro's guid, so the same .mdr imported twice asks for
+                // the same id again.
+                val id = freeFlowId(conversion.flow.id, taken)
                 // The converter already tagged each warning with the flow and item it belongs to,
-                // and toDomain() keeps the item ids, so the review UI can open the exact row. Only
-                // the flow id may have changed above.
-                allWarnings += conversion.warnings.map { it.copy(flowId = flow.id) }
-                repository.save(flow.toDomain())
+                // and toDomain() keeps those ids, so the review UI can open the exact row.
+                allWarnings += conversion.warnings.map { if (it.flowId == conversion.flow.id) it.copy(flowId = id) else it }
+                repository.save(conversion.flow.copy(id = id).toDomain())
                 imported++
             }
 
@@ -94,15 +95,18 @@ class ImportViewModel @Inject constructor(
 
     fun importFlowJson(content: String) {
         viewModelScope.launch {
-            val flowJson = FlowSerializer.decode(content).getOrElse { e ->
+            val decoded = FlowSerializer.decode(content).getOrElse { e ->
                 _result.update { ImportResult(error = "Parse failed: ${e.message}") }
                 return@launch
-            }.withFreeId()
+            }
+            val flowJson = decoded.copy(id = freeFlowId(decoded.id))
 
             fun warning(code: String, vararg args: String, itemKind: ImportItemKind? = null, itemId: String? = null) =
                 ImportWarning(code, args.toList(), flowJson.id, flowJson.name, itemKind, itemId)
 
-            val (errors, schemaWarnings) = FlowSchemaValidator.validate(flowJson).partition { it.isError }
+            val problems = FlowSchemaValidator.validate(flowJson)
+                .filter { it.severity != ValidationError.Severity.STRICT }
+            val (errors, schemaWarnings) = problems.partition { it.isError }
             // Refuse before touching anything: not even the globals it declares are created.
             if (errors.isNotEmpty()) {
                 _result.update { ImportResult(rejected = errors.map { "${it.field}: ${it.message}" }) }
@@ -130,14 +134,16 @@ class ImportViewModel @Inject constructor(
     }
 
     /**
-     * The flow as it should be saved: under its own id, unless this device already has a flow with
-     * that id — then as a new flow beside it. Saving is an upsert, so keeping a clashing id would
-     * silently replace the user's flow (and whatever they changed in it since) with the file's
-     * copy. The clash is the ordinary case, not an attack: re-importing your own export, a friend's
-     * flow shared twice, the same MacroDroid file read again.
+     * [id] unless a flow already has it (or an earlier flow of this same import took it), in which
+     * case a fresh one. Saving is an upsert, so keeping a clashing id would silently replace the
+     * user's flow (and whatever they changed in it since) with the file's copy. The clash is the
+     * ordinary case, not an attack: re-importing your own export, a friend's flow shared twice, the
+     * same MacroDroid file read again. Item ids stay as they are: they are scoped to their flow.
      */
-    private suspend fun FlowJson.withFreeId(): FlowJson =
-        if (repository.getById(id) == null) this else copy(id = UUID.randomUUID().toString())
+    private suspend fun freeFlowId(id: String, taken: MutableSet<String> = mutableSetOf()): String {
+        val free = id !in taken && repository.getById(id) == null
+        return (if (free) id else UUID.randomUUID().toString()).also { taken += it }
+    }
 
     /**
      * Creates the globals an imported flow declares but this device doesn't have yet, and reports

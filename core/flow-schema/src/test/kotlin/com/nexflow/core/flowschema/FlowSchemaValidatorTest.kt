@@ -62,14 +62,25 @@ class FlowSchemaValidatorTest {
     }
 
     @Test
+    fun `ids that are not UUIDs only bother the store`() {
+        // A MacroDroid import keeps the macro's numeric guids; such a flow must export and import back.
+        val flow = valid().copy(
+            id = "-4823749823749",
+            triggers = listOf(TriggerJson("1234", "TIME", JsonObject(emptyMap()))),
+            actions = listOf(ActionJson("5678", "TOAST", JsonObject(emptyMap()), order = 0, enabled = true)),
+        )
+        val problems = flow.problems()
+        assertEquals(listOf("id", "triggers[0].id", "actions[0].id"), problems.map { it.field })
+        assertTrue(problems.all { it.severity == ValidationError.Severity.STRICT }, "$problems")
+    }
+
+    @Test
     fun `what the app cannot store or run is an error`() {
         val ifBlock = ActionJson(uuid(), "IF_BLOCK", JsonObject(emptyMap()), order = 1, enabled = true)
         val cases = mapOf(
             "schema_version" to valid().copy(schemaVersion = 99),
-            "id" to valid().copy(id = "not-a-uuid"),
             "name" to valid().copy(name = " "),
             "trigger_logic" to valid().copy(triggerLogic = "SOME"),
-            "triggers[0].id" to valid().copy(triggers = listOf(TriggerJson("t1", "TIME", JsonObject(emptyMap())))),
             "actions" to valid().let { it.copy(actions = it.actions + ifBlock) },
             "variables[0].type" to valid().copy(variables = listOf(VariableJson("ok", "LIST", JsonPrimitive("")))),
         )

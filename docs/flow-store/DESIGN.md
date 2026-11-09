@@ -21,7 +21,7 @@
 |---|---|---|
 | 1.7.1 執行期安全底線（速率限制、捷徑 intent 字面值等） | 完成，待發版 | `fix/security-hardening` |
 | P1 #13 schema error 不存檔 | 完成 | `feat/flow-store-p1`；validator 分 ERROR／WARNING，見 P1 段落 |
-| P1 #14 ID 相同發新 UUID | 未開始 | |
+| P1 #14 ID 相同發新 UUID | 完成 | 含 MDR；ID 格式不符 UUID 改列 STRICT（只有商店擋） |
 | P1 #15 未知類型 warning | 未開始 | |
 | P1 #16 `FlowConfigValidator` | 未開始 | |
 | P1 #17 `PersonalFields`／`SensitiveSinks` | 未開始 | |
@@ -140,6 +140,8 @@
   - **實作時的修正**：`FlowSchemaValidator` 的規則分成 ERROR 與 WARNING，只有 ERROR 擋匯入。App 自己的編輯器
     做得出來的情況（沒有觸發器或動作、名稱 > 100 字、描述 > 2000 字、變數名稱不符 `^[a-zA-Z_][a-zA-Z0-9_]*$`）
     是 WARNING，否則使用者自己匯出的流程會匯不回來。商店 CLI 要比匯入嚴格，所有 WARNING 都當錯誤處理。
+  - 第三級 STRICT：裝置上無害、只有商店要擋的問題。目前是「ID 不是 UUID」——MacroDroid 匯入的流程與項目 ID
+    是數字，項目又存在流程那一列的 JSON 裡，任何唯一字串都能用。匯入完全忽略 STRICT，CLI 當錯誤。
 - 流程 ID 和既有的相同時發新 UUID，避免 REPLACE 觸發 CASCADE 刪掉執行紀錄（#14）。
 - 未知類型與 flavor 隱藏的類型要出 warning（#15）。
 

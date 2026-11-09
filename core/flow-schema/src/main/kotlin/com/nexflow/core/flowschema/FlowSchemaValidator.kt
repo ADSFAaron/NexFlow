@@ -28,7 +28,8 @@ object FlowSchemaValidator {
      * Every problem with [flow]. An [ValidationError.Severity.ERROR] means the file cannot be
      * stored safely or run as written; a [ValidationError.Severity.WARNING] is something NexFlow's
      * own editor lets a user create (an empty section, a long name, a variable called "my var"),
-     * so a flow exported from this app always imports back.
+     * so a flow exported from this app always imports back. A [ValidationError.Severity.STRICT]
+     * is harmless on a device and only matters to the flow store, which wants uniform files.
      */
     fun validate(flow: FlowJson): List<ValidationError> {
         val errors = mutableListOf<ValidationError>()
@@ -37,7 +38,8 @@ object FlowSchemaValidator {
             errors += ValidationError("schema_version", "Unsupported version: ${flow.schemaVersion}")
         }
         if (!UUID_REGEX.matches(flow.id)) {
-            errors += ValidationError("id", "Not a valid UUID v4: ${flow.id}")
+            // MacroDroid imports keep the macro's numeric guid; import picks a fresh id on a clash anyway.
+            errors += strict("id", "Not a valid UUID v4: ${flow.id}")
         }
         if (flow.name.isBlank()) errors += ValidationError("name", "Must not be blank")
         if (flow.name.length > 100) errors += warning("name", "Exceeds 100 characters")
@@ -49,11 +51,12 @@ object FlowSchemaValidator {
         }
 
         flow.triggers.forEachIndexed { i, t ->
-            if (!UUID_REGEX.matches(t.id)) errors += ValidationError("triggers[$i].id", "Invalid UUID")
+            // Item ids live inside their flow's row, so any unique string works; MacroDroid's are numbers.
+            if (!UUID_REGEX.matches(t.id)) errors += strict("triggers[$i].id", "Invalid UUID")
         }
 
         flow.actions.forEachIndexed { i, a ->
-            if (!UUID_REGEX.matches(a.id)) errors += ValidationError("actions[$i].id", "Invalid UUID")
+            if (!UUID_REGEX.matches(a.id)) errors += strict("actions[$i].id", "Invalid UUID")
             if (a.order < 0) errors += ValidationError("actions[$i].order", "Must be ≥ 0")
         }
 
@@ -93,12 +96,24 @@ object FlowSchemaValidator {
 private fun warning(field: String, message: String) =
     ValidationError(field, message, ValidationError.Severity.WARNING)
 
+private fun strict(field: String, message: String) =
+    ValidationError(field, message, ValidationError.Severity.STRICT)
+
 data class ValidationError(
     val field: String,
     val message: String,
     val severity: Severity = Severity.ERROR,
 ) {
-    enum class Severity { ERROR, WARNING }
+    enum class Severity {
+        /** Cannot be stored or run as written. */
+        ERROR,
+
+        /** Worth telling the user; NexFlow itself can produce it. */
+        WARNING,
+
+        /** Harmless on a device; only the flow store rejects it. */
+        STRICT,
+    }
 
     val isError: Boolean get() = severity == Severity.ERROR
 }
