@@ -91,6 +91,24 @@ class AiChatSession @Inject constructor(
     /** Flow id this conversation was opened to edit — guards re-seeding on re-entry. */
     private var editingFlowId: String? = null
 
+    /**
+     * Bumped whenever the conversation on screen is swapped for a different one — another flow,
+     * the free chat, or a fresh start — so the screen can drop the old transcript outright
+     * instead of animating every message of it out over the new one.
+     */
+    val conversationId = MutableStateFlow(0)
+
+    /** Takes the current conversation off the screen, ahead of loading another in its place. */
+    private fun clearConversation() {
+        messages.value = emptyList()
+        draft.value = ""
+        savedFlowId = null
+        editingFlow.value = null
+        baselineFlow.value = null
+        orchestrator.reset()
+        conversationId.value++
+    }
+
     /** The in-flight turn, so the user can stop it. */
     private var turnJob: Job? = null
 
@@ -104,6 +122,9 @@ class AiChatSession @Inject constructor(
      */
     fun startFlowEdit(flowId: String) {
         if (editingFlowId == flowId || isThinking.value) return
+        // Off the screen at once: the flow loads asynchronously, and until it does the previous
+        // conversation — another flow's, or the free chat — would sit under this flow's name.
+        clearConversation()
         // Claimed before the suspending load so a second entry can't seed the chat twice.
         editingFlowId = flowId
         scope.launch {
@@ -140,9 +161,36 @@ class AiChatSession @Inject constructor(
         }
     }
 
-    /** Restores the free-form chat, once, when the app comes back after being killed. */
+    /**
+     * Opens the free-form chat: the AI entry on the Flows tab. Coming from a flow's AI edit,
+     * that conversation is put away (it is stored under its flow) and the free chat's own is
+     * read back — before, the flow edit simply stayed on screen, and "start over" then reloaded
+     * the flow rather than giving a blank chat. A turn still running keeps its conversation.
+     */
     fun restoreFreeChat() {
-        if (freeChatRestored || editingFlowId != null || messages.value.isNotEmpty()) return
+        if (editingFlowId != null) {
+            if (isThinking.value) return
+            editingFlowId = null
+            clearConversation()
+            scope.launch { loadFreeChat() }
+            return
+        }
+        restoreFreeChatOnce()
+    }
+
+    private suspend fun loadFreeChat() {
+        val stored = store.load(null) ?: return
+        // Entering a flow edit while this was loading wins — don't stomp on it.
+        if (editingFlowId != null || messages.value.isNotEmpty()) return
+        orchestrator.restoreHistory(stored.history, stored.tokensUsed)
+        savedFlowId = stored.savedFlowId
+        messages.value = stored.messages
+        conversationId.value++
+    }
+
+    /** Restores the free-form chat, once, when the app comes back after being killed. */
+    private fun restoreFreeChatOnce() {
+        if (freeChatRestored || messages.value.isNotEmpty()) return
         freeChatRestored = true
         scope.launch {
             store.purgeOrphans()
@@ -150,12 +198,7 @@ class AiChatSession @Inject constructor(
             store.referencedImages()?.let { stored ->
                 images.prune(stored + messages.value.imageNames() + pendingImages.value)
             }
-            val stored = store.load(null) ?: return@launch
-            // Entering a flow edit while this was loading wins — don't stomp on it.
-            if (editingFlowId != null || messages.value.isNotEmpty()) return@launch
-            orchestrator.restoreHistory(stored.history, stored.tokensUsed)
-            savedFlowId = stored.savedFlowId
-            messages.value = stored.messages
+            loadFreeChat()
         }
     }
 
@@ -298,6 +341,7 @@ class AiChatSession @Inject constructor(
     fun newChat() {
         if (isThinking.value) return
         val flowId = editingFlowId
+        conversationId.value++
         messages.value = emptyList()
         draft.value = ""
         // The transcript's own images go with the next prune; these were never in one.

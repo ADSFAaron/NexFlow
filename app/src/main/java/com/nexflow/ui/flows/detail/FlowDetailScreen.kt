@@ -15,6 +15,7 @@
  */
 package com.nexflow.ui.flows.detail
 
+import androidx.compose.foundation.layout.wrapContentHeight
 import com.nexflow.ui.common.SettingsBackButton
 import com.nexflow.ui.common.SettingsDefaults
 import com.nexflow.ui.common.settingsItemPadding
@@ -1212,7 +1213,7 @@ private fun FlowEnabledCapsule(
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun TriggerLogicToggle(
+internal fun TriggerLogicToggle(
     logic: TriggerLogic,
     onSelect: (TriggerLogic) -> Unit,
 ) {
@@ -1522,8 +1523,9 @@ private fun UnsupportedConditionDialog(typeId: String, onDelete: () -> Unit, onD
 // Section header
 // ---------------------------------------------------------------------------
 
+// internal: app/src/test checks every header is the same height.
 @Composable
-private fun SectionHeader(title: String, trailing: (@Composable () -> Unit)? = null) {
+internal fun SectionHeader(title: String, trailing: (@Composable () -> Unit)? = null) {
     // SettingsGroupTitle's type and colour, plus a slot for the trigger logic toggle. Every
     // header is as tall as the one carrying the toggle (its 40dp buttons in a 48dp touch
     // target), so the title-to-tiles distance is the same in all four sections; it used to
@@ -1541,7 +1543,14 @@ private fun SectionHeader(title: String, trailing: (@Composable () -> Unit)? = n
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.weight(1f).semantics { heading() },
         )
-        trailing?.invoke()
+        if (trailing != null) {
+            // The toggle's button group measures 52dp, taller than the header: left to size the
+            // row, it pushed this section's tiles 4dp below every other section's. It is
+            // centred in the header's own height instead, free to draw past it by those few dp.
+            Box(Modifier.height(48.dp), contentAlignment = Alignment.Center) {
+                Box(Modifier.wrapContentHeight(unbounded = true)) { trailing() }
+            }
+        }
     }
 }
 

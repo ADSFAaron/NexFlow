@@ -191,6 +191,8 @@
     <string name="ai_step_repairing">正在修正验证错误(第 %1$d 次)…</string>
     <string name="ai_step_retrying">AI 服务繁忙，正在重试（%1$d/%2$d）…</string>
     <string name="ai_start_over">重新开始</string>
+    <string name="ai_start_over_desc">清除这段对话</string>
+    <string name="ai_start_over_desc_flow">清除这段对话，重新开始编辑这个流程</string>
     <string name="ai_editing_flow_intro">我已载入“%1$s”。告诉我你想怎么调整 — 例如新增一个步骤、改时间,或换成打开另一个 App。</string>
     <string name="ai_update_flow">更新流程</string>
     <string name="ai_save_flow">保存流程</string>

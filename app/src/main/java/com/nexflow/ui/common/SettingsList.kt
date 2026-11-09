@@ -91,6 +91,13 @@ object SettingsDefaults {
     val tileColor: Color
         @Composable get() = MaterialTheme.colorScheme.run { if (isDark) surfaceContainerHigh else surfaceBright }
 
+    /**
+     * A panel that holds tiles of its own (the AI chat's flow proposal): a step off the page in
+     * the other direction from the tiles, so both the panel and the tiles inside it read.
+     */
+    val panelColor: Color
+        @Composable get() = MaterialTheme.colorScheme.run { if (isDark) surfaceContainer else surfaceContainerHigh }
+
     @Composable
     fun itemColors(): ListItemColors = ListItemDefaults.segmentedColors(containerColor = tileColor)
 

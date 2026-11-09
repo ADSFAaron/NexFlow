@@ -191,6 +191,8 @@
     <string name="ai_step_repairing">検証エラーを修正中(%1$d 回目)…</string>
     <string name="ai_step_retrying">AI サービスが混雑中のため再試行しています（%1$d/%2$d）…</string>
     <string name="ai_start_over">最初から</string>
+    <string name="ai_start_over_desc">この会話を消去</string>
+    <string name="ai_start_over_desc_flow">この会話を消去して、このフローの編集を最初からやり直す</string>
     <string name="ai_editing_flow_intro">「%1$s」を読み込みました。変更したい内容を教えてください — 例えばステップの追加、時刻の変更、開くアプリの変更などです。</string>
     <string name="ai_update_flow">フローを更新</string>
     <string name="ai_save_flow">フローを保存</string>

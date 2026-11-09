@@ -196,6 +196,8 @@
     <string name="ai_step_repairing">Fixing validation errors (attempt %1$d)…</string>
     <string name="ai_step_retrying">The AI service is busy, retrying (%1$d/%2$d)…</string>
     <string name="ai_start_over">Start over</string>
+    <string name="ai_start_over_desc">Clear this conversation</string>
+    <string name="ai_start_over_desc_flow">Clear this conversation and start editing this flow afresh</string>
     <string name="ai_editing_flow_intro">I\'ve loaded \"%1$s\". Tell me what you\'d like to change — for example add a step, change a time, or swap the app it opens.</string>
     <string name="ai_update_flow">Update flow</string>
     <string name="ai_save_flow">Save flow</string>

@@ -54,7 +54,7 @@ private fun Bar(text: String, isThinking: Boolean = false) {
         isThinking = isThinking,
         isListening = false,
         canSend = text.isNotBlank(),
-        onAttach = {},
+        onOpenMenu = {},
         onMic = {},
         onSendOrStop = {},
     )

@@ -200,6 +200,9 @@ class AiChatViewModel @Inject constructor(
 
     fun newChat() = session.newChat()
 
+    /** Changes whenever a different conversation replaces the one on screen. */
+    val conversationId: StateFlow<Int> = session.conversationId
+
     fun saveFlow(message: ChatMessage.FlowPreview) {
         if (message.saved) return
         val wasEditing = uiState.value.editingFlow != null

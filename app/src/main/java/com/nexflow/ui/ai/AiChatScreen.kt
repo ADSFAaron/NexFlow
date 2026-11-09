@@ -15,6 +15,13 @@
  */
 package com.nexflow.ui.ai
 
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ListItem
+import androidx.compose.material.icons.outlined.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.runtime.key
+import com.nexflow.ui.common.inContainerColors
 import androidx.compose.material.icons.outlined.RestartAlt
 import com.nexflow.ui.common.SettingsGroupTitle
 import com.nexflow.ui.common.settingsItemShapes
@@ -83,7 +90,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -227,7 +233,11 @@ fun AiChatScreen(
             }
         }
     }
-    val listState = rememberLazyListState()
+    // A different conversation gets a fresh list, scrolled from the top, rather than the old
+    // one's position and item animations.
+    val conversationId by vm.conversationId.collectAsState()
+    val listState = remember(conversationId) { LazyListState() }
+    var showMenu by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -397,6 +407,30 @@ fun AiChatScreen(
         if (imeVisible && followTail) scrollToTail()
     }
 
+    if (showMenu) {
+        ChatMenuSheet(
+            editingFlow = editingFlow != null,
+            canStartOver = uiState.messages.isNotEmpty() && !uiState.isThinking,
+            onAttach = {
+                showMenu = false
+                if (pendingImages.size >= AiImageStore.MAX_PER_MESSAGE) {
+                    scope.launch { snackbarHostState.showSnackbar(imageLimitText) }
+                } else {
+                    pickImages.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                }
+            },
+            onStartOver = {
+                showMenu = false
+                vm.newChat()
+            },
+            onOpenSettings = {
+                showMenu = false
+                onOpenSettings()
+            },
+            onDismiss = { showMenu = false },
+        )
+    }
+
     // The settings pages' page colour, with the soft Gemini glow drawn over it from the very top
     // of the screen. It used to start under an opaque bar, which left a hard edge across the
     // page where the bar ended; the bar is transparent now and the glow runs behind it.
@@ -441,32 +475,6 @@ fun AiChatScreen(
                         }
                     }
                 },
-                actions = {
-                    // Words, not just a glyph: a speech bubble with a "+" read as "add a comment",
-                    // and nobody guessed it throws the conversation away and starts this flow's
-                    // editing afresh — which is the one way out of an old transcript.
-                    TextButton(
-                        onClick = { vm.newChat() },
-                        enabled = uiState.messages.isNotEmpty() && !uiState.isThinking,
-                        contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
-                    ) {
-                        Icon(
-                            Icons.Outlined.RestartAlt,
-                            contentDescription = null,
-                            modifier = Modifier.size(ButtonDefaults.IconSize),
-                        )
-                        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                        Text(stringResource(R.string.ai_start_over), maxLines = 1)
-                    }
-                    if (editingFlow != null) {
-                        IconButton(onClick = onOpenSettings) {
-                            Icon(
-                                Icons.Outlined.Tune,
-                                contentDescription = stringResource(R.string.settings_ai_model),
-                            )
-                        }
-                    }
-                },
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -482,130 +490,136 @@ fun AiChatScreen(
                     .imePadding(),
             ) {
                 Box(modifier = Modifier.weight(1f)) {
-                    when {
-                        uiState.apiKeyMissing -> ApiKeyMissingContent(
-                            onOpenSettings = onOpenSettings,
-                            modifier = Modifier.fillMaxSize(),
-                        )
+                    // Keyed on the conversation, so swapping one for another (another flow, the free
+                    // chat, a fresh start) replaces the list outright. Unkeyed, the old messages
+                    // left through the list's item-removal animation and were drawn over the new
+                    // conversation — and, the bar being transparent, over the bar too.
+                    key(conversationId) {
+                        when {
+                            uiState.apiKeyMissing -> ApiKeyMissingContent(
+                                onOpenSettings = onOpenSettings,
+                                modifier = Modifier.fillMaxSize(),
+                            )
 
-                        uiState.messages.isEmpty() -> GreetingContent(
-                            suggestions = if (showSuggestions) suggestions else emptyList(),
-                            onPick = { vm.sendMessage(it) },
-                            modifier = Modifier.fillMaxSize(),
-                        )
+                            uiState.messages.isEmpty() -> GreetingContent(
+                                suggestions = if (showSuggestions) suggestions else emptyList(),
+                                onPick = { vm.sendMessage(it) },
+                                modifier = Modifier.fillMaxSize(),
+                            )
 
-                        else -> LazyColumn(
-                            state = listState,
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            itemsIndexed(uiState.messages, key = { _, m -> m.id }) { index, message ->
-                                val itemModifier = Modifier.animateItem(
-                                    fadeInSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
-                                    placementSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
-                                    fadeOutSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
-                                )
-                                // Same, minus the fade out. Retry deletes the error bubble and
-                                // starts the turn in the same breath, so the thinking indicator
-                                // is placed in the very slot the error is still fading out of —
-                                // two opaque bubbles drawn on top of each other. Nothing else in
-                                // this list is ever replaced in place, so only this one bubble
-                                // has to leave immediately.
-                                val replacedItemModifier = Modifier.animateItem(
-                                    fadeInSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
-                                    placementSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
-                                    fadeOutSpec = null,
-                                )
-                                // A day rule opens the transcript and marks every date change after it.
-                                val previous = uiState.messages.getOrNull(index - 1)
-                                if (previous == null || !isSameDay(previous.timestamp, message.timestamp)) {
-                                    DaySeparator(message.timestamp)
-                                }
-                                // One time per burst, on the last bubble of it — a clock on
-                                // every line is noise nobody reads.
-                                val showTimestamp = !message.groupsWith(
-                                    uiState.messages.getOrNull(index + 1),
-                                )
-                                when (message) {
-                                    is ChatMessage.UserText -> MessageBubble(
-                                        text = message.text,
-                                        images = message.images.map(vm::imageFile),
-                                        timestamp = message.timestamp,
-                                        fromUser = true,
-                                        // Long-press → Edit reloads the sent text into the input field
-                                        onEdit = { vm.updateDraft(message.text) },
-                                        showTimestamp = showTimestamp,
-                                        modifier = itemModifier,
+                            else -> LazyColumn(
+                                state = listState,
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                itemsIndexed(uiState.messages, key = { _, m -> m.id }) { index, message ->
+                                    val itemModifier = Modifier.animateItem(
+                                        fadeInSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
+                                        placementSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
+                                        fadeOutSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
                                     )
-
-                                    is ChatMessage.AssistantText -> MessageBubble(
-                                        text = message.text,
-                                        timestamp = message.timestamp,
-                                        fromUser = false,
-                                        // Gemini answers in markdown; render it instead of showing
-                                        // raw ** and - characters.
-                                        renderMarkdown = true,
-                                        announce = index == uiState.messages.lastIndex,
-                                        stopped = message.stopped,
-                                        showTimestamp = showTimestamp,
-                                        modifier = itemModifier,
-                                    )
-
-                                    is ChatMessage.Error -> ErrorBubble(
-                                        text = message.text,
-                                        onRetry = if (
-                                            (message.retryText.isNotBlank() || message.retryImages.isNotEmpty()) &&
-                                            !uiState.isThinking
-                                        ) {
-                                            { vm.retry(message.id) }
-                                        } else {
-                                            null
-                                        },
-                                        modifier = replacedItemModifier,
-                                    )
-
-                                    is ChatMessage.FlowPreview -> FlowPreviewCard(
-                                        flow = message.flow,
-                                        saved = message.saved,
-                                        isUpdate = uiState.hasSavedFlow,
-                                        baseline = uiState.baselineFlow,
-                                        onSave = { vm.saveFlow(message) },
-                                        modifier = itemModifier,
-                                    )
-                                }
-                            }
-                            if (showQuickReplies) {
-                                item(key = "quick-replies") {
-                                    QuickReplies(
-                                        suggestions = suggestions,
-                                        onPick = { vm.sendMessage(it) },
-                                        modifier = Modifier.animateItem(
-                                            fadeInSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
-                                            placementSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
-                                            // Leaves at once: the user's message takes its place.
-                                            fadeOutSpec = null,
-                                        ),
-                                    )
-                                }
-                            }
-                            // While a turn runs the tail of the list is either the answer
-                            // forming in place, or — before the first token — the indicator.
-                            if (uiState.isThinking) {
-                                item(key = "thinking") {
-                                    // Fades in with the list's own item animation like every
-                                    // other bubble; leaves at once, because the answer it turns
-                                    // into is placed in this same slot.
-                                    val indicatorModifier = Modifier.animateItem(
+                                    // Same, minus the fade out. Retry deletes the error bubble and
+                                    // starts the turn in the same breath, so the thinking indicator
+                                    // is placed in the very slot the error is still fading out of —
+                                    // two opaque bubbles drawn on top of each other. Nothing else in
+                                    // this list is ever replaced in place, so only this one bubble
+                                    // has to leave immediately.
+                                    val replacedItemModifier = Modifier.animateItem(
                                         fadeInSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
                                         placementSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
                                         fadeOutSpec = null,
                                     )
-                                    val streaming = uiState.streamingText
-                                    if (streaming.isNullOrBlank()) {
-                                        ThinkingBubble(step = uiState.thinkingStep, modifier = indicatorModifier)
-                                    } else {
-                                        StreamingBubble(text = streaming, modifier = indicatorModifier)
+                                    // A day rule opens the transcript and marks every date change after it.
+                                    val previous = uiState.messages.getOrNull(index - 1)
+                                    if (previous == null || !isSameDay(previous.timestamp, message.timestamp)) {
+                                        DaySeparator(message.timestamp)
+                                    }
+                                    // One time per burst, on the last bubble of it — a clock on
+                                    // every line is noise nobody reads.
+                                    val showTimestamp = !message.groupsWith(
+                                        uiState.messages.getOrNull(index + 1),
+                                    )
+                                    when (message) {
+                                        is ChatMessage.UserText -> MessageBubble(
+                                            text = message.text,
+                                            images = message.images.map(vm::imageFile),
+                                            timestamp = message.timestamp,
+                                            fromUser = true,
+                                            // Long-press → Edit reloads the sent text into the input field
+                                            onEdit = { vm.updateDraft(message.text) },
+                                            showTimestamp = showTimestamp,
+                                            modifier = itemModifier,
+                                        )
+
+                                        is ChatMessage.AssistantText -> MessageBubble(
+                                            text = message.text,
+                                            timestamp = message.timestamp,
+                                            fromUser = false,
+                                            // Gemini answers in markdown; render it instead of showing
+                                            // raw ** and - characters.
+                                            renderMarkdown = true,
+                                            announce = index == uiState.messages.lastIndex,
+                                            stopped = message.stopped,
+                                            showTimestamp = showTimestamp,
+                                            modifier = itemModifier,
+                                        )
+
+                                        is ChatMessage.Error -> ErrorBubble(
+                                            text = message.text,
+                                            onRetry = if (
+                                                (message.retryText.isNotBlank() || message.retryImages.isNotEmpty()) &&
+                                                !uiState.isThinking
+                                            ) {
+                                                { vm.retry(message.id) }
+                                            } else {
+                                                null
+                                            },
+                                            modifier = replacedItemModifier,
+                                        )
+
+                                        is ChatMessage.FlowPreview -> FlowPreviewCard(
+                                            flow = message.flow,
+                                            saved = message.saved,
+                                            isUpdate = uiState.hasSavedFlow,
+                                            baseline = uiState.baselineFlow,
+                                            onSave = { vm.saveFlow(message) },
+                                            modifier = itemModifier,
+                                        )
+                                    }
+                                }
+                                if (showQuickReplies) {
+                                    item(key = "quick-replies") {
+                                        QuickReplies(
+                                            suggestions = suggestions,
+                                            onPick = { vm.sendMessage(it) },
+                                            modifier = Modifier.animateItem(
+                                                fadeInSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
+                                                placementSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
+                                                // Leaves at once: the user's message takes its place.
+                                                fadeOutSpec = null,
+                                            ),
+                                        )
+                                    }
+                                }
+                                // While a turn runs the tail of the list is either the answer
+                                // forming in place, or — before the first token — the indicator.
+                                if (uiState.isThinking) {
+                                    item(key = "thinking") {
+                                        // Fades in with the list's own item animation like every
+                                        // other bubble; leaves at once, because the answer it turns
+                                        // into is placed in this same slot.
+                                        val indicatorModifier = Modifier.animateItem(
+                                            fadeInSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
+                                            placementSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
+                                            fadeOutSpec = null,
+                                        )
+                                        val streaming = uiState.streamingText
+                                        if (streaming.isNullOrBlank()) {
+                                            ThinkingBubble(step = uiState.thinkingStep, modifier = indicatorModifier)
+                                        } else {
+                                            StreamingBubble(text = streaming, modifier = indicatorModifier)
+                                        }
                                     }
                                 }
                             }
@@ -635,15 +649,7 @@ fun AiChatScreen(
                         isThinking = uiState.isThinking,
                         isListening = voice.isListening,
                         canSend = fieldValue.text.isNotBlank() || pendingImages.isNotEmpty(),
-                        onAttach = {
-                            if (pendingImages.size >= AiImageStore.MAX_PER_MESSAGE) {
-                                scope.launch { snackbarHostState.showSnackbar(imageLimitText) }
-                            } else {
-                                pickImages.launch(
-                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-                                )
-                            }
-                        },
+                        onOpenMenu = { showMenu = true },
                         onMic = {
                             if (voice.isListening) {
                                 voice.stop()
@@ -693,7 +699,8 @@ internal fun ChatInputBar(
     isThinking: Boolean,
     isListening: Boolean,
     canSend: Boolean,
-    onAttach: () -> Unit,
+    /** The "+": attach an image, start over, pick the model — see [ChatMenuSheet]. */
+    onOpenMenu: () -> Unit,
     onMic: () -> Unit,
     onSendOrStop: () -> Unit,
     modifier: Modifier = Modifier,
@@ -734,10 +741,10 @@ internal fun ChatInputBar(
             val textStyle = MaterialTheme.typography.bodyLarge
             ComposerLayout(lineHeight = textStyle.lineHeight, modifier = Modifier.padding(4.dp)) {
                 // A screenshot often says what a sentence can't — which button, which field.
-                IconButton(onClick = onAttach, enabled = !isThinking, colors = quietIconColors) {
+                IconButton(onClick = onOpenMenu, enabled = !isThinking, colors = quietIconColors) {
                     Icon(
                         Icons.Outlined.Add,
-                        contentDescription = stringResource(R.string.ai_attach_image),
+                        contentDescription = stringResource(R.string.action_more),
                     )
                 }
                 // Official pattern for a custom-container field: BasicTextField + the M3
@@ -1098,6 +1105,65 @@ private fun FlowAvatar(flow: EditingFlowInfo, size: Dp, ringSize: Dp) {
             )
         }
     }
+}
+
+/**
+ * What the composer's "+" opens, after the Gemini app's own: the things a conversation can be
+ * given or have done to it, each named, in a sheet rather than as glyphs in the bar. Starting
+ * over used to be a bare icon up there that nobody read as "throw this conversation away".
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ChatMenuSheet(
+    editingFlow: Boolean,
+    canStartOver: Boolean,
+    onAttach: () -> Unit,
+    onStartOver: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(modifier = Modifier.padding(bottom = 16.dp)) {
+            ChatMenuItem(
+                icon = Icons.Outlined.Image,
+                title = stringResource(R.string.ai_attach_image),
+                onClick = onAttach,
+            )
+            ChatMenuItem(
+                icon = Icons.Outlined.RestartAlt,
+                title = stringResource(R.string.ai_start_over),
+                summary = stringResource(
+                    if (editingFlow) R.string.ai_start_over_desc_flow else R.string.ai_start_over_desc,
+                ),
+                enabled = canStartOver,
+                onClick = onStartOver,
+            )
+            ChatMenuItem(
+                icon = Icons.Outlined.Tune,
+                title = stringResource(R.string.settings_ai_model),
+                onClick = onOpenSettings,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ChatMenuItem(
+    icon: ImageVector,
+    title: String,
+    onClick: () -> Unit,
+    summary: String? = null,
+    enabled: Boolean = true,
+) {
+    ListItem(
+        colors = ListItemDefaults.inContainerColors(),
+        leadingContent = { Icon(icon, contentDescription = null) },
+        headlineContent = { Text(title) },
+        supportingContent = summary?.let { { Text(it) } },
+        modifier = Modifier
+            .clickable(enabled = enabled, onClick = onClick)
+            .alpha(if (enabled) 1f else 0.38f),
+    )
 }
 
 /** How far down the page the ambient glow fades out, measured from the top of the screen. */
@@ -1662,11 +1728,19 @@ internal fun FlowPreviewCard(
         }
     }
 
-    Column(modifier = modifier.fillMaxWidth()) {
+    // A panel of its own, a step off the page, so the proposal reads as one thing the assistant
+    // handed over rather than tiles loose among the bubbles; the tiles inside keep the tile
+    // colour, a step off the panel.
+    Surface(
+        color = SettingsDefaults.panelColor,
+        shape = RoundedCornerShape(28.dp),
+        modifier = modifier.fillMaxWidth().padding(vertical = 4.dp),
+    ) {
+    Column(modifier = Modifier.padding(12.dp)) {
         Text(
             text = flow.name,
             style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(horizontal = 8.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
         )
         if (flow.description.isNotBlank()) {
             Spacer(Modifier.height(4.dp))
@@ -1713,6 +1787,7 @@ internal fun FlowPreviewCard(
                 ),
             )
         }
+    }
     }
 }
 
