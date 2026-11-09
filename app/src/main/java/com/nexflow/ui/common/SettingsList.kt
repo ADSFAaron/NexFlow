@@ -317,6 +317,8 @@ fun SettingsRadioItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     summary: String? = null,
+    /** For a summary that is user text of any length (a flow's description), not a fixed hint. */
+    summaryMaxLines: Int = Int.MAX_VALUE,
 ) {
     SegmentedListItem(
         selected = selected,
@@ -324,7 +326,9 @@ fun SettingsRadioItem(
         shapes = shapes,
         modifier = modifier,
         leadingContent = { RadioButton(selected = selected, onClick = null) },
-        supportingContent = summary?.let { { Text(it) } },
+        supportingContent = summary?.let {
+            { Text(it, maxLines = summaryMaxLines, overflow = TextOverflow.Ellipsis) }
+        },
         verticalAlignment = Alignment.CenterVertically,
         colors = SettingsDefaults.itemColors(),
         content = { Text(title) },
