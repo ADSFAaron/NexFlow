@@ -572,33 +572,6 @@ private fun FlowDetailContent(
                 )
             }
 
-            if (f.triggers.isEmpty()) {
-                item {
-                    Text(
-                        stringResource(R.string.fd_no_triggers),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
-                    )
-                }
-            }
-
-            // ALL is a combination over time, not a state — say how long it waits, otherwise the
-            // toggle reads as "and" and a flow that never fires looks broken.
-            if (f.triggerLogic == TriggerLogic.ALL && f.triggers.size > 1) {
-                item {
-                    Text(
-                        pluralStringResource(
-                            R.plurals.fd_logic_all_hint,
-                            (AllTriggersGate.DEFAULT_WINDOW_MS / 60_000).toInt(),
-                            (AllTriggersGate.DEFAULT_WINDOW_MS / 60_000).toInt(),
-                        ),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
-                    )
-                }
-            }
 
             itemsIndexed(f.triggers, key = { _, t -> t.id }) { index, trigger ->
                 val ti = trigger.type.info(context)
@@ -629,20 +602,29 @@ private fun FlowDetailContent(
                 }
             }
 
+            // Below the group, as the settings pages put a group's footer: between the title
+            // and the tiles it pushed this section's tiles further down than the others'.
+            if (f.triggers.isEmpty()) {
+                item(key = "add_trigger_hint") { SectionFooter(stringResource(R.string.fd_no_triggers)) }
+            }
+            // ALL is a combination over time, not a state — say how long it waits, otherwise the
+            // toggle reads as "and" and a flow that never fires looks broken.
+            if (f.triggerLogic == TriggerLogic.ALL && f.triggers.size > 1) {
+                item(key = "logic_hint") {
+                    SectionFooter(
+                        pluralStringResource(
+                            R.plurals.fd_logic_all_hint,
+                            (AllTriggersGate.DEFAULT_WINDOW_MS / 60_000).toInt(),
+                            (AllTriggersGate.DEFAULT_WINDOW_MS / 60_000).toInt(),
+                        ),
+                    )
+                }
+            }
+
 
             // ---- CONDITIONS (constraints) ----
             item { SectionHeader(stringResource(R.string.fd_section_only_if)) }
 
-            if (f.conditions.isEmpty()) {
-                item {
-                    Text(
-                        stringResource(R.string.fd_no_conditions),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
-                    )
-                }
-            }
 
             itemsIndexed(f.conditions, key = { _, c -> c.id }) { index, condition ->
                 // A type this build doesn't know (hand-edited file, MacroDroid import) is shown
@@ -683,20 +665,16 @@ private fun FlowDetailContent(
                 }
             }
 
+            // Below the group, as the settings pages put a group's footer: between the title
+            // and the tiles it pushed this section's tiles further down than the others'.
+            if (f.conditions.isEmpty()) {
+                item(key = "add_condition_hint") { SectionFooter(stringResource(R.string.fd_no_conditions)) }
+            }
+
 
             // ---- ACTIONS ----
             item { SectionHeader(stringResource(R.string.fd_section_then)) }
 
-            if (f.actions.isEmpty()) {
-                item {
-                    Text(
-                        stringResource(R.string.fd_no_actions),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
-                    )
-                }
-            }
 
             itemsIndexed(sortedActions, key = { _, a -> a.id }) { index, action ->
                 val haptic = LocalHapticFeedback.current
@@ -748,20 +726,16 @@ private fun FlowDetailContent(
                 }
             }
 
+            // Below the group, as the settings pages put a group's footer: between the title
+            // and the tiles it pushed this section's tiles further down than the others'.
+            if (f.actions.isEmpty()) {
+                item(key = "add_action_hint") { SectionFooter(stringResource(R.string.fd_no_actions)) }
+            }
+
 
             // ---- VARIABLES ----
             item { SectionHeader(stringResource(R.string.fd_section_variables)) }
 
-            if (f.variables.isEmpty()) {
-                item {
-                    Text(
-                        stringResource(R.string.fd_no_variables),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
-                    )
-                }
-            }
 
             itemsIndexed(f.variables, key = { _, v -> "var_${v.name}" }) { index, variable ->
                 GroupedItem(
@@ -787,6 +761,12 @@ private fun FlowDetailContent(
                 ) {
                     AddRowContent(stringResource(R.string.fd_add_variable))
                 }
+            }
+
+            // Below the group, as the settings pages put a group's footer: between the title
+            // and the tiles it pushed this section's tiles further down than the others'.
+            if (f.variables.isEmpty()) {
+                item(key = "add_variable_hint") { SectionFooter(stringResource(R.string.fd_no_variables)) }
             }
 
             item { Spacer(Modifier.height(8.dp)) }
@@ -1544,12 +1524,15 @@ private fun UnsupportedConditionDialog(typeId: String, onDelete: () -> Unit, onD
 
 @Composable
 private fun SectionHeader(title: String, trailing: (@Composable () -> Unit)? = null) {
-    // SettingsGroupTitle's type, colour and spacing, plus a slot for the trigger logic toggle.
+    // SettingsGroupTitle's type and colour, plus a slot for the trigger logic toggle. Every
+    // header is as tall as the one carrying the toggle (its 40dp buttons in a 48dp touch
+    // target), so the title-to-tiles distance is the same in all four sections; it used to
+    // grow wherever the toggle appeared.
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 24.dp, end = 16.dp, top = 20.dp, bottom = 8.dp)
-            .heightIn(min = 24.dp),
+            .padding(start = 24.dp, end = 16.dp, top = 12.dp, bottom = 4.dp)
+            .heightIn(min = 48.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -1560,6 +1543,17 @@ private fun SectionHeader(title: String, trailing: (@Composable () -> Unit)? = n
         )
         trailing?.invoke()
     }
+}
+
+/** An explanation under a section's tiles, styled as a settings group's footer. */
+@Composable
+private fun SectionFooter(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 8.dp),
+    )
 }
 
 // ---------------------------------------------------------------------------
