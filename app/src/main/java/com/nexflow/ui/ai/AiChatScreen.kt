@@ -15,6 +15,19 @@
  */
 package com.nexflow.ui.ai
 
+import androidx.compose.material.icons.outlined.RestartAlt
+import com.nexflow.ui.common.SettingsGroupTitle
+import com.nexflow.ui.common.settingsItemShapes
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.ListItemShapes
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.nexflow.ui.common.SettingsBackButton
+import com.nexflow.ui.common.SettingsDefaults
+import com.nexflow.ui.common.SettingsGroup
+import com.nexflow.ui.common.SettingsItem
+import androidx.compose.material3.TopAppBarDefaults
 import android.Manifest
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -24,7 +37,6 @@ import android.text.format.DateUtils
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -40,9 +52,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.scrollBy
@@ -80,8 +90,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.AddComment
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
@@ -95,8 +103,6 @@ import androidx.compose.material.icons.outlined.Stop
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -131,13 +137,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -162,7 +166,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
@@ -313,16 +316,9 @@ fun AiChatScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    // Flow-edit mode gets a profile-card header instead of an app bar: the flow's own icon and
-    // name are what identify the conversation, and the card carries the same close / new-chat
-    // actions the bar would have.
+    // In flow-edit mode the bar carries the flow's own icon and name — they are what identify
+    // the conversation — laid out like the flow editor's bar the user just came from.
     val editingFlow = uiState.editingFlow
-
-    // The header is pinned, so close / new chat stay reachable no matter how long the
-    // transcript gets. It starts as the full profile card and shrinks to a one-line bar as
-    // soon as the user engages with the conversation — otherwise it would eat half the screen
-    // the moment the keyboard opens.
-    var headerExpanded by rememberSaveable { mutableStateOf(true) }
 
     // Openers, for the blank page. They stop once the user has said something — suggestions
     // help someone who is exploring and annoy someone who already knows what they want — so
@@ -350,15 +346,11 @@ fun AiChatScreen(
     LaunchedEffect(atBottom, uiState.isThinking) {
         if (atBottom) followTail = true
     }
-    // One signal, two consequences: a drag is the user taking over, so the card gets out of the
-    // way and the list stops chasing the tail. Only a *drag* counts — the auto-scroll below
-    // moves the list too, and that must not be mistaken for the user pushing anything away.
+    // A drag is the user taking over, so the list stops chasing the tail. Only a *drag* counts —
+    // the auto-scroll below moves the list too, and that must not be mistaken for the user.
     LaunchedEffect(listState) {
         listState.interactionSource.interactions.collect { interaction ->
-            if (interaction is DragInteraction.Start) {
-                headerExpanded = false
-                followTail = false
-            }
+            if (interaction is DragInteraction.Start) followTail = false
         }
     }
 
@@ -405,32 +397,77 @@ fun AiChatScreen(
         if (imeVisible && followTail) scrollToTail()
     }
 
+    // The settings pages' page colour, with the soft Gemini glow drawn over it from the very top
+    // of the screen. It used to start under an opaque bar, which left a hard edge across the
+    // page where the bar ended; the bar is transparent now and the glow runs behind it.
+    val pageColor = SettingsDefaults.pageColor
+    val glow = MaterialTheme.colorScheme.primary.copy(alpha = 0.07f)
+    val glowHeightPx = with(LocalDensity.current) { AmbientGlowHeight.toPx() }
     Scaffold(
+        modifier = Modifier
+            .background(pageColor)
+            .background(Brush.verticalGradient(listOf(glow, Color.Transparent), endY = glowHeightPx)),
+        containerColor = Color.Transparent,
         topBar = {
-            if (editingFlow == null) {
-                TopAppBar(
-                    title = { Text(stringResource(R.string.ai_chat_title)) },
-                    navigationIcon = {
-                        IconButton(onClick = onBack) {
+            TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = Color.Transparent,
+                ),
+                navigationIcon = { SettingsBackButton(onBack) },
+                title = {
+                    if (editingFlow == null) {
+                        Text(stringResource(R.string.ai_chat_title))
+                    } else {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            FlowAvatar(flow = editingFlow, size = 34.dp, ringSize = 34.dp)
+                            Spacer(Modifier.width(12.dp))
+                            Column {
+                                Text(editingFlow.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                // The user is spending their own API quota; don't make them guess
+                                // how fast. Under the name, where the old header card kept it.
+                                if (uiState.tokensUsed > 0) {
+                                    Text(
+                                        text = pluralStringResource(
+                                            R.plurals.ai_tokens_used,
+                                            uiState.tokensUsed,
+                                            uiState.tokensUsed,
+                                        ),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                },
+                actions = {
+                    // Words, not just a glyph: a speech bubble with a "+" read as "add a comment",
+                    // and nobody guessed it throws the conversation away and starts this flow's
+                    // editing afresh — which is the one way out of an old transcript.
+                    TextButton(
+                        onClick = { vm.newChat() },
+                        enabled = uiState.messages.isNotEmpty() && !uiState.isThinking,
+                        contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
+                    ) {
+                        Icon(
+                            Icons.Outlined.RestartAlt,
+                            contentDescription = null,
+                            modifier = Modifier.size(ButtonDefaults.IconSize),
+                        )
+                        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                        Text(stringResource(R.string.ai_start_over), maxLines = 1)
+                    }
+                    if (editingFlow != null) {
+                        IconButton(onClick = onOpenSettings) {
                             Icon(
-                                Icons.AutoMirrored.Outlined.ArrowBack,
-                                contentDescription = stringResource(R.string.action_back),
+                                Icons.Outlined.Tune,
+                                contentDescription = stringResource(R.string.settings_ai_model),
                             )
                         }
-                    },
-                    actions = {
-                        IconButton(
-                            onClick = { vm.newChat() },
-                            enabled = uiState.messages.isNotEmpty() && !uiState.isThinking,
-                        ) {
-                            Icon(
-                                Icons.Outlined.AddComment,
-                                contentDescription = stringResource(R.string.ai_new_chat),
-                            )
-                        }
-                    },
-                )
-            }
+                    }
+                },
+            )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
@@ -439,49 +476,12 @@ fun AiChatScreen(
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
-            // Soft ambient wash at the top — the Gemini design language's gradient "glow"
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.07f),
-                                Color.Transparent,
-                            ),
-                        ),
-                    ),
-            )
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .imePadding(),
             ) {
-                if (editingFlow != null) {
-                    FlowChatHeader(
-                        flow = editingFlow,
-                        expanded = headerExpanded,
-                        onToggleExpanded = { headerExpanded = !headerExpanded },
-                        onClose = onBack,
-                        onNewChat = { vm.newChat() },
-                        onOpenSettings = onOpenSettings,
-                        newChatEnabled = uiState.messages.isNotEmpty() && !uiState.isThinking,
-                        tokensUsed = uiState.tokensUsed,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                    )
-                }
-
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        // Tapping the transcript is the user saying "let me read" — get the card
-                        // out of the way. Taps that land on a bubble or a button are consumed
-                        // there and never reach this detector.
-                        .pointerInput(Unit) {
-                            detectTapGestures { headerExpanded = false }
-                        },
-                ) {
+                Box(modifier = Modifier.weight(1f)) {
                     when {
                         uiState.apiKeyMissing -> ApiKeyMissingContent(
                             onOpenSettings = onOpenSettings,
@@ -662,8 +662,6 @@ fun AiChatScreen(
                         onSendOrStop = {
                             if (uiState.isThinking) vm.stop() else vm.sendMessage(fieldValue.text)
                         },
-                        // Typing needs the room the expanded card is holding.
-                        onFocused = { headerExpanded = false },
                     )
                 }
             }
@@ -698,7 +696,6 @@ internal fun ChatInputBar(
     onAttach: () -> Unit,
     onMic: () -> Unit,
     onSendOrStop: () -> Unit,
-    onFocused: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -760,7 +757,6 @@ internal fun ChatInputBar(
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.Sentences,
                     ),
-                    modifier = Modifier.onFocusChanged { if (it.isFocused) onFocused() },
                     decorationBox = { innerTextField ->
                         TextFieldDefaults.DecorationBox(
                             value = value.text,
@@ -992,7 +988,8 @@ internal fun GreetingContent(
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
                 .heightIn(min = maxHeight)
-                .padding(horizontal = 24.dp, vertical = 32.dp),
+                // 8 + the group's own 16 keeps the tiles 24dp from the edges, as the text was.
+                .padding(horizontal = 8.dp, vertical = 32.dp),
         ) {
             Icon(
                 Icons.Outlined.AutoAwesome,
@@ -1010,23 +1007,12 @@ internal fun GreetingContent(
                 modifier = Modifier.semantics { heading() },
             )
             if (suggestions.isNotEmpty()) {
-                Spacer(Modifier.height(32.dp))
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.widthIn(max = 480.dp),
-                ) {
+                Spacer(Modifier.height(24.dp))
+                // One group of tiles, as on the settings pages: each suggestion is a row to tap.
+                SettingsGroup(title = null, modifier = Modifier.widthIn(max = 480.dp)) {
                     suggestions.forEach { suggestion ->
-                        Surface(
-                            onClick = { onPick(suggestion) },
-                            shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.surfaceContainer,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(
-                                text = suggestion,
-                                style = MaterialTheme.typography.bodyLarge,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                            )
+                        item { shapes ->
+                            SettingsItem(shapes = shapes, title = suggestion, onClick = { onPick(suggestion) })
                         }
                     }
                 }
@@ -1086,204 +1072,6 @@ private fun ApiKeyMissingContent(onOpenSettings: () -> Unit, modifier: Modifier 
 }
 
 /**
- * Pinned header for a flow-scoped conversation: the flow's own icon and name stand in for the
- * "who am I talking about" that an avatar gives a person-to-person chat.
- *
- * It replaces the app bar in this mode, so it carries the actions the bar would have had —
- * close, new chat, and the AI settings the user may need to switch models mid-conversation.
- * Because it never scrolls away, those actions stay one tap away however long the transcript
- * grows; [expanded] is what keeps that from costing half the screen, shrinking the profile
- * card to a single bar as soon as the user starts reading or typing.
- */
-@Composable
-private fun FlowChatHeader(
-    flow: EditingFlowInfo,
-    expanded: Boolean,
-    onToggleExpanded: () -> Unit,
-    onClose: () -> Unit,
-    onNewChat: () -> Unit,
-    onOpenSettings: () -> Unit,
-    newChatEnabled: Boolean,
-    tokensUsed: Int,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        shape = RoundedCornerShape(28.dp),
-        // It floats over the moving transcript, so it needs a shadow to separate from it.
-        shadowElevation = 3.dp,
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        AnimatedContent(
-            targetState = expanded,
-            transitionSpec = { fadeIn() togetherWith fadeOut() },
-            label = "flow-chat-header",
-        ) { isExpanded ->
-            if (isExpanded) {
-                ExpandedFlowHeader(
-                    flow = flow,
-                    onCollapse = onToggleExpanded,
-                    onClose = onClose,
-                    onNewChat = onNewChat,
-                    onOpenSettings = onOpenSettings,
-                    newChatEnabled = newChatEnabled,
-                    tokensUsed = tokensUsed,
-                )
-            } else {
-                CollapsedFlowHeader(
-                    flow = flow,
-                    onExpand = onToggleExpanded,
-                    onClose = onClose,
-                    onNewChat = onNewChat,
-                    onOpenSettings = onOpenSettings,
-                    newChatEnabled = newChatEnabled,
-                )
-            }
-        }
-    }
-}
-
-/** The full profile card: big identity mark, description, and named actions. */
-@Composable
-private fun ExpandedFlowHeader(
-    flow: EditingFlowInfo,
-    onCollapse: () -> Unit,
-    onClose: () -> Unit,
-    onNewChat: () -> Unit,
-    onOpenSettings: () -> Unit,
-    newChatEnabled: Boolean,
-    tokensUsed: Int,
-) {
-    Box(modifier = Modifier.fillMaxWidth()) {
-        IconButton(
-            onClick = onClose,
-            modifier = Modifier.align(Alignment.TopEnd),
-        ) {
-            Icon(
-                Icons.Outlined.Close,
-                contentDescription = stringResource(R.string.action_close),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier
-                .fillMaxWidth()
-                // Tapping the card itself is the second way to put it away, for users who
-                // never discover that tapping the transcript does it.
-                .clickable(
-                    onClickLabel = stringResource(R.string.ai_flow_header_collapse),
-                    onClick = onCollapse,
-                )
-                .padding(horizontal = 24.dp)
-                .padding(top = 24.dp, bottom = 20.dp),
-        ) {
-            FlowAvatar(flow = flow, size = 72.dp, ringSize = 96.dp)
-
-            Spacer(Modifier.height(16.dp))
-            Text(
-                text = flow.name,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                // The flow's own description when it has one, otherwise say what this
-                // screen is — the card must never show an empty second line.
-                text = flow.description.ifBlank {
-                    stringResource(R.string.ai_editing_flow_subtitle)
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-
-            // The user is spending their own API quota; don't make them guess how fast.
-            if (tokensUsed > 0) {
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    text = pluralStringResource(R.plurals.ai_tokens_used, tokensUsed, tokensUsed),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
-                )
-            }
-
-            Spacer(Modifier.height(20.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                // Named, not just drawn: a bare speech-bubble glyph under a flow's portrait
-                // reads as "comment on this", which is not what it does.
-                HeaderAction(
-                    icon = Icons.Outlined.AddComment,
-                    label = stringResource(R.string.ai_new_chat),
-                    onClick = onNewChat,
-                    enabled = newChatEnabled,
-                )
-                HeaderAction(
-                    icon = Icons.Outlined.Tune,
-                    label = stringResource(R.string.settings_ai_model),
-                    onClick = onOpenSettings,
-                )
-            }
-        }
-    }
-}
-
-/** The one-line form: still says which flow this is, still offers every action. */
-@Composable
-private fun CollapsedFlowHeader(
-    flow: EditingFlowInfo,
-    onExpand: () -> Unit,
-    onClose: () -> Unit,
-    onNewChat: () -> Unit,
-    onOpenSettings: () -> Unit,
-    newChatEnabled: Boolean,
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(
-                onClickLabel = stringResource(R.string.ai_flow_header_expand),
-                onClick = onExpand,
-            )
-            .padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
-    ) {
-        FlowAvatar(flow = flow, size = 36.dp, ringSize = 36.dp)
-        Spacer(Modifier.width(12.dp))
-        Text(
-            text = flow.name,
-            style = MaterialTheme.typography.titleMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
-        IconButton(onClick = onNewChat, enabled = newChatEnabled) {
-            Icon(
-                Icons.Outlined.AddComment,
-                contentDescription = stringResource(R.string.ai_new_chat),
-            )
-        }
-        IconButton(onClick = onOpenSettings) {
-            Icon(
-                Icons.Outlined.Tune,
-                contentDescription = stringResource(R.string.settings_ai_model),
-            )
-        }
-        IconButton(onClick = onClose) {
-            Icon(
-                Icons.Outlined.Close,
-                contentDescription = stringResource(R.string.action_close),
-            )
-        }
-    }
-}
-
-/**
  * The flow's icon on its own colour, ringed in a soft tint of that colour — the same identity
  * mark the flow shows everywhere else in the app, at whatever size the header needs.
  */
@@ -1312,49 +1100,8 @@ private fun FlowAvatar(flow: EditingFlowInfo, size: Dp, ringSize: Dp) {
     }
 }
 
-/** One of the header card's round, raised action buttons, with its name underneath. */
-@Composable
-private fun HeaderAction(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    onClick: () -> Unit,
-    enabled: Boolean = true,
-) {
-    val contentColor = MaterialTheme.colorScheme.onSurface
-        .copy(alpha = if (enabled) 1f else 0.38f)
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Surface(
-            onClick = onClick,
-            enabled = enabled,
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            shadowElevation = 2.dp,
-            modifier = Modifier.size(48.dp),
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    icon,
-                    // The visible label sits outside the button, so the button still needs
-                    // its own description for TalkBack.
-                    contentDescription = label,
-                    modifier = Modifier.size(22.dp),
-                    tint = contentColor,
-                )
-            }
-        }
-        Spacer(Modifier.height(6.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = contentColor,
-            textAlign = TextAlign.Center,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.widthIn(max = 96.dp),
-        )
-    }
-}
+/** How far down the page the ambient glow fades out, measured from the top of the screen. */
+private val AmbientGlowHeight = 260.dp
 
 /**
  * How wide a bubble may get. Fixed dp would squeeze enlarged text into the same narrow column,
@@ -1467,7 +1214,7 @@ private fun StreamingBubble(text: String, modifier: Modifier = Modifier) {
         horizontalAlignment = Alignment.Start,
     ) {
         Surface(
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            color = SettingsDefaults.tileColor,
             contentColor = MaterialTheme.colorScheme.onSurface,
             shape = RoundedCornerShape(
                 topStart = 22.dp,
@@ -1542,8 +1289,9 @@ private fun MessageBubble(
     ) {
         Box {
             Surface(
+                // The assistant speaks in the settings tiles' colour, a step off the page.
                 color = if (fromUser) MaterialTheme.colorScheme.primaryContainer
-                else MaterialTheme.colorScheme.surfaceContainerHigh,
+                else SettingsDefaults.tileColor,
                 contentColor = if (fromUser) MaterialTheme.colorScheme.onPrimaryContainer
                 else MaterialTheme.colorScheme.onSurface,
                 // A single small corner points the bubble at its sender; the other three stay
@@ -1835,7 +1583,7 @@ private fun copyToClipboard(context: Context, text: String) {
 @Composable
 private fun ThinkingBubble(step: AiChatOrchestrator.Progress?, modifier: Modifier = Modifier) {
     Surface(
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        color = SettingsDefaults.tileColor,
         shape = RoundedCornerShape(20.dp),
         modifier = modifier,
     ) {
@@ -1877,8 +1625,9 @@ private fun ThinkingBubble(step: AiChatOrchestrator.Progress?, modifier: Modifie
     }
 }
 
+// internal: app/src/screenshotTest renders a proposal with a diff.
 @Composable
-private fun FlowPreviewCard(
+internal fun FlowPreviewCard(
     flow: FlowJson,
     saved: Boolean,
     isUpdate: Boolean,
@@ -1891,211 +1640,196 @@ private fun FlowPreviewCard(
     // The model is told to resend the COMPLETE flow, so a one-line change comes back as a full
     // reprint. Without a diff the user has to spot the difference by eye, every single time.
     val diff = remember(flow, baseline) { baseline?.let { diffFlows(it, flow) } }
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        ),
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = flow.name, style = MaterialTheme.typography.titleLarge)
-            if (flow.description.isNotBlank()) {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = flow.description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Spacer(Modifier.height(12.dp))
+    // Laid out like the flow editor — the same sections, the same tiles with the same icons —
+    // so what the user approves here looks like what they will find when they open the flow.
+    // It used to be a card of indented text lines split by a rule, a third look for the same
+    // triggers and actions.
+    val triggers: List<PreviewStep>
+    val actions: List<PreviewStep>
+    if (diff != null) {
+        triggers = diff.triggers.map { previewStep(it, context, isTrigger = true) }
+        actions = diff.actions.map { previewStep(it, context, isTrigger = false) }
+    } else {
+        triggers = flow.triggers.mapNotNull { trigger ->
+            val type = runCatching { TriggerType.valueOf(trigger.type) }.getOrNull() ?: return@mapNotNull null
+            val info = type.info(context)
+            PreviewStep(info.icon, info.label, type.configSummary(context, trigger.config.toStringMap()))
+        }
+        actions = flow.actions.sortedBy { it.order }.mapNotNull { action ->
+            val type = runCatching { ActionType.valueOf(action.type) }.getOrNull() ?: return@mapNotNull null
+            val info = type.info(context)
+            PreviewStep(info.icon, info.label, type.configSummary(context, action.config.toStringMap()))
+        }
+    }
 
-            if (diff != null) {
-                FlowDiffContent(diff = diff, context = context)
-            } else {
-                flow.triggers.forEach { trigger ->
-                    val type = runCatching { TriggerType.valueOf(trigger.type) }.getOrNull() ?: return@forEach
-                    val info = type.info(context)
-                    PreviewRow(
-                        icon = { Icon(info.icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary) },
-                        label = info.label,
-                        summary = type.configSummary(context, trigger.config.toStringMap()),
-                    )
-                }
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                flow.actions.sortedBy { it.order }.forEach { action ->
-                    val type = runCatching { ActionType.valueOf(action.type) }.getOrNull() ?: return@forEach
-                    val info = type.info(context)
-                    PreviewRow(
-                        icon = { Icon(info.icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.secondary) },
-                        label = info.label,
-                        summary = type.configSummary(context, action.config.toStringMap()),
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(12.dp))
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = flow.name,
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(horizontal = 8.dp),
+        )
+        if (flow.description.isNotBlank()) {
+            Spacer(Modifier.height(4.dp))
             Text(
-                text = stringResource(R.string.ai_flow_disabled_note),
+                text = flow.description,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 8.dp),
             )
+        }
+        if (diff?.isEmpty == true) {
             Spacer(Modifier.height(8.dp))
-            Button(
-                onClick = onSave,
-                enabled = !saved,
-                modifier = Modifier.align(Alignment.End),
-            ) {
-                Text(
-                    stringResource(
-                        when {
-                            saved -> R.string.ai_flow_saved
-                            isUpdate -> R.string.ai_update_flow
-                            else -> R.string.ai_save_flow
-                        },
-                    ),
-                )
-            }
+            Text(
+                text = stringResource(R.string.ai_diff_no_changes),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 8.dp),
+            )
+        }
+
+        PreviewGroup(title = stringResource(R.string.fd_section_when), steps = triggers)
+        PreviewGroup(title = stringResource(R.string.fd_section_then), steps = actions)
+
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = stringResource(R.string.ai_flow_disabled_note),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 8.dp),
+        )
+        Spacer(Modifier.height(8.dp))
+        Button(
+            onClick = onSave,
+            enabled = !saved,
+            modifier = Modifier.align(Alignment.End),
+        ) {
+            Text(
+                stringResource(
+                    when {
+                        saved -> R.string.ai_flow_saved
+                        isUpdate -> R.string.ai_update_flow
+                        else -> R.string.ai_save_flow
+                    },
+                ),
+            )
         }
     }
 }
 
-/**
- * The proposal as a change list. Unchanged steps are dimmed rather than hidden — the user still
- * needs to see the shape of the flow they're approving, just not to hunt through it.
- */
-@Composable
-private fun FlowDiffContent(diff: FlowDiff, context: Context) {
-    if (diff.isEmpty) {
-        Text(
-            text = stringResource(R.string.ai_diff_no_changes),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(8.dp))
-    }
-    diff.triggers.forEach { row -> DiffRow(row = row, context = context, isTrigger = true) }
-    if (diff.triggers.isNotEmpty() && diff.actions.isNotEmpty()) {
-        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-    }
-    diff.actions.forEach { row -> DiffRow(row = row, context = context, isTrigger = false) }
-}
+/** One trigger or action of a proposal, ready to draw. [kind] is null outside a diff. */
+private data class PreviewStep(
+    val icon: ImageVector?,
+    val label: String,
+    val summary: String,
+    val kind: DiffKind? = null,
+    /** "key: before → after" for an edited step — the whole point of the diff for it. */
+    val changes: List<String> = emptyList(),
+)
 
-@Composable
-private fun DiffRow(row: FlowDiffRow, context: Context, isTrigger: Boolean) {
+private fun previewStep(row: FlowDiffRow, context: Context, isTrigger: Boolean): PreviewStep {
     // A type the app doesn't know can't be summarised; the raw name is still better than a gap.
+    val icon: ImageVector?
     val label: String
     val summary: String
     if (isTrigger) {
         val type = runCatching { TriggerType.valueOf(row.type) }.getOrNull()
+        icon = type?.info(context)?.icon
         label = type?.info(context)?.label ?: row.type
         summary = type?.configSummary(context, row.config).orEmpty()
     } else {
         val type = runCatching { ActionType.valueOf(row.type) }.getOrNull()
+        icon = type?.info(context)?.icon
         label = type?.info(context)?.label ?: row.type
         summary = type?.configSummary(context, row.config).orEmpty()
     }
+    val changes = if (row.kind == DiffKind.CHANGED) {
+        row.changedKeys.map { key ->
+            context.getString(
+                R.string.ai_diff_field_change,
+                key,
+                row.previousConfig[key].orEmpty(),
+                row.config[key].orEmpty(),
+            )
+        }
+    } else {
+        emptyList()
+    }
+    return PreviewStep(icon, label, summary, row.kind, changes)
+}
 
-    // Colour alone can't carry the meaning — every row also has a marker and a word.
-    val accent = when (row.kind) {
-        DiffKind.ADDED -> MaterialTheme.colorScheme.primary
-        DiffKind.REMOVED -> MaterialTheme.colorScheme.error
-        DiffKind.CHANGED -> MaterialTheme.colorScheme.tertiary
-        DiffKind.UNCHANGED -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
-    val marker = when (row.kind) {
-        DiffKind.ADDED -> "+"
-        DiffKind.REMOVED -> "−"
-        DiffKind.CHANGED -> "~"
-        DiffKind.UNCHANGED -> " "
-    }
-    val kindLabel = when (row.kind) {
-        DiffKind.ADDED -> stringResource(R.string.ai_diff_added)
-        DiffKind.REMOVED -> stringResource(R.string.ai_diff_removed)
-        DiffKind.CHANGED -> stringResource(R.string.ai_diff_changed)
-        DiffKind.UNCHANGED -> null
-    }
-
-    Row(
-        verticalAlignment = Alignment.Top,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-    ) {
-        Text(
-            text = marker,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Bold,
-            color = accent,
-        )
-        Spacer(Modifier.width(8.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = if (row.kind == DiffKind.UNCHANGED) {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    },
-                )
-                if (kindLabel != null) {
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = kindLabel,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = accent,
-                    )
-                }
-            }
-            if (summary.isNotBlank()) {
-                Text(
-                    text = summary,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textDecoration = if (row.kind == DiffKind.REMOVED) {
-                        TextDecoration.LineThrough
-                    } else {
-                        null
-                    },
-                )
-            }
-            // "Volume 8 → 15" is the whole point of the diff for an edited step.
-            if (row.kind == DiffKind.CHANGED) {
-                row.changedKeys.forEach { key ->
-                    Text(
-                        text = stringResource(
-                            R.string.ai_diff_field_change,
-                            key,
-                            row.previousConfig[key].orEmpty(),
-                            row.config[key].orEmpty(),
-                        ),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = accent,
-                    )
-                }
-            }
+/** A section of the proposal: the editor's section title over one group of tiles. */
+@Composable
+private fun PreviewGroup(title: String, steps: List<PreviewStep>) {
+    if (steps.isEmpty()) return
+    SettingsGroupTitle(title)
+    Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
+        steps.forEachIndexed { index, step ->
+            PreviewStepTile(step = step, shapes = settingsItemShapes(index, steps.size))
         }
     }
 }
 
 @Composable
-private fun PreviewRow(icon: @Composable () -> Unit, label: String, summary: String) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(vertical = 4.dp),
+private fun PreviewStepTile(step: PreviewStep, shapes: ListItemShapes) {
+    // Colour alone can't carry the meaning — a changed row also says in words what happened.
+    val accent = when (step.kind) {
+        DiffKind.ADDED -> MaterialTheme.colorScheme.primary
+        DiffKind.REMOVED -> MaterialTheme.colorScheme.error
+        DiffKind.CHANGED -> MaterialTheme.colorScheme.tertiary
+        DiffKind.UNCHANGED, null -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    val kindLabel = when (step.kind) {
+        DiffKind.ADDED -> stringResource(R.string.ai_diff_added)
+        DiffKind.REMOVED -> stringResource(R.string.ai_diff_removed)
+        DiffKind.CHANGED -> stringResource(R.string.ai_diff_changed)
+        DiffKind.UNCHANGED, null -> null
+    }
+    // Unchanged steps are dimmed rather than hidden: the user still needs to see the shape of
+    // the flow they're approving, just not to hunt through it.
+    val dimmed = step.kind == DiffKind.UNCHANGED
+    Surface(
+        color = SettingsDefaults.tileColor,
+        shape = shapes.shape,
+        modifier = Modifier.fillMaxWidth(),
     ) {
-        icon()
-        Spacer(Modifier.width(8.dp))
-        Text(text = label, style = MaterialTheme.typography.bodyLarge)
-        Spacer(Modifier.width(8.dp))
-        Text(
-            text = summary,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .alpha(if (dimmed) 0.6f else 1f),
+        ) {
+            Icon(
+                step.icon ?: Icons.Outlined.ErrorOutline,
+                contentDescription = null,
+                tint = if (step.kind == null || dimmed) MaterialTheme.colorScheme.onSurfaceVariant else accent,
+                modifier = Modifier.size(24.dp),
+            )
+            Spacer(Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = step.label,
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    if (kindLabel != null) {
+                        Spacer(Modifier.width(8.dp))
+                        Text(text = kindLabel, style = MaterialTheme.typography.labelMedium, color = accent)
+                    }
+                }
+                if (step.summary.isNotBlank()) {
+                    Text(
+                        text = step.summary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textDecoration = if (step.kind == DiffKind.REMOVED) TextDecoration.LineThrough else null,
+                    )
+                }
+                step.changes.forEach { change ->
+                    Text(text = change, style = MaterialTheme.typography.labelMedium, color = accent)
+                }
+            }
+        }
     }
 }
 
