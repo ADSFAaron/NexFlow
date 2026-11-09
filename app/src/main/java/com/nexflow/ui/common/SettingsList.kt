@@ -118,25 +118,30 @@ fun SettingsTopAppBar(
 ) {
     LargeFlexibleTopAppBar(
         title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        navigationIcon = {
-            if (onBack != null) {
-                FilledTonalIconButton(
-                    onClick = onBack,
-                    colors = IconButtonDefaults.filledTonalIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    ),
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = stringResource(R.string.action_back),
-                    )
-                }
-            }
-        },
+        navigationIcon = { if (onBack != null) SettingsBackButton(onBack) },
         actions = actions,
         colors = SettingsDefaults.topAppBarColors(),
         scrollBehavior = scrollBehavior,
     )
+}
+
+/**
+ * The back arrow in a tonal circle. Part of [SettingsTopAppBar]; on its own for a page that keeps
+ * a small bar (the flow editor) but should still go back the way every other page does.
+ */
+@Composable
+fun SettingsBackButton(onBack: () -> Unit) {
+    FilledTonalIconButton(
+        onClick = onBack,
+        colors = IconButtonDefaults.filledTonalIconButtonColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+        ),
+    ) {
+        Icon(
+            Icons.AutoMirrored.Filled.ArrowBack,
+            contentDescription = stringResource(R.string.action_back),
+        )
+    }
 }
 
 /** Collects a group's tiles so each can be given its shape from its position in the group. */
