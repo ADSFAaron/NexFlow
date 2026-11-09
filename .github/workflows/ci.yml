@@ -47,6 +47,7 @@ jobs:
           :core:automation:test
           :core:flow-schema:test
           :core:macrodroid-compat:test
+          :core:flow-store-tools:test
 
       - name: App 單元測試（github flavor）
         run: ./gradlew :app:testGithubDebugUnitTest
