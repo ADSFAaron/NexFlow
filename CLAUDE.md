@@ -201,6 +201,13 @@ adb shell am set-standby-bucket $PKG active
 
 ---
 
+## 進行中的大型功能
+
+- **Flow Store**（GitHub 上的流程商店）：定案設計、各 Phase 範圍、測試策略與進度都在
+  [`docs/flow-store/DESIGN.md`](docs/flow-store/DESIGN.md)。動手前先讀；實作和文件不一致時，先改文件並寫明原因
+
+---
+
 ## 架構重點
 
 ### Trigger 系統
