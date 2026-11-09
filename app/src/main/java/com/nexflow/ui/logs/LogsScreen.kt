@@ -86,7 +86,7 @@ fun LogsScreen(
 ) {
     val entries by vm.logEntries.collectAsState()
     val zone = remember { ZoneId.systemDefault() }
-    val days = remember(entries, zone) { groupByDay(entries, zone) }
+    val days = remember(entries, zone) { groupByDay(entries.orEmpty(), zone) }
     // Re-read on resume: left open overnight, "Today" would otherwise stay on yesterday's runs
     // until the next run happened to recompose the list.
     var today by remember { mutableStateOf(LocalDate.now(zone)) }
@@ -115,6 +115,7 @@ fun LogsScreen(
 
     LogsContent(
         days = days,
+        loading = entries == null,
         today = today,
         zone = zone,
         onEntryClick = onEntryClick,
@@ -139,6 +140,8 @@ internal fun LogsContent(
     zone: ZoneId,
     onEntryClick: (logId: String) -> Unit,
     onClearAll: () -> Unit,
+    /** The log is still being read: show nothing yet rather than claim there is nothing. */
+    loading: Boolean = false,
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     // LocalLocale is observable state, unlike Locale.getDefault(): the list reformats itself when
@@ -189,7 +192,7 @@ internal fun LogsContent(
             label = "logs_content",
         ) { currentDays ->
             if (currentDays.isEmpty()) {
-                EmptyLogsContent(modifier = Modifier.padding(innerPadding))
+                if (!loading) EmptyLogsContent(modifier = Modifier.padding(innerPadding))
             } else {
                 LazyColumn(
                     contentPadding = PaddingValues(

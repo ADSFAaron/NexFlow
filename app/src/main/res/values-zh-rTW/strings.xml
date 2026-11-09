@@ -878,8 +878,12 @@
     <plurals name="rate_limit_notification_http">
         <item quantity="other">「%2$s」一分鐘內要發出超過 %1$d 個網路請求，多出的已略過。</item>
     </plurals>
-    <string name="channel_alerts_name">安全提醒</string>
-    <string name="channel_alerts_description">NexFlow 阻止流程過度頻繁地重複某個動作時顯示</string>
+    <string name="channel_alerts_name">流程提醒</string>
+    <string name="channel_alerts_description">NexFlow 阻止流程過度頻繁地重複某個動作，或定時流程沒能執行時顯示</string>
+    <string name="time_skipped_service_off">已略過：預定時間時自動化服務是關閉的</string>
+    <string name="time_blocked_background">沒有執行：Android 不允許 NexFlow 在背景啟動。允許 NexFlow 使用「鬧鐘與提醒」後，定時流程就能準時執行。</string>
+    <string name="time_missed_title">「%1$s」沒有在 %2$s 執行</string>
+    <string name="time_missed_text">Android 不允許 NexFlow 在背景啟動。點這裡允許「鬧鐘與提醒」。</string>
     <string name="run_step_if_true">條件成立</string>
     <string name="run_step_if_false">條件不成立</string>
     <plurals name="run_step_repeat">

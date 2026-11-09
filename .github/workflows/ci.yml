@@ -115,7 +115,7 @@ jobs:
     runs-on: ubuntu-latest
     # The emulator boot plus install/run is the slowest thing here; the unit-test job is the
     # fast signal, so this one is allowed to take its time rather than blocking it.
-    timeout-minutes: 45
+    timeout-minutes: 60
 
     steps:
       - uses: actions/checkout@v5
@@ -152,6 +152,15 @@ jobs:
       - name: androidTest（github flavor, minSdk 30）
         run: >
           ./gradlew :app:api30GithubDebugAndroidTest
+          -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect
+
+      # api36 = the newest aosp-atd image (there is none for 37 yet). Everything Android added
+      # around background work since 12 — exact alarms denied by default, foreground services
+      # needing a declared type, refused background service starts — exists only here; api30
+      # alone let TimeTriggerEndToEndTest's whole path go unchecked.
+      - name: androidTest（github flavor, API 36）
+        run: >
+          ./gradlew :app:api36GithubDebugAndroidTest
           -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect
 
       - name: 上傳 instrumented 測試報告（失敗時）

@@ -477,7 +477,6 @@ fun AiChatScreen(
                 },
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -634,6 +633,14 @@ fun AiChatScreen(
                             followTail = true
                             scope.launch { scrollToTail(animated = true) }
                         },
+                    )
+
+                    // At the foot of the transcript, right above the composer — not in the
+                    // Scaffold's slot, which is the bottom of the screen and so lay over the
+                    // composer itself. Here it also rides up with the keyboard.
+                    SnackbarHost(
+                        hostState = snackbarHostState,
+                        modifier = Modifier.align(Alignment.BottomCenter),
                     )
                 }
 

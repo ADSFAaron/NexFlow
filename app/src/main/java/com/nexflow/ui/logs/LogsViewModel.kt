@@ -40,13 +40,17 @@ class LogsViewModel @Inject constructor(
     private val repository: FlowRepository,
 ) : ViewModel() {
 
-    val logEntries: StateFlow<List<LogEntry>> = combine(
+    /**
+     * Null until the database has answered. Starting from an empty list instead made the page
+     * show "No logs yet" for a beat on every visit before the real list replaced it.
+     */
+    val logEntries: StateFlow<List<LogEntry>?> = combine(
         repository.observeAll(),
         repository.observeRecentLogs(200),
     ) { flows, logs ->
         val nameById = flows.associate { it.id to it.name }
         logs.map { log -> LogEntry(log, nameById[log.flowId] ?: "Unknown Flow") }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun clearAll() {
         viewModelScope.launch { repository.deleteAllLogs() }

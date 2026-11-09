@@ -16,14 +16,8 @@
 package com.nexflow
 
 import android.app.Application
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.content.Context
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
-import com.nexflow.executor.NotificationActionExecutor.Companion.CHANNEL_ACTIONS
-import com.nexflow.service.FlowExecutionService.Companion.CHANNEL_SERVICE
-import com.nexflow.service.RateLimitNotifier.Companion.CHANNEL_ALERTS
 import com.nexflow.work.LogPrunerWorker
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
@@ -40,30 +34,7 @@ class NexFlowApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
-        createNotificationChannels()
+        NotificationChannels.create(this)
         LogPrunerWorker.schedule(this)
-    }
-
-    private fun createNotificationChannels() {
-        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        nm.createNotificationChannels(
-            listOf(
-                NotificationChannel(
-                    CHANNEL_SERVICE,
-                    "NexFlow Service",
-                    NotificationManager.IMPORTANCE_LOW,
-                ).apply { description = "Persistent notification while automation is running" },
-                NotificationChannel(
-                    CHANNEL_ACTIONS,
-                    "Flow Notifications",
-                    NotificationManager.IMPORTANCE_DEFAULT,
-                ).apply { description = "Notifications triggered by your automations" },
-                NotificationChannel(
-                    CHANNEL_ALERTS,
-                    getString(R.string.channel_alerts_name),
-                    NotificationManager.IMPORTANCE_DEFAULT,
-                ).apply { description = getString(R.string.channel_alerts_description) },
-            ),
-        )
     }
 }

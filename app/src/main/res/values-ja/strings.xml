@@ -878,8 +878,12 @@
     <plurals name="rate_limit_notification_http">
         <item quantity="other">「%2$s」が 1 分間に %1$d 件を超える Web リクエストを送信しようとしたため、超過分をスキップしました。</item>
     </plurals>
-    <string name="channel_alerts_name">安全に関する通知</string>
-    <string name="channel_alerts_description">フローが同じアクションを頻繁に繰り返しすぎたときに NexFlow が止めた場合に表示</string>
+    <string name="channel_alerts_name">フローのお知らせ</string>
+    <string name="channel_alerts_description">同じ操作を繰り返しすぎるフローを NexFlow が止めたとき、または時刻指定のフローを実行できなかったときに表示</string>
+    <string name="time_skipped_service_off">スキップ：予定時刻に自動化サービスがオフでした</string>
+    <string name="time_blocked_background">実行されませんでした：Android が NexFlow のバックグラウンド起動を許可しませんでした。「アラームとリマインダー」を許可すると、時刻指定のフローが時間どおりに実行されます。</string>
+    <string name="time_missed_title">「%1$s」が %2$s に実行されませんでした</string>
+    <string name="time_missed_text">Android が NexFlow のバックグラウンド起動を許可しませんでした。タップして「アラームとリマインダー」を許可してください。</string>
     <string name="run_step_if_true">条件を満たしました</string>
     <string name="run_step_if_false">条件を満たしませんでした</string>
     <plurals name="run_step_repeat">

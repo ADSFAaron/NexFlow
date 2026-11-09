@@ -9,9 +9,10 @@
 
 ---
 
-# 上架用：1.7.1（versionCode 13）
+# 上架用：1.7.2（versionCode 14）
 
-這一版是安全性修正加上 1.7.0 之後的介面改版（1.7.0 的 AAB 打包於 `dc484f1`，之後的 commit 都在這一版）。
+Play 從 1.7.0 直接更新到這一版：1.7.1 打包了但沒有上 Play，所以文案涵蓋 1.7.1（安全性修正與介面改版）
+加上 1.7.2（定時流程沒能執行時會說明原因）。1.7.0 的 AAB 打包於 `dc484f1`，之後的 commit 都在這一版。
 
 - **需要使用者動手**：「啟動 App 捷徑」或通知的「開啟 App 捷徑」若是用變數組成的，更新後會執行失敗，
   要重新從清單挑選。文案裡已寫明。
@@ -23,7 +24,7 @@
 
 ---
 
-## 繁體中文（zh-TW） — 318 字元
+## 繁體中文（zh-TW） — 342 字元
 
 ```
 【更安全地使用別人分享的流程】
@@ -38,6 +39,7 @@
 • AI 設定有自己的頁面，AI 輸入框整合成一個
 
 【修正】
+• 定時流程沒能執行時，日誌會寫明原因並通知您
 • 橫向時新增按鈕不再蓋住流程開關
 • 無障礙服務的說明列出所有用途
 ```
@@ -48,23 +50,24 @@
 
 ```
 SAFER SHARED FLOWS
-• Shortcuts in flows and notifications must be picked from the list; if yours used a variable, pick it again
+• Shortcuts must be picked from the list; if yours used a variable, pick it again
 • Write file can't write into NexFlow's own folder
-• Each flow: max 5 SMS, 5 calls and 60 web requests a minute. Extras are skipped and you're told
+• Each flow: max 5 SMS, 5 calls and 60 web requests a minute; extras are skipped and you're told
 
 NEW LOOK
 • Android 16/17 style across the app
 • Logs grouped by day
-• Flow editor: tap a row to edit; Delete is in its dialog
+• Flow editor: tap a row to edit it
 
 FIXED
+• Scheduled flows that can't run say why in Logs
 • Add button no longer hides switches in landscape
 • Accessibility notice lists every use
 ```
 
 ---
 
-## 日本語（ja-JP） — 415 字元
+## 日本語（ja-JP） — 451 字元
 
 ```
 【共有されたフローをより安全に】
@@ -79,13 +82,14 @@ FIXED
 ・AI 設定を専用ページに、AI 入力欄を 1 つにまとめました
 
 【修正】
+・時刻指定のフローが実行できなかったとき、理由をログに残して通知します
 ・横向きで追加ボタンがフローのスイッチに重ならなくなりました
 ・ユーザー補助サービスの説明にすべての用途を記載
 ```
 
 ---
 
-## 简体中文（zh-CN） — 326 字元
+## 简体中文（zh-CN） — 350 字元
 
 ```
 【更安全地使用别人分享的流程】
@@ -100,6 +104,7 @@ FIXED
 • AI 设置有了自己的页面，AI 输入框合而为一
 
 【修正】
+• 定时流程没能执行时，日志会写明原因并通知您
 • 横屏时新增按钮不再挡住流程开关
 • 无障碍服务的说明列出全部用途
 ```

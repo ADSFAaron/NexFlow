@@ -902,8 +902,12 @@
         <item quantity="one">“%2$s” tried to make more than %1$d web request in a minute. The extra requests were skipped.</item>
         <item quantity="other">“%2$s” tried to make more than %1$d web requests in a minute. The extra requests were skipped.</item>
     </plurals>
-    <string name="channel_alerts_name">Safety alerts</string>
-    <string name="channel_alerts_description">Shown when NexFlow stops a flow from repeating an action too often</string>
+    <string name="channel_alerts_name">Flow alerts</string>
+    <string name="channel_alerts_description">Shown when NexFlow stops a flow repeating an action too often, or a scheduled flow couldn’t run</string>
+    <string name="time_skipped_service_off">Skipped: automation was off at the scheduled time</string>
+    <string name="time_blocked_background">Didn’t run: Android didn’t let NexFlow start in the background. Allow “Alarms &amp; reminders” for NexFlow and scheduled flows run on time.</string>
+    <string name="time_missed_title">“%1$s” didn’t run at %2$s</string>
+    <string name="time_missed_text">Android didn’t let NexFlow start in the background. Tap to allow Alarms &amp; reminders.</string>
     <string name="run_step_if_true">Condition met</string>
     <string name="run_step_if_false">Condition not met</string>
     <plurals name="run_step_repeat">

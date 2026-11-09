@@ -206,7 +206,10 @@ internal fun RunDetailContent(
                         )
                     }
 
-                    if (detail.steps.isEmpty()) {
+                    // A run that never started — skipped, or refused by Android — has no steps
+                    // either, but its reason is already in the summary above; "recorded before
+                    // step logging existed" would be wrong about it.
+                    if (detail.steps.isEmpty() && log.errorMessage == null) {
                         item {
                             Text(
                                 stringResource(R.string.run_no_steps),

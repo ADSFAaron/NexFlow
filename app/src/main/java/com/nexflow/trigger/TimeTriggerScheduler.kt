@@ -76,6 +76,16 @@ class TimeTriggerScheduler @Inject constructor(
     @Synchronized
     fun scheduleNext(flowId: String, triggerId: String, config: Map<String, String>) {
         val nextAt = computeNextFireTime(config, System.currentTimeMillis()) ?: return
+        scheduleAt(flowId, triggerId, nextAt)
+    }
+
+    /**
+     * Sets the trigger's alarm for [nextAt] (epoch millis). [scheduleNext] works out that time
+     * from the trigger; the instrumented test calls this directly so the real alarm goes off in
+     * seconds, rather than at the next whole minute.
+     */
+    @Synchronized
+    fun scheduleAt(flowId: String, triggerId: String, nextAt: Long) {
         // FLAG_UPDATE_CURRENT (without FLAG_NO_CREATE) always returns a non-null PendingIntent.
         val pending = pendingIntent(flowId, triggerId, PendingIntent.FLAG_UPDATE_CURRENT) ?: return
         scheduled += triggerId
@@ -84,8 +94,10 @@ class TimeTriggerScheduler @Inject constructor(
             // allowlist to start the foreground service from TimeAlarmReceiver.
             alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextAt, pending)
         } else {
-            // Permission-free fallback: still wakes through Doze, but the OS may batch it
-            // into a maintenance window (delivery within a few minutes, not to the second).
+            // Permission-free fallback: still wakes through Doze, but delivery may come up to
+            // an hour late, and it carries no exemption to start a foreground service from the
+            // background — if the service is not already running, the run is refused
+            // (TimeAlarmHandler logs that and tells the user).
             alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextAt, pending)
         }
     }

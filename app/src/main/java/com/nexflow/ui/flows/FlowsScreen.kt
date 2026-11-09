@@ -176,6 +176,7 @@ fun FlowsScreen(
     onAiClick: () -> Unit = {},
 ) {
     val flows by vm.flows.collectAsState()
+    val flowsLoaded by vm.loaded.collectAsState()
     val flowsMissingPermissions by vm.flowsMissingPermissions.collectAsState()
     val runningFlows by vm.runningFlows.collectAsState()
     // What the indicators actually show: the live set, with each flow held on screen long
@@ -357,7 +358,9 @@ fun FlowsScreen(
                         modifier = Modifier.align(Alignment.TopCenter),
                     )
                 }
-                EmptyFlowsContent(modifier = Modifier.fillMaxSize())
+                // Not before the flows have been read: an empty list is also what the page
+                // starts from, and "No flows yet" would flash on every launch.
+                if (flowsLoaded) EmptyFlowsContent(modifier = Modifier.fillMaxSize())
             }
         } else {
             // Phone in landscape: the screen is too short for the FAB to sit below the first

@@ -39,6 +39,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -51,8 +52,19 @@ class FlowsViewModel @Inject constructor(
     private val permissionChecker: FlowPermissionChecker,
 ) : ViewModel() {
 
-    val flows: StateFlow<List<Flow>> = repository.observeAll()
+    /** Null until the database has answered — one query, shared by [flows] and [loaded]. */
+    private val source: StateFlow<List<Flow>?> = repository.observeAll()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    val flows: StateFlow<List<Flow>> = source.map { it.orEmpty() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /**
+     * False until the flows have been read. Without it the empty list the page starts from
+     * showed "No flows yet" for a beat on every launch, before the real list replaced it.
+     */
+    val loaded: StateFlow<Boolean> = source.map { it != null }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     /**
      * The flows executing right now, straight from the engine — so a run started by a trigger,
