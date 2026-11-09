@@ -865,6 +865,21 @@
     <string name="run_detail_gone">この実行はすでに保存されていません。</string>
     <string name="run_no_steps">この実行は手順の記録が導入される前のもので、結果だけが残っています。</string>
     <string name="run_step_disabled">オフのためスキップ</string>
+    <plurals name="run_step_rate_limited">
+        <item quantity="other">1 分あたり %1$d 回の上限を超えたためスキップ</item>
+    </plurals>
+    <string name="rate_limit_notification_title">アクションの上限に達しました</string>
+    <plurals name="rate_limit_notification_sms">
+        <item quantity="other">「%2$s」が 1 分間に %1$d 件を超える SMS を送信しようとしたため、超過分をスキップしました。</item>
+    </plurals>
+    <plurals name="rate_limit_notification_call">
+        <item quantity="other">「%2$s」が 1 分間に %1$d 件を超える発信をしようとしたため、超過分をスキップしました。</item>
+    </plurals>
+    <plurals name="rate_limit_notification_http">
+        <item quantity="other">「%2$s」が 1 分間に %1$d 件を超える Web リクエストを送信しようとしたため、超過分をスキップしました。</item>
+    </plurals>
+    <string name="channel_alerts_name">安全に関する通知</string>
+    <string name="channel_alerts_description">フローが同じアクションを頻繁に繰り返しすぎたときに NexFlow が止めた場合に表示</string>
     <string name="run_step_if_true">条件を満たしました</string>
     <string name="run_step_if_false">条件を満たしませんでした</string>
     <plurals name="run_step_repeat">

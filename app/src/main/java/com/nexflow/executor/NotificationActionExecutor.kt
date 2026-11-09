@@ -122,8 +122,13 @@ class NotificationActionExecutor @Inject constructor(
                 val uri = action.config["tap_shortcut_uri"]?.takeIf { it.isNotBlank() }
                     ?: return TapTarget.Broken("Notification tap: no shortcut selected")
                 // The shortcut's app may have been uninstalled or changed since it was picked.
-                runCatching { Intent.parseUri(uri, Intent.URI_INTENT_SCHEME) }.getOrNull()
-                    ?: return TapTarget.Broken("Notification tap: invalid shortcut")
+                // Wrapped in our own PendingIntent below, so the tap runs as NexFlow: the same
+                // checks as LAUNCH_SHORTCUT, or a shared flow could reach our private activities.
+                when (val parsed = SafeIntents.parse(context, uri)) {
+                    is SafeIntents.Parsed.Ok -> parsed.intent
+                    is SafeIntents.Parsed.Invalid -> return TapTarget.Broken("Notification tap: invalid shortcut")
+                    SafeIntents.Parsed.Blocked -> return TapTarget.Broken("Notification tap: shortcut not launchable")
+                }
             }
             else -> return TapTarget.None
         }

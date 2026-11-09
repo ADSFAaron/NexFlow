@@ -865,6 +865,21 @@
     <string name="run_detail_gone">這次執行已經不在紀錄裡了。</string>
     <string name="run_no_steps">這次執行早於逐步驟紀錄功能，因此只留下結果。</string>
     <string name="run_step_disabled">已關閉，略過</string>
+    <plurals name="run_step_rate_limited">
+        <item quantity="other">超過每分鐘 %1$d 次的上限，已略過</item>
+    </plurals>
+    <string name="rate_limit_notification_title">已達動作上限</string>
+    <plurals name="rate_limit_notification_sms">
+        <item quantity="other">「%2$s」一分鐘內要傳送超過 %1$d 則簡訊，多出的已略過。</item>
+    </plurals>
+    <plurals name="rate_limit_notification_call">
+        <item quantity="other">「%2$s」一分鐘內要撥打超過 %1$d 通電話，多出的已略過。</item>
+    </plurals>
+    <plurals name="rate_limit_notification_http">
+        <item quantity="other">「%2$s」一分鐘內要發出超過 %1$d 個網路請求，多出的已略過。</item>
+    </plurals>
+    <string name="channel_alerts_name">安全提醒</string>
+    <string name="channel_alerts_description">NexFlow 阻止流程過度頻繁地重複某個動作時顯示</string>
     <string name="run_step_if_true">條件成立</string>
     <string name="run_step_if_false">條件不成立</string>
     <plurals name="run_step_repeat">

@@ -45,6 +45,9 @@ class WriteFileActionExecutor @Inject constructor(
         if (path.split('/').any { it == ".." }) {
             return ActionResult.Failure("Write file: path must not contain '..'")
         }
+        if (isAppPrivate(path)) {
+            return ActionResult.Failure("Write file: cannot write into NexFlow's own storage")
+        }
 
         return withContext(Dispatchers.IO) {
             runCatching {
@@ -77,5 +80,22 @@ class WriteFileActionExecutor @Inject constructor(
                 ActionResult.Success
             }.getOrElse { ActionResult.Failure("Write file failed: ${it.message}") }
         }
+    }
+
+    /**
+     * Whether [path] lands in NexFlow's private storage: the database, shared preferences (the AI
+     * key and endpoint live there) and everything else the app trusts. A flow writing there could
+     * plant settings that outlive the flow itself.
+     *
+     * Compared by canonical path, so `/data/data/<pkg>` (a symlink to `/data/user/0/<pkg>`) and
+     * any other alias of the same directory are caught. Device-protected storage is separate.
+     */
+    internal fun isAppPrivate(path: String): Boolean {
+        val target = runCatching { File(path).canonicalPath }.getOrElse { return true }
+        val roots = listOfNotNull(
+            context.dataDir,
+            runCatching { context.createDeviceProtectedStorageContext().dataDir }.getOrNull(),
+        ).map { it.canonicalPath }
+        return roots.any { root -> target == root || target.startsWith("$root/") }
     }
 }

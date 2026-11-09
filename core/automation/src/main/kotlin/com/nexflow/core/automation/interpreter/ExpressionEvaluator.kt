@@ -37,6 +37,13 @@ object ExpressionEvaluator {
         REFERENCE.replace(template) { match -> variables[match.groupValues[1].trim()] ?: match.value }
 
     /**
+     * The variable names [template] refers to, as [interpolate] would look them up. Used to decide
+     * whether a config value is steered by data that came from outside the flow.
+     */
+    fun references(template: String): Set<String> =
+        REFERENCE.findAll(template).map { it.groupValues[1].trim() }.toSet()
+
+    /**
      * Interpolates [template] and reports whether every `{{name}}` in it resolved.
      *
      * "Did it resolve" has to be judged against the template, not the result: a value that itself

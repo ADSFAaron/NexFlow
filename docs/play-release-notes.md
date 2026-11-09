@@ -9,91 +9,96 @@
 
 ---
 
-# 上架用：1.7.0（versionCode 12）
+# 上架用：1.7.1（versionCode 13）
 
-前一版（1.6.0）的商店文案保留在 git 記錄裡：`git show 4054922:docs/play-release-notes.md`。
+這一版是安全性修正加上 1.7.0 之後的介面改版（1.7.0 的 AAB 打包於 `dc484f1`，之後的 commit 都在這一版）。
 
-這一版沒有需要使用者動手的項目。但**上架前要到 Play 管理中心重新檢視 Data safety**：AI 助手開始
-會把使用者附加的圖片傳給 Google，傳輸內容的範圍變了。文案裡也因此明講圖片會傳給 Gemini。
+- **需要使用者動手**：「啟動 App 捷徑」或通知的「開啟 App 捷徑」若是用變數組成的，更新後會執行失敗，
+  要重新從清單挑選。文案裡已寫明。
+- **Data safety 不用重填**：傳出的資料範圍沒有變。
+- **無障礙聲明要對照一次**：App 內的揭露文字改成逐項列出三種用途（截圖存到 Pictures/Screenshots、
+  模擬點擊／滑動、偵測前景 App）。Play 管理中心「無障礙 API」聲明裡的用途說明若沒有提到截圖與滑動，
+  要一併補上，兩邊說法不一致是審查會退件的理由。
+- 文案只寫使用者看得到的行為改變，不寫為什麼要收緊、也不寫原本能怎麼利用。
 
-「其他服務（OpenAI 相容）」只在 debug 版出現，不要寫進文案。
+---
 
-## 繁體中文（zh-TW）— 232 字元
+## 繁體中文（zh-TW） — 273 字元
 
 ```
-【AI 助手看得懂圖片】
-輸入框左側的「+」鈕，每則訊息最多附 4 張。說不清楚是哪個按鈕時，一張截圖就夠了。圖片會和訊息一起傳給 Gemini。
+【更安全地使用別人分享的流程】
+• 「啟動 App 捷徑」與通知的「開啟 App 捷徑」只能使用從清單挑選的捷徑。若您的捷徑是用變數組成的，請重新挑選一次
+• 「寫入檔案」不能寫進 NexFlow 自己的資料夾
+• 每個流程每分鐘最多傳 5 則簡訊、撥 5 通電話、發 60 個網路請求，超過的步驟會略過並通知您
 
-【小工具顯示你挑的流程】
-每個總覽小工具都能選擇「自動」或自己挑流程，最多 12 個。
+【新外觀】
+• 設定、流程與日誌改成 Android 16／17 的設定樣式
+• 日誌依日期分組
+• AI 設定有自己的頁面，AI 輸入框整合成一個
 
-【AI 助手更省也更穩】
-• 建立流程少一次請求，額度用得更慢
-• Gemini 忙碌或每分鐘額度用完時，自動等待後繼續
-• 不會再選用手機上沒有的 App
-
-【變更】
-• AI 對話按 Enter 改為換行，送出請按送出鈕
+【修正】
+• 橫向時新增按鈕不再蓋住流程開關
+• 無障礙服務的說明列出所有用途
 ```
 
 ---
 
-## English（en-US）— 493 字元
+## English（en-US） — 496 字元
 
 ```
-AI ASSISTANT READS IMAGES
-Attach up to 4 per message with the + button. A screenshot beats describing a button. Images go to Gemini with your message.
+SAFER SHARED FLOWS
+• App shortcuts in flows and notifications must be picked from the list. If yours used a variable, pick it again
+• Write file can't write into NexFlow's own folder
+• Each flow: max 5 SMS, 5 calls and 60 web requests a minute. Extras are skipped, and you're told
 
-PICK WHAT A WIDGET SHOWS
-Each overview widget can stay automatic or show flows you choose, up to 12.
+NEW LOOK
+• Settings, Flows and Logs restyled for Android 16/17
+• Logs grouped by day
+• AI settings on their own page
 
-A LEANER, STEADIER ASSISTANT
-• One request fewer per flow, so quota lasts longer
-• Waits and resumes when Gemini is busy or the minute's quota is spent
-• No more apps you don't have
-
-CHANGED
-• Enter adds a line in AI chat; tap send to send
-```
-
----
-
-## 日本語（ja-JP）— 322 字元
-
-```
-【AI アシスタントが画像を理解】
-入力欄の「+」ボタンから、1 メッセージにつき 4 枚まで添付できます。どのボタンか説明しづらいときはスクリーンショットをどうぞ。画像はメッセージと一緒に Gemini へ送信されます。
-
-【ウィジェットの表示を選べる】
-概要ウィジェットごとに「自動」か、自分で選んだフロー（最大 12 個）を表示できます。
-
-【AI アシスタントがより効率的で安定】
-・フロー作成のリクエストが 1 回減り、クォータが長持ち
-・Gemini の混雑時や 1 分あたりの上限時は、自動で待ってから続行
-・端末にないアプリを選ばなくなりました
-
-【変更】
-・AI チャットの Enter は改行になりました。送信は送信ボタンで
+FIXED
+• Add button no longer covers switches in landscape
+• Accessibility notice lists every use
 ```
 
 ---
 
-## 简体中文（zh-CN）— 234 字元
+## 日本語（ja-JP） — 358 字元
 
 ```
-【AI 助手看得懂图片】
-输入框左侧的「+」按钮，每条消息最多附 4 张。说不清是哪个按钮时，一张截图就够了。图片会和消息一起发送给 Gemini。
+【共有されたフローをより安全に】
+・「アプリのショートカットを起動」と通知の「アプリのショートカットを開く」は、一覧から選んだショートカットのみ使えます。変数で組み立てていた場合は選び直してください
+・「ファイルに書き込み」は NexFlow 自身のフォルダに書き込めなくなりました
+・フローごとに 1 分あたり SMS 5 件、通話 5 件、ネットワーク要求 60 件まで。超えた手順はスキップして通知します
 
-【小工具显示你挑的流程】
-每个总览小工具都能选择「自动」或自己挑流程，最多 12 个。
+【新しいデザイン】
+・設定・フロー・ログを Android 16／17 の設定スタイルに
+・ログを日付ごとに表示
+・AI 設定を専用ページに、AI 入力欄を 1 つにまとめました
 
-【AI 助手更省也更稳】
-• 创建流程少一次请求，额度用得更慢
-• Gemini 繁忙或每分钟额度用完时，自动等待后继续
-• 不会再选用手机上没有的 App
+【修正】
+・横向きで追加ボタンがフローのスイッチに重ならなくなりました
+・ユーザー補助サービスの説明にすべての用途を記載
+```
 
-【变更】
-• AI 对话按 Enter 改为换行，发送请按发送按钮
+---
+
+## 简体中文（zh-CN） — 281 字元
+
+```
+【更安全地使用别人分享的流程】
+• 「启动 App 快捷方式」与通知的「打开 App 快捷方式」只能使用从列表挑选的快捷方式。若您的快捷方式是用变量组成的，请重新挑选一次
+• 「写入文件」不能写进 NexFlow 自己的文件夹
+• 每个流程每分钟最多发 5 条短信、拨 5 通电话、发 60 个网络请求，超出的步骤会跳过并通知您
+
+【新外观】
+• 设置、流程与日志改为 Android 16／17 的设置样式
+• 日志按日期分组
+• AI 设置有了自己的页面，AI 输入框合而为一
+
+【修正】
+• 横屏时新增按钮不再挡住流程开关
+• 无障碍服务的说明列出全部用途
 ```
 
 ---
@@ -101,5 +106,7 @@ CHANGED
 # 附註
 
 這份檔案只留「下一次要貼進 Play 的那一版」。舊版文案保留在 git 記錄裡：
+`git show dc484f1:docs/play-release-notes.md`（1.7.0）、
+`git show 4054922:docs/play-release-notes.md`（1.6.0）、
 `git show d92d940:docs/play-release-notes.md`（1.5.0 + 1.5.1 合併版）、
 `git show 618d26b:docs/play-release-notes.md`（1.5.0）。
