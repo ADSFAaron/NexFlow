@@ -82,6 +82,17 @@ core/macrodroid-compat/     # MacroDroid .mdr 格式解析
 - **Robolectric 與 Compose 測試是 JUnit 4，整個專案卻是 `useJUnitPlatform()`**：靠 `testRuntimeOnly(libs.junit5.vintage.engine)` 才跑得起來，漏了會「測試不見了但 build 成功」
 - `app/src/test/resources/robolectric.properties` 釘了 `sdk=36`（Robolectric 4.16 沒有 API 37 的 image）與 `application=android.app.Application`（避免每個測試都去啟動 `@HiltAndroidApp` 的 `NexFlowApplication`）。要注入的 Robolectric 測試自己標 `@Config(application = HiltTestApplication::class)`
 
+#### 流程 catalog（`docs/flow-catalog.json`）
+
+- 從各觸發器／條件／動作編輯器的欄位產生的 golden 檔，流程商店的 CLI 靠它驗證投稿。**改了任何 `ConfigField`（新增、改名、改選項或範圍）都要重產**，否則 `FlowCatalogTest` 會失敗：
+
+  ```bash
+  ./gradlew :app:testGithubDebugUnitTest --tests '*FlowCatalogTest' -PupdateCatalog
+  ```
+
+- 新的 key 也要在 `core/flow-schema` 的 `FieldPolicy` 歸類（PERSONAL／SINKS／NEUTRAL），沒歸類 `FieldPolicyTest` 會失敗
+- `since` 由產生器自動填（新條目 = 目前的 versionName），**不要手改**；play 版隱藏哪些類型看 `FlavorGates`
+
 #### 截圖測試（Compose Preview Screenshot Testing）
 
 - 8 種組合 = 4 語系（en / zh-rTW / zh-rCN / ja）× 深淺色，定義在 `app/src/screenshotTest/.../LocaleThemePreviews.kt`

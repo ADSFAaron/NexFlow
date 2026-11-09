@@ -25,7 +25,7 @@
 | P1 #15 未知類型 warning | 完成 | `UNKNOWN_TRIGGER_TYPE`／`UNKNOWN_ACTION_TYPE`／`NOT_IN_THIS_BUILD`，.flow 與 .mdr 都套用 |
 | P1 #16 `FlowConfigValidator` | 完成 | `com.nexflow.validation`；`validate(flow)` 對未知／此 flavor 隱藏的類型報錯（匯入只警告） |
 | P1 #17 `PersonalFields`／`SensitiveSinks` | 完成 | 合併成 `core/flow-schema` 的 `FieldPolicy`（PERSONAL／SINKS／NEUTRAL，依 key 名稱分類） |
-| P1 #18 `flow-catalog.json` | 未開始 | |
+| P1 #18 `flow-catalog.json` | 完成 | 模型 `FlowCatalog`（core/flow-schema）；`FlowCatalogTest` 產生／比對；`since` 目前全是 1.7.1，P3 定 baseline 時重設 |
 | P1 #19 `flow-store-tools` CLI | 未開始 | |
 
 ---
