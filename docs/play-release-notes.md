@@ -23,7 +23,7 @@
 
 ---
 
-## 繁體中文（zh-TW） — 273 字元
+## 繁體中文（zh-TW） — 318 字元
 
 ```
 【更安全地使用別人分享的流程】
@@ -32,8 +32,9 @@
 • 每個流程每分鐘最多傳 5 則簡訊、撥 5 通電話、發 60 個網路請求，超過的步驟會略過並通知您
 
 【新外觀】
-• 設定、流程與日誌改成 Android 16／17 的設定樣式
+• 設定、流程、日誌、AI 助手、執行明細與小工具設定頁都改成 Android 16／17 的設定樣式
 • 日誌依日期分組
+• 流程編輯器點一列就能編輯，刪除移到編輯對話框裡
 • AI 設定有自己的頁面，AI 輸入框整合成一個
 
 【修正】
@@ -43,27 +44,27 @@
 
 ---
 
-## English（en-US） — 496 字元
+## English（en-US） — 499 字元
 
 ```
 SAFER SHARED FLOWS
-• App shortcuts in flows and notifications must be picked from the list. If yours used a variable, pick it again
+• Shortcuts in flows and notifications must be picked from the list; if yours used a variable, pick it again
 • Write file can't write into NexFlow's own folder
-• Each flow: max 5 SMS, 5 calls and 60 web requests a minute. Extras are skipped, and you're told
+• Each flow: max 5 SMS, 5 calls and 60 web requests a minute. Extras are skipped and you're told
 
 NEW LOOK
-• Settings, Flows and Logs restyled for Android 16/17
+• Android 16/17 style across the app
 • Logs grouped by day
-• AI settings on their own page
+• Flow editor: tap a row to edit; Delete is in its dialog
 
 FIXED
-• Add button no longer covers switches in landscape
+• Add button no longer hides switches in landscape
 • Accessibility notice lists every use
 ```
 
 ---
 
-## 日本語（ja-JP） — 358 字元
+## 日本語（ja-JP） — 415 字元
 
 ```
 【共有されたフローをより安全に】
@@ -72,8 +73,9 @@ FIXED
 ・フローごとに 1 分あたり SMS 5 件、通話 5 件、ネットワーク要求 60 件まで。超えた手順はスキップして通知します
 
 【新しいデザイン】
-・設定・フロー・ログを Android 16／17 の設定スタイルに
+・設定・フロー・ログ・AI アシスタント・実行の詳細・ウィジェット設定を Android 16／17 の設定スタイルに
 ・ログを日付ごとに表示
+・フローエディタは行をタップして編集、削除は編集ダイアログ内に
 ・AI 設定を専用ページに、AI 入力欄を 1 つにまとめました
 
 【修正】
@@ -83,7 +85,7 @@ FIXED
 
 ---
 
-## 简体中文（zh-CN） — 281 字元
+## 简体中文（zh-CN） — 326 字元
 
 ```
 【更安全地使用别人分享的流程】
@@ -92,8 +94,9 @@ FIXED
 • 每个流程每分钟最多发 5 条短信、拨 5 通电话、发 60 个网络请求，超出的步骤会跳过并通知您
 
 【新外观】
-• 设置、流程与日志改为 Android 16／17 的设置样式
+• 设置、流程、日志、AI 助手、执行明细与小工具设置页都改为 Android 16／17 的设置样式
 • 日志按日期分组
+• 流程编辑器点一行即可编辑，删除移到编辑对话框里
 • AI 设置有了自己的页面，AI 输入框合而为一
 
 【修正】
