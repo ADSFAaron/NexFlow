@@ -26,7 +26,7 @@
 | P1 #16 `FlowConfigValidator` | 完成 | `com.nexflow.validation`；`validate(flow)` 對未知／此 flavor 隱藏的類型報錯（匯入只警告） |
 | P1 #17 `PersonalFields`／`SensitiveSinks` | 完成 | 合併成 `core/flow-schema` 的 `FieldPolicy`（PERSONAL／SINKS／NEUTRAL，依 key 名稱分類） |
 | P1 #18 `flow-catalog.json` | 完成 | 模型 `FlowCatalog`（core/flow-schema）；`FlowCatalogTest` 產生／比對；`since` 目前全是 1.7.1，P3 定 baseline 時重設 |
-| P1 #19 `flow-store-tools` CLI | 未開始 | |
+| P1 #19 `flow-store-tools` CLI | 完成 | 規則在 `StoreValidator`；檔案格式見「商店的檔案格式」；`./gradlew :core:flow-store-tools:installDist` 產生執行檔 |
 
 ---
 
@@ -155,6 +155,8 @@
   - **和「外傳資料」那條決定的對齊**：`headers` 在個資清單裡（常放 API token），而個資 key 一律不能放變數，
     所以「外部變數只能進 HTTP body 與 header」實際上是**只能進 body**。外部變數仍可進 NEUTRAL 欄位
     （例如通知文字、簡訊內容），因為收件對象（`number`）與網址本身已由 PERSONAL／SINKS 規則鎖住。
+  - **`expression` 不是 sink**（#19 實作時改的）：用 IF 判斷簡訊或通知內容是最常見的寫法，外部資料進到條件式
+    最多只能決定走作者寫好的哪一條分支，擋掉反而讓大部分實用流程上不了架。
 
 **`docs/flow-catalog.json`**（golden 檔，#18）
 - 內容：key、允許值、範圍、是否為個資或 sink、flavor、`since`。
@@ -173,6 +175,69 @@
   - REPEAT 次數 ≤ 100，REGEX 長度有上限（執行期上限是 500 字元）。
   - 算出 `min_app_version` 與 flavor，列出高風險動作。
 - 轉換邏輯放在 `core/flow-schema`，P5 也會用。
+
+### 商店的檔案格式（P1 #19 定案，P2–P5 共用）
+
+模型在 `core/flow-schema` 的 `StoreFormat.kt`，CLI 與 App 共用。
+
+**`flows/<slug>/flow.json`**：就是一般的 `.flow` 匯出檔（`FlowJson`），所以 App 的匯出可以直接變成投稿。
+被 setup 接管的欄位在這裡**留空字串**。
+
+**`flows/<slug>/meta.json`**（人寫，CI 驗證）
+```json
+{
+  "slug": "silent-at-night",
+  "version": 3,
+  "languages": {
+    "en":    { "title": "Silent at night", "description": "…" },
+    "zh-TW": { "title": "晚上自動靜音",    "description": "…" }
+  },
+  "tags": ["sleep", "sound"],
+  "setup": [
+    {
+      "id": "home_wifi",
+      "target": { "kind": "trigger", "item": "<trigger 的 id>", "key": "ssid" },
+      "label": { "en": "Your home Wi-Fi name", "zh-TW": "家裡的 Wi-Fi 名稱" },
+      "secret": false
+    }
+  ]
+}
+```
+- `slug` 必須等於資料夾名稱。`version` 是正整數，`flow.json` 或 `meta.json` 有改就要比 base 大。
+- `languages` 至少一種，`title` 不可空白。語言代碼用 App 支援的 `en`／`zh-TW`／`zh-CN`／`ja`。
+- `setup[].target.kind` 是 `trigger`／`condition`／`action`，`item` 是該步驟的 id，`key` 是 config key；
+  每個 target 只能被一個 setup 接管，`label` 至少要有 `languages` 裡的每一種語言。
+- **作者不寫在 meta.json**：由 CI 依 PR 作者判定、寫進 index。
+
+**`revoked.json`**
+```json
+{ "revoked": [ { "slug": "x", "reason": "malicious", "date": "2026-11-09", "note": "…" } ] }
+```
+`reason` 是 `malicious`（App 自動停用）或 `broken`（只通知）。
+
+**`index.json`**（`build-index` 產生，publish 時簽章）
+```json
+{
+  "index_version": 1,
+  "generated_at": "2026-11-09T00:00:00Z",
+  "flows": [
+    {
+      "slug": "…", "version": 3, "author": "…", "languages": { … }, "tags": [ … ],
+      "min_app_version": "1.8.0", "flavors": ["github", "play"],
+      "risks": ["HTTP_REQUEST"], "setup_count": 1,
+      "bundle": "bundles/silent-at-night-3.json", "sha256": "…"
+    }
+  ],
+  "revoked": [ … ]
+}
+```
+- `bundle` 是 `{ "meta": …, "flow": … }` 合併成一個檔，App 一次下載一個檔、比一次 sha256。
+- `min_app_version` 取流程用到的每個步驟與 key 在 catalog 裡 `since` 的最大值；`flavors` 是所有步驟的交集。
+- `risks` 列出流程用到的高風險動作：SEND_SMS、CALL_PHONE、HTTP_REQUEST、LAUNCH_SHORTCUT、
+  SIMULATE_TAP、SIMULATE_SWIPE、WRITE_FILE、SET_WALLPAPER。
+
+**外部可控的變數（taint 來源）**：`{{trigger.*}}`、HTTP_REQUEST 的 `response_var` 與 `__http_status__`，
+以及值引用到上述任一者的 SET_VARIABLE 目標（反覆傳遞到不再變動為止）。這些變數不能出現在 `FieldPolicy.SINKS` 的欄位。
 
 ### P2（商店 repo）— [nexflow-flow-store#1](https://github.com/ADSFAaron/nexflow-flow-store/issues/1)
 

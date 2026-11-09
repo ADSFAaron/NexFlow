@@ -459,8 +459,7 @@
         },
         "expression": {
           "since": "1.7.1",
-          "input": "ConditionInput",
-          "sink": true
+          "input": "ConditionInput"
         }
       }
     },
@@ -780,8 +779,7 @@
       "keys": {
         "expression": {
           "since": "1.7.1",
-          "input": "ConditionInput",
-          "sink": true
+          "input": "ConditionInput"
         }
       }
     },

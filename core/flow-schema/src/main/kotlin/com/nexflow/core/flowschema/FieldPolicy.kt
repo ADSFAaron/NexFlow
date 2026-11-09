@@ -50,14 +50,20 @@ object FieldPolicy {
     val SINKS: Set<String> = setOf(
         "url", "tap_url",
         "intent_uri", "tap_shortcut_uri", "package_name", "tap_package",
-        "number", "path", "variable_name", "response_var", "expression",
+        "number", "path", "variable_name", "response_var",
         "x", "y", "x1", "y1", "x2", "y2",
     )
 
-    /** Everything else the editors offer: fine to ship with a value and to fill from a variable. */
+    /**
+     * Everything else the editors offer: fine to ship with a value and to fill from a variable.
+     *
+     * `expression` (If, and the expression condition) is here on purpose: testing what an SMS
+     * says is the commonest reason to have an If, and outside data there can only pick which of
+     * the author's own branches runs.
+     */
     val NEUTRAL: Set<String> = setOf(
         "_negate", "action", "body", "body_keyword", "brightness_unit", "charging", "content", "count",
-        "days", "direction", "duration", "duration_unit", "duration_value", "end", "event",
+        "days", "direction", "duration", "duration_unit", "duration_value", "end", "event", "expression",
         "extra_dim", "json_path", "keyword", "level", "match_field", "match_mode", "message",
         "method", "mode", "option", "options", "radius_m", "repeat", "sensitivity", "start", "state",
         "stream", "tap_action", "target", "text", "threshold_lux", "time", "title", "value", "volume_percent",

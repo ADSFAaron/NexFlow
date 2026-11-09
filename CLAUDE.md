@@ -16,6 +16,7 @@ app/                        # 主 App module（UI、executor、trigger、service
 core/automation/            # 核心模型、interpreter、repository 介面
 core/flow-schema/           # JSON schema（匯入/匯出格式）
 core/macrodroid-compat/     # MacroDroid .mdr 格式解析
+core/flow-store-tools/      # 流程商店 CLI（validate／dry-run／build-index／from-export），純 JVM，商店 repo 的 CI 用
 ```
 
 ---
