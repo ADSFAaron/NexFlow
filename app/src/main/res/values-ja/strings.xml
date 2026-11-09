@@ -863,6 +863,7 @@
     <!-- 1 回の実行を手順ごとに記録したもの。履歴一覧から開く -->
     <string name="run_detail_title">実行の詳細</string>
     <string name="run_detail_gone">この実行はすでに保存されていません。</string>
+    <string name="run_detail_steps">ステップ</string>
     <string name="run_no_steps">この実行は手順の記録が導入される前のもので、結果だけが残っています。</string>
     <string name="run_step_disabled">オフのためスキップ</string>
     <plurals name="run_step_rate_limited">

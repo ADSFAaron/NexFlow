@@ -863,6 +863,7 @@
     <!-- 单次执行的完整步骤记录，从记录列表点入 -->
     <string name="run_detail_title">执行明细</string>
     <string name="run_detail_gone">这次执行已经不在记录里了。</string>
+    <string name="run_detail_steps">步骤</string>
     <string name="run_no_steps">这次执行早于逐步骤记录功能，因此只留下结果。</string>
     <string name="run_step_disabled">已关闭，跳过</string>
     <plurals name="run_step_rate_limited">

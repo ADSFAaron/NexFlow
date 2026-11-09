@@ -883,6 +883,7 @@
     <!-- Per-run build log: the steps of one execution, reached by tapping a log entry -->
     <string name="run_detail_title">Run detail</string>
     <string name="run_detail_gone">This run is no longer stored.</string>
+    <string name="run_detail_steps">Steps</string>
     <string name="run_no_steps">This run was recorded before step logging existed, so only its result was saved.</string>
     <string name="run_step_disabled">Turned off — skipped</string>
     <plurals name="run_step_rate_limited">
