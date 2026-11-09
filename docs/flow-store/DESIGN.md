@@ -24,7 +24,7 @@
 | P1 #14 ID 相同發新 UUID | 完成 | 含 MDR；ID 格式不符 UUID 改列 STRICT（只有商店擋） |
 | P1 #15 未知類型 warning | 完成 | `UNKNOWN_TRIGGER_TYPE`／`UNKNOWN_ACTION_TYPE`／`NOT_IN_THIS_BUILD`，.flow 與 .mdr 都套用 |
 | P1 #16 `FlowConfigValidator` | 完成 | `com.nexflow.validation`；`validate(flow)` 對未知／此 flavor 隱藏的類型報錯（匯入只警告） |
-| P1 #17 `PersonalFields`／`SensitiveSinks` | 未開始 | |
+| P1 #17 `PersonalFields`／`SensitiveSinks` | 完成 | 合併成 `core/flow-schema` 的 `FieldPolicy`（PERSONAL／SINKS／NEUTRAL，依 key 名稱分類） |
 | P1 #18 `flow-catalog.json` | 未開始 | |
 | P1 #19 `flow-store-tools` CLI | 未開始 | |
 
@@ -149,6 +149,12 @@
 - `FlowConfigValidator`：從 `FlowDraftMapper` 抽出來（#16）。
 - `PersonalFields`：ssid、lat/lng、number、contact、sender、tag_id、device_name、path、x/y、package_name、intent_uri、image、headers。
   `SensitiveSinks`：taint 檢查用的 sink 清單（#17）。
+  - **實作**：兩份清單合成 `core/flow-schema` 的 `FieldPolicy`，放在純 JVM 模組讓 CLI 直接用。key 在每個步驟裡意思都一樣，
+    所以依名稱分類成 PERSONAL、SINKS、NEUTRAL（一個 key 可以同時是 PERSONAL 與 SINK，例如 `number`）。
+    `FieldPolicyTest` 走過所有編輯器，出現沒分類的 key、或清單裡有已不存在的 key 都會失敗。
+  - **和「外傳資料」那條決定的對齊**：`headers` 在個資清單裡（常放 API token），而個資 key 一律不能放變數，
+    所以「外部變數只能進 HTTP body 與 header」實際上是**只能進 body**。外部變數仍可進 NEUTRAL 欄位
+    （例如通知文字、簡訊內容），因為收件對象（`number`）與網址本身已由 PERSONAL／SINKS 規則鎖住。
 
 **`docs/flow-catalog.json`**（golden 檔，#18）
 - 內容：key、允許值、範圍、是否為個資或 sink、flavor、`since`。
