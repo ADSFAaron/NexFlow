@@ -16,78 +16,118 @@
 package com.nexflow.ui.flowimport
 
 import com.nexflow.core.automation.model.Flow
-import com.nexflow.core.automation.model.TriggerLogic
 import com.nexflow.core.automation.repository.FlowRepository
 import com.nexflow.core.automation.repository.GlobalVariableRepository
+import com.nexflow.core.flowschema.ActionJson
+import com.nexflow.core.flowschema.FlowJson
 import com.nexflow.core.flowschema.FlowSerializer
-import com.nexflow.data.toFlowJson
+import com.nexflow.core.flowschema.GlobalVariableJson
+import com.nexflow.core.flowschema.ImportWarnings
+import com.nexflow.core.flowschema.TriggerJson
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
-import io.mockk.slot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
+import kotlinx.serialization.json.JsonObject
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
 /**
- * Importing must never replace a flow the user already has. Saving is an upsert, so a file whose
- * id is already on this device — your own export read back, a friend's flow shared twice — used
- * to overwrite the existing flow, and every change made to it since, without a word.
+ * A file that fails the schema is refused outright; one with only warnings still imports. And
+ * importing never replaces a flow the user already has: a file whose id is already on this device
+ * (your own export read back, a friend's flow shared twice) is saved as a new flow beside it.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ImportViewModelTest {
 
-    private val repository = mockk<FlowRepository>(relaxed = true)
-    private val globals = mockk<GlobalVariableRepository>(relaxed = true)
-
-    @BeforeEach
-    fun setUp() {
-        Dispatchers.setMain(UnconfinedTestDispatcher())
-        coEvery { globals.currentValues() } returns emptyMap()
+    private val saved = mutableListOf<Flow>()
+    private val flows = mockk<FlowRepository> {
+        coEvery { save(any()) } coAnswers { saved += firstArg<Flow>() }
+        coEvery { getById(any()) } coAnswers { saved.find { it.id == firstArg<String>() } }
     }
+    private val globals = mockk<GlobalVariableRepository>(relaxed = true) {
+        coEvery { currentValues() } returns emptyMap()
+    }
+    private val vm by lazy { ImportViewModel(flows, globals) }
 
-    @AfterEach
-    fun tearDown() = Dispatchers.resetMain()
+    @BeforeEach fun main() = Dispatchers.setMain(UnconfinedTestDispatcher())
 
-    private fun flow(id: String) = Flow(
-        id = id, schemaVersion = 1, name = "Shared", description = "", author = null,
-        icon = null, iconColor = null, tags = emptyList(), enabled = false,
-        createdAt = 0L, updatedAt = 0L, triggers = emptyList(), triggerLogic = TriggerLogic.ANY,
-        conditions = emptyList(), actions = emptyList(), variables = emptyList(),
+    @AfterEach fun reset() = Dispatchers.resetMain()
+
+    private var n = 0
+    private fun uuid() = "00000000-0000-4000-8000-%012d".format(n++)
+
+    private fun file(
+        id: String = uuid(),
+        triggerLogic: String = "ANY",
+        withTriggers: Boolean = true,
+    ) = FlowSerializer.encode(
+        FlowJson(
+            schemaVersion = 1, id = id, name = "Morning", description = "", tags = emptyList(),
+            enabled = false, createdAt = "2026-01-01T00:00:00Z", updatedAt = "2026-01-01T00:00:00Z",
+            triggers = if (withTriggers) listOf(TriggerJson(uuid(), "TIME", JsonObject(emptyMap()))) else emptyList(),
+            triggerLogic = triggerLogic, conditions = emptyList(),
+            actions = listOf(ActionJson(uuid(), "TOAST", JsonObject(emptyMap()), order = 0, enabled = true)),
+            variables = emptyList(),
+            globalVariables = listOf(GlobalVariableJson("count", "INTEGER", "0")),
+        ),
     )
 
-    private fun fileOf(id: String) = FlowSerializer.encode(flow(id).toFlowJson())
+    @Test
+    fun `a file with a schema error is not saved, and creates no globals`() {
+        vm.importFlowJson(file(triggerLogic = "SOME"))
+
+        val result = vm.result.value!!
+        assertTrue(result.failed)
+        assertEquals(0, result.imported)
+        assertTrue(result.rejected.single().startsWith("trigger_logic:"), "${result.rejected}")
+        assertTrue(saved.isEmpty())
+        coVerify(exactly = 0) { globals.save(any(), any()) }
+    }
+
+    @Test
+    fun `a file with only warnings still imports, with the warning shown`() {
+        // A flow with no triggers yet is something the editor itself allows.
+        vm.importFlowJson(file(withTriggers = false))
+
+        val result = vm.result.value!!
+        assertEquals(false, result.failed)
+        assertEquals(1, result.imported)
+        assertEquals(1, saved.size)
+        assertTrue(result.warnings.any { it.code == ImportWarnings.SCHEMA_ERROR && "triggers" in it.args })
+    }
 
     @Test
     fun `a flow new to this device keeps the id from the file`() {
-        coEvery { repository.getById("abc") } returns null
-        val saved = slot<Flow>()
-        coEvery { repository.save(capture(saved)) } returns Unit
+        vm.importFlowJson(file(id = SHARED))
 
-        ImportViewModel(repository, globals).importFlowJson(fileOf("abc"))
-
-        assertEquals("abc", saved.captured.id)
+        assertEquals(listOf(SHARED), saved.map { it.id })
     }
 
     @Test
     fun `a flow whose id is already taken is saved as a new flow beside it`() {
-        coEvery { repository.getById("abc") } returns flow("abc")
-        val saved = slot<Flow>()
-        coEvery { repository.save(capture(saved)) } returns Unit
+        vm.importFlowJson(file(id = SHARED))
+        // No triggers: a warning, so there is something to check the flow id of.
+        vm.importFlowJson(file(id = SHARED, withTriggers = false))
 
-        val vm = ImportViewModel(repository, globals)
-        vm.importFlowJson(fileOf("abc"))
-
-        assertNotEquals("abc", saved.captured.id, "the existing flow must not be overwritten")
-        coVerify(exactly = 0) { repository.save(match { it.id == "abc" }) }
+        assertEquals(2, saved.size)
+        assertEquals(SHARED, saved[0].id)
+        assertNotEquals(SHARED, saved[1].id, "the existing flow must not be overwritten")
         // Warnings point at the flow that was actually saved, so the review UI opens the copy.
-        vm.result.value?.warnings?.forEach { assertEquals(saved.captured.id, it.flowId) }
+        val warnings = vm.result.value!!.warnings
+        assertTrue(warnings.isNotEmpty())
+        warnings.forEach { assertEquals(saved[1].id, it.flowId) }
+    }
+
+    private companion object {
+        const val SHARED = "11111111-1111-4111-8111-111111111111"
     }
 }

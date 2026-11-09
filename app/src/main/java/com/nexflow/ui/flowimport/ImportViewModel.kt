@@ -45,7 +45,11 @@ data class ImportResult(
     val imported: Int = 0,
     val warnings: List<ImportWarning> = emptyList(),
     val error: String? = null,
-)
+    /** `field: message` for each schema error that made the file unsafe to store; nothing was saved. */
+    val rejected: List<String> = emptyList(),
+) {
+    val failed: Boolean get() = error != null || rejected.isNotEmpty()
+}
 
 @HiltViewModel
 class ImportViewModel @Inject constructor(
@@ -98,7 +102,14 @@ class ImportViewModel @Inject constructor(
             fun warning(code: String, vararg args: String, itemKind: ImportItemKind? = null, itemId: String? = null) =
                 ImportWarning(code, args.toList(), flowJson.id, flowJson.name, itemKind, itemId)
 
-            val warnings = FlowSchemaValidator.validate(flowJson)
+            val (errors, schemaWarnings) = FlowSchemaValidator.validate(flowJson).partition { it.isError }
+            // Refuse before touching anything: not even the globals it declares are created.
+            if (errors.isNotEmpty()) {
+                _result.update { ImportResult(rejected = errors.map { "${it.field}: ${it.message}" }) }
+                return@launch
+            }
+
+            val warnings = schemaWarnings
                 .map { warning(ImportWarnings.SCHEMA_ERROR, it.field, it.message) }
                 .toMutableList()
             warnings += reconcileGlobals(flowJson).map { (code, name) -> warning(code, name) }

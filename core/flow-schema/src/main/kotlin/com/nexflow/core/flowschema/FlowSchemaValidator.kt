@@ -24,6 +24,12 @@ private val SUPPORTED_SCHEMA_VERSIONS = setOf(1)
 private const val MAX_ACTIONS_NESTING = 20
 
 object FlowSchemaValidator {
+    /**
+     * Every problem with [flow]. An [ValidationError.Severity.ERROR] means the file cannot be
+     * stored safely or run as written; a [ValidationError.Severity.WARNING] is something NexFlow's
+     * own editor lets a user create (an empty section, a long name, a variable called "my var"),
+     * so a flow exported from this app always imports back.
+     */
     fun validate(flow: FlowJson): List<ValidationError> {
         val errors = mutableListOf<ValidationError>()
 
@@ -34,10 +40,10 @@ object FlowSchemaValidator {
             errors += ValidationError("id", "Not a valid UUID v4: ${flow.id}")
         }
         if (flow.name.isBlank()) errors += ValidationError("name", "Must not be blank")
-        if (flow.name.length > 100) errors += ValidationError("name", "Exceeds 100 characters")
-        if (flow.description.length > 2000) errors += ValidationError("description", "Exceeds 2000 characters")
-        if (flow.triggers.isEmpty()) errors += ValidationError("triggers", "Must contain at least one trigger")
-        if (flow.actions.isEmpty()) errors += ValidationError("actions", "Must contain at least one action")
+        if (flow.name.length > 100) errors += warning("name", "Exceeds 100 characters")
+        if (flow.description.length > 2000) errors += warning("description", "Exceeds 2000 characters")
+        if (flow.triggers.isEmpty()) errors += warning("triggers", "Must contain at least one trigger")
+        if (flow.actions.isEmpty()) errors += warning("actions", "Must contain at least one action")
         if (flow.triggerLogic !in listOf("ANY", "ALL")) {
             errors += ValidationError("trigger_logic", "Must be ANY or ALL")
         }
@@ -55,7 +61,7 @@ object FlowSchemaValidator {
 
         flow.variables.forEachIndexed { i, v ->
             if (!VARIABLE_NAME_REGEX.matches(v.name)) {
-                errors += ValidationError("variables[$i].name", "Invalid identifier: ${v.name}")
+                errors += warning("variables[$i].name", "Invalid identifier: ${v.name}")
             }
             if (v.type !in listOf("STRING", "INTEGER", "BOOLEAN", "DECIMAL")) {
                 errors += ValidationError("variables[$i].type", "Unknown type: ${v.type}")
@@ -84,4 +90,15 @@ object FlowSchemaValidator {
     }
 }
 
-data class ValidationError(val field: String, val message: String)
+private fun warning(field: String, message: String) =
+    ValidationError(field, message, ValidationError.Severity.WARNING)
+
+data class ValidationError(
+    val field: String,
+    val message: String,
+    val severity: Severity = Severity.ERROR,
+) {
+    enum class Severity { ERROR, WARNING }
+
+    val isError: Boolean get() = severity == Severity.ERROR
+}
