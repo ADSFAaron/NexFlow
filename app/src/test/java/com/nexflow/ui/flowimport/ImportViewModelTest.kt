@@ -15,6 +15,7 @@
  */
 package com.nexflow.ui.flowimport
 
+import com.nexflow.BuildConfig
 import com.nexflow.core.automation.model.Flow
 import com.nexflow.core.automation.repository.FlowRepository
 import com.nexflow.core.automation.repository.GlobalVariableRepository
@@ -69,13 +70,15 @@ class ImportViewModelTest {
         id: String = uuid(),
         triggerLogic: String = "ANY",
         withTriggers: Boolean = true,
+        triggerType: String = "TIME",
+        actionType: String = "TOAST",
     ) = FlowSerializer.encode(
         FlowJson(
             schemaVersion = 1, id = id, name = "Morning", description = "", tags = emptyList(),
             enabled = false, createdAt = "2026-01-01T00:00:00Z", updatedAt = "2026-01-01T00:00:00Z",
-            triggers = if (withTriggers) listOf(TriggerJson(uuid(), "TIME", JsonObject(emptyMap()))) else emptyList(),
+            triggers = if (withTriggers) listOf(TriggerJson(uuid(), triggerType, JsonObject(emptyMap()))) else emptyList(),
             triggerLogic = triggerLogic, conditions = emptyList(),
-            actions = listOf(ActionJson(uuid(), "TOAST", JsonObject(emptyMap()), order = 0, enabled = true)),
+            actions = listOf(ActionJson(uuid(), actionType, JsonObject(emptyMap()), order = 0, enabled = true)),
             variables = emptyList(),
             globalVariables = listOf(GlobalVariableJson("count", "INTEGER", "0")),
         ),
@@ -103,6 +106,28 @@ class ImportViewModelTest {
         assertEquals(1, result.imported)
         assertEquals(1, saved.size)
         assertTrue(result.warnings.any { it.code == ImportWarnings.SCHEMA_ERROR && "triggers" in it.args })
+    }
+
+    @Test
+    fun `types from a newer NexFlow are reported, not silently swapped`() {
+        vm.importFlowJson(file(triggerType = "FUTURE_TRIGGER", actionType = "FUTURE_ACTION"))
+
+        val result = vm.result.value!!
+        assertEquals(1, result.imported)
+        val byCode = result.warnings.associateBy { it.code }
+        assertEquals(listOf("FUTURE_TRIGGER"), byCode.getValue(ImportWarnings.UNKNOWN_TRIGGER_TYPE).args)
+        assertEquals(listOf("FUTURE_ACTION"), byCode.getValue(ImportWarnings.UNKNOWN_ACTION_TYPE).args)
+        assertTrue(listOf(ImportWarnings.UNKNOWN_TRIGGER_TYPE, ImportWarnings.UNKNOWN_ACTION_TYPE).all { byCode.getValue(it).isFixable })
+    }
+
+    @Test
+    fun `a type this flavor hides is reported only where it is hidden`() {
+        vm.importFlowJson(file(triggerType = "SMS_RECEIVED", actionType = "SEND_SMS"))
+
+        val hidden = vm.result.value!!.warnings.filter { it.code == ImportWarnings.NOT_IN_THIS_BUILD }
+        // Runs in both flavors: the Play build hides SMS, the GitHub build has it.
+        val expected = if (BuildConfig.FLAVOR == "play") listOf("SMS_RECEIVED", "SEND_SMS") else emptyList()
+        assertEquals(expected, hidden.map { it.args.single() })
     }
 
     @Test

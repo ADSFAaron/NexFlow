@@ -368,6 +368,12 @@
     <string name="iw_global_undeclared_body">流程用到“%1$s”，但文件里没有声明。请到“设置 → 全局变量”创建，否则流程写入时会失败。</string>
     <string name="iw_unknown_condition">不认得的限制条件类型</string>
     <string name="iw_unknown_condition_body">这个流程用到限制条件“%1$s”，目前版本的 NexFlow 不认得。在你移除它之前，流程不会运行。</string>
+    <string name="iw_unknown_trigger">不认得的触发器类型</string>
+    <string name="iw_unknown_trigger_body">这个流程用到触发器“%1$s”，目前版本的 NexFlow 不认得。它先以“手动”保留，所以流程只会在你自己启动时运行。请更新 NexFlow，或换成其他触发器。</string>
+    <string name="iw_unknown_action">不认得的动作类型</string>
+    <string name="iw_unknown_action_body">这个流程用到动作“%1$s”，目前版本的 NexFlow 不认得。它先以只会显示消息的“弹出消息”保留。请更新 NexFlow，或换成其他动作。</string>
+    <string name="iw_not_in_this_build">这个版本的 NexFlow 没有这项功能</string>
+    <string name="iw_not_in_this_build_body">“%1$s”只有 GitHub 版的 NexFlow 才有。它已经保留，但在这里不会起作用：触发器永远不会触发，动作则会运行失败并在运行记录写明原因。</string>
     <string name="iw_schema_error">文件格式与流程格式不符</string>
     <string name="iw_schema_error_body">%1$s：%2$s</string>
     <string name="flows_permissions_needed">需要权限</string>

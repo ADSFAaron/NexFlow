@@ -22,7 +22,7 @@
 | 1.7.1 執行期安全底線（速率限制、捷徑 intent 字面值等） | 完成，待發版 | `fix/security-hardening` |
 | P1 #13 schema error 不存檔 | 完成 | `feat/flow-store-p1`；validator 分 ERROR／WARNING，見 P1 段落 |
 | P1 #14 ID 相同發新 UUID | 完成 | 含 MDR；ID 格式不符 UUID 改列 STRICT（只有商店擋） |
-| P1 #15 未知類型 warning | 未開始 | |
+| P1 #15 未知類型 warning | 完成 | `UNKNOWN_TRIGGER_TYPE`／`UNKNOWN_ACTION_TYPE`／`NOT_IN_THIS_BUILD`，.flow 與 .mdr 都套用 |
 | P1 #16 `FlowConfigValidator` | 未開始 | |
 | P1 #17 `PersonalFields`／`SensitiveSinks` | 未開始 | |
 | P1 #18 `flow-catalog.json` | 未開始 | |

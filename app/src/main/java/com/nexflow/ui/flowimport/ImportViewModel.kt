@@ -18,8 +18,11 @@ package com.nexflow.ui.flowimport
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexflow.core.automation.interpreter.FlowInterpreter
+import com.nexflow.FlavorFeatures
+import com.nexflow.core.automation.model.ActionType
 import com.nexflow.core.automation.model.ConditionType
 import com.nexflow.core.automation.model.GlobalVariable
+import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.automation.model.VariableType
 import com.nexflow.core.automation.repository.FlowRepository
 import com.nexflow.core.automation.repository.GlobalVariableRepository
@@ -84,8 +87,13 @@ class ImportViewModel @Inject constructor(
                 val id = freeFlowId(conversion.flow.id, taken)
                 // The converter already tagged each warning with the flow and item it belongs to,
                 // and toDomain() keeps those ids, so the review UI can open the exact row.
-                allWarnings += conversion.warnings.map { if (it.flowId == conversion.flow.id) it.copy(flowId = id) else it }
-                repository.save(conversion.flow.copy(id = id).toDomain())
+                val converted = conversion.warnings.map { if (it.flowId == conversion.flow.id) it.copy(flowId = id) else it }
+                allWarnings += converted
+                val flow = conversion.flow.copy(id = id)
+                // The converter has its own warning for tap/swipe, worded for MacroDroid users.
+                val explained = converted.filter { it.code == ImportWarnings.TAP_SWIPE_GITHUB_ONLY }.mapNotNull { it.itemId }.toSet()
+                allWarnings += typeWarnings(flow).filterNot { it.itemId in explained }
+                repository.save(flow.toDomain())
                 imported++
             }
 
@@ -117,6 +125,7 @@ class ImportViewModel @Inject constructor(
                 .map { warning(ImportWarnings.SCHEMA_ERROR, it.field, it.message) }
                 .toMutableList()
             warnings += reconcileGlobals(flowJson).map { (code, name) -> warning(code, name) }
+            warnings += typeWarnings(flowJson)
             // Conditions are enforced now, so an unrecognised one is not a harmless leftover:
             // the engine refuses to run a flow whose constraint it cannot check.
             flowJson.conditions
@@ -131,6 +140,34 @@ class ImportViewModel @Inject constructor(
             repository.save(flowJson.toDomain())
             _result.update { ImportResult(imported = 1, warnings = warnings) }
         }
+    }
+
+    /**
+     * Triggers and actions this build cannot run. An unknown type (a file from a newer NexFlow) is
+     * kept as MANUAL / TOAST by the mapper, and a type this flavor hides (SMS on the Play build) is
+     * kept as is; either way the flow would quietly not do what its author meant.
+     */
+    private fun typeWarnings(flow: FlowJson): List<ImportWarning> {
+        fun warning(code: String, type: String, kind: ImportItemKind, itemId: String) =
+            ImportWarning(code, listOf(type), flow.id, flow.name, kind, itemId)
+        val out = mutableListOf<ImportWarning>()
+        flow.triggers.forEach { t ->
+            val type = TriggerType.entries.find { it.name == t.type }
+            when {
+                type == null -> out += warning(ImportWarnings.UNKNOWN_TRIGGER_TYPE, t.type, ImportItemKind.TRIGGER, t.id)
+                type in FlavorFeatures.hiddenTriggerTypes ->
+                    out += warning(ImportWarnings.NOT_IN_THIS_BUILD, t.type, ImportItemKind.TRIGGER, t.id)
+            }
+        }
+        flow.actions.forEach { a ->
+            val type = ActionType.entries.find { it.name == a.type }
+            when {
+                type == null -> out += warning(ImportWarnings.UNKNOWN_ACTION_TYPE, a.type, ImportItemKind.ACTION, a.id)
+                type in FlavorFeatures.hiddenActionTypes ->
+                    out += warning(ImportWarnings.NOT_IN_THIS_BUILD, a.type, ImportItemKind.ACTION, a.id)
+            }
+        }
+        return out
     }
 
     /**
