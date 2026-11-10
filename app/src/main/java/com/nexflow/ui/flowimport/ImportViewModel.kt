@@ -38,6 +38,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.UUID
 import javax.inject.Inject
 
 data class ImportResult(
@@ -72,10 +73,14 @@ class ImportViewModel @Inject constructor(
 
             root.macros.forEach { macro ->
                 val conversion = MdrToFlowConverter.convert(macro)
+                // The id comes from the macro's guid, so importing the same file twice would
+                // otherwise land on the first copy — see withFreeId.
+                val flow = conversion.flow.withFreeId()
                 // The converter already tagged each warning with the flow and item it belongs to,
-                // and toDomain() keeps those ids, so the review UI can open the exact row.
-                allWarnings += conversion.warnings
-                repository.save(conversion.flow.toDomain())
+                // and toDomain() keeps the item ids, so the review UI can open the exact row. Only
+                // the flow id may have changed above.
+                allWarnings += conversion.warnings.map { it.copy(flowId = flow.id) }
+                repository.save(flow.toDomain())
                 imported++
             }
 
@@ -88,7 +93,7 @@ class ImportViewModel @Inject constructor(
             val flowJson = FlowSerializer.decode(content).getOrElse { e ->
                 _result.update { ImportResult(error = "Parse failed: ${e.message}") }
                 return@launch
-            }
+            }.withFreeId()
 
             fun warning(code: String, vararg args: String, itemKind: ImportItemKind? = null, itemId: String? = null) =
                 ImportWarning(code, args.toList(), flowJson.id, flowJson.name, itemKind, itemId)
@@ -112,6 +117,16 @@ class ImportViewModel @Inject constructor(
             _result.update { ImportResult(imported = 1, warnings = warnings) }
         }
     }
+
+    /**
+     * The flow as it should be saved: under its own id, unless this device already has a flow with
+     * that id — then as a new flow beside it. Saving is an upsert, so keeping a clashing id would
+     * silently replace the user's flow (and whatever they changed in it since) with the file's
+     * copy. The clash is the ordinary case, not an attack: re-importing your own export, a friend's
+     * flow shared twice, the same MacroDroid file read again.
+     */
+    private suspend fun FlowJson.withFreeId(): FlowJson =
+        if (repository.getById(id) == null) this else copy(id = UUID.randomUUID().toString())
 
     /**
      * Creates the globals an imported flow declares but this device doesn't have yet, and reports

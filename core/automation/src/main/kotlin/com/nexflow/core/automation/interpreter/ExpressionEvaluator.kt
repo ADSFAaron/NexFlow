@@ -60,29 +60,49 @@ object ExpressionEvaluator {
     private class Resolved(val text: String, val allResolved: Boolean)
 
     /**
-     * Evaluates [text] as arithmetic over decimal literals with `+ - * /`, or returns null when it
-     * is not arithmetic — ordinary text assigned by a SET_VARIABLE has to pass through untouched.
+     * Evaluates [template] as arithmetic over decimal numbers with `+ - * /`, or returns null when
+     * it is not arithmetic — ordinary text assigned by a SET_VARIABLE has to pass through untouched.
+     *
+     * **The structure comes from the template, never from a variable's value.** Each operand is a
+     * number written in the template or a lone `{{name}}` whose value is a number; each operator is
+     * written in the template. A value is never re-read as an expression. That matters because a
+     * value can come from a stranger: `x = {{trigger.body}}` used to evaluate an SMS reading
+     * "3 - 1" and store "2" — and one reading "1e999999999 * 1" made BigDecimal expand a
+     * billion-digit number, which ran the app out of memory.
      *
      * **Every operator must have whitespace on both sides.** That is what separates `{{count}} + 1`
      * from a value that merely contains an operator character: without the rule, storing the date
      * `2026-08-10` would quietly become `2008`, and a phone number or a version string would be
      * mangled the same way. Precedence is the usual one, `*` and `/` before `+` and `-`.
      *
+     * Numbers are plain decimals (`12`, `-0.5`, `.5`) of at most [MAX_NUMBER_LENGTH] characters;
+     * exponent notation is not accepted, which is what keeps every result a modest size.
+     *
      * [java.math.BigDecimal] rather than Double so a counter stays exact: `0.1 + 0.2` is `0.3`, and
      * `1 + 1` is `2` rather than `2.0`.
      *
      * @throws ArithmeticException on division by zero.
      */
-    fun arithmeticOrNull(text: String): String? {
+    fun arithmeticOrNull(template: String, variables: Map<String, String> = emptyMap()): String? {
+        // References are masked before splitting, so `{{ count }} + 1` — a name with spaces inside
+        // the braces — is still one operand. A masked reference holds no whitespace of its own.
+        val names = mutableListOf<String>()
+        val masked = REFERENCE.replace(template) { match ->
+            names += match.groupValues[1].trim()
+            "$MASK${names.size - 1}$MASK"
+        }
         // Mandatory whitespace makes the token split exact — no tokenizer to disagree with.
-        val tokens = text.trim().split(WHITESPACE)
+        val tokens = masked.trim().split(WHITESPACE)
         if (tokens.size < 3 || tokens.size % 2 == 0) return null
 
         val values = mutableListOf<BigDecimal>()
         val operators = mutableListOf<String>()
         tokens.forEachIndexed { index, token ->
             if (index % 2 == 0) {
-                values += token.toBigDecimalOrNull() ?: return null
+                val text = MASKED_REFERENCE.matchEntire(token)
+                    ?.let { variables[names[it.groupValues[1].toInt()]]?.trim() ?: return null }
+                    ?: token
+                values += parseNumber(text) ?: return null
             } else {
                 if (token !in HIGH_PRECEDENCE && token !in LOW_PRECEDENCE) return null
                 operators += token
@@ -104,6 +124,12 @@ object ExpressionEvaluator {
         }
         return values.single().stripTrailingZeros().toPlainString()
     }
+
+    private fun parseNumber(text: String): BigDecimal? =
+        if (text.length <= MAX_NUMBER_LENGTH && PLAIN_DECIMAL.matches(text)) text.toBigDecimalOrNull() else null
+
+    /** Longest operand accepted; far beyond any counter, small enough that results stay small. */
+    const val MAX_NUMBER_LENGTH = 40
 
     private fun apply(left: BigDecimal, op: String, right: BigDecimal): BigDecimal = when (op) {
         "+" -> left + right
@@ -200,6 +226,11 @@ object ExpressionEvaluator {
     private val OPERATORS = listOf("==", "!=", "<=", ">=", "<", ">")
 
     private val WHITESPACE = Regex("""\s+""")
+    private val PLAIN_DECIMAL = Regex("""[+-]?(\d+\.?\d*|\.\d+)""")
+
+    /** Stands in for a `{{reference}}` while a template is split; cannot occur in typed text. */
+    private const val MASK = '\u0000'
+    private val MASKED_REFERENCE = Regex("""\u0000(\d+)\u0000""")
     private val HIGH_PRECEDENCE = setOf("*", "/")
     private val LOW_PRECEDENCE = setOf("+", "-")
 

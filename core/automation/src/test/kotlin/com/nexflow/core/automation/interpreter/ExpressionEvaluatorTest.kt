@@ -200,6 +200,36 @@ class ExpressionEvaluatorTest {
     }
 
     @Test
+    fun `a lone variable operand is computed`() {
+        val vars = mapOf("count" to "5", "price" to " 2.5 ")
+        assertEquals("6", ExpressionEvaluator.arithmeticOrNull("{{count}} + 1", vars))
+        assertEquals("6", ExpressionEvaluator.arithmeticOrNull("{{ count }} + 1", vars))
+        assertEquals("12.5", ExpressionEvaluator.arithmeticOrNull("{{count}} * {{price}}", vars))
+    }
+
+    /** The structure is the template's: a value never contributes operators or operands. */
+    @Test
+    fun `a value holding an expression is not evaluated`() {
+        assertNull(ExpressionEvaluator.arithmeticOrNull("{{body}}", mapOf("body" to "3 - 1")))
+        assertNull(ExpressionEvaluator.arithmeticOrNull("{{a}} + 1", mapOf("a" to "2 * 3")))
+        assertNull(ExpressionEvaluator.arithmeticOrNull("{{a}}0 + 1", mapOf("a" to "5")))
+        assertNull(ExpressionEvaluator.arithmeticOrNull("{{missing}} + 1", emptyMap()))
+    }
+
+    /**
+     * Exponent notation is how a short string becomes a billion-digit BigDecimal: `toPlainString`
+     * of 1e999999999 runs out of memory, and adding 1 to 1e99999999 runs for many seconds.
+     */
+    @Test
+    fun `exponent notation and oversized numbers are not numbers`() {
+        assertNull(math("1e999999999 * 1"))
+        assertNull(math("1E5 + 1"))
+        assertNull(ExpressionEvaluator.arithmeticOrNull("{{x}} + 1", mapOf("x" to "1e99999999")))
+        assertNull(math("1".repeat(ExpressionEvaluator.MAX_NUMBER_LENGTH + 1) + " + 1"))
+        assertEquals("0.5", math(".25 * 2"))
+    }
+
+    @Test
     fun `division by zero is reported, not silently swallowed`() {
         assertThrows(ArithmeticException::class.java) { math("1 / 0") }
     }

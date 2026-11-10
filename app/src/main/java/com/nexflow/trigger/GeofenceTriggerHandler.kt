@@ -97,7 +97,10 @@ class GeofenceTriggerHandler @Inject constructor(
             .build()
 
         val request = GeofencingRequest.Builder()
-            .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
+            // No initial trigger (the default is ENTER and DWELL): being inside the fence when it
+            // is registered is where the user already is, not them arriving. Registering happens
+            // on every engine start, so the default re-ran "when I get home" on each restart.
+            .setInitialTrigger(0)
             .addGeofence(geofence)
             .build()
 

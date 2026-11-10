@@ -58,6 +58,13 @@ class BatteryTriggerHandler @Inject constructor(
                     "ABOVE" -> pct >= threshold
                     else -> pct <= threshold
                 }
+                // Sticky: registering redelivers the current level. It sets where the edge starts
+                // from but is not itself a crossing — a phone already below 20% when the engine
+                // (re)starts has not just dropped below 20%.
+                if (isInitialStickyBroadcast) {
+                    lastTriggered = conditionMet
+                    return
+                }
                 // Only fire on the leading edge (not → condition met)
                 if (conditionMet && !lastTriggered) {
                     val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)

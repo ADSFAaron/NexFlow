@@ -16,6 +16,7 @@
 package com.nexflow.ui.flows.detail.config
 
 import android.content.Context
+import android.text.format.DateUtils
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BatteryAlert
@@ -39,6 +40,7 @@ import com.nexflow.R
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.automation.util.TextMatcher
 import com.nexflow.trigger.NotificationTriggerHandler
+import com.nexflow.trigger.OnceTrigger
 
 data class TriggerInfo(
     val label: String,
@@ -288,7 +290,20 @@ fun TriggerType.configSummary(context: Context, config: Map<String, String>): St
                     else -> R.string.opt_every_day
                 },
             )
-            append("$t · $label")
+            // "Once" is one particular moment, so name the day — "08:00 · Once" alone cannot say
+            // whether that is tomorrow or a day that has already gone by.
+            val onceAt = OnceTrigger.at(config).takeIf { r == "ONCE" }
+            if (onceAt != null) {
+                val moment = DateUtils.formatDateTime(
+                    context,
+                    onceAt,
+                    DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_SHOW_TIME or DateUtils.FORMAT_ABBREV_MONTH,
+                )
+                append("$moment · $label")
+                if (onceAt <= System.currentTimeMillis()) append(" · ${context.getString(R.string.sum_once_passed)}")
+            } else {
+                append("$t · $label")
+            }
         }
     }
     TriggerType.BATTERY -> context.getString(

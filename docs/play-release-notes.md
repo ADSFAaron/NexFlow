@@ -12,7 +12,7 @@
 # 上架用：1.7.2（versionCode 14）
 
 Play 從 1.7.0 直接更新到這一版：1.7.1 打包了但沒有上 Play，所以文案涵蓋 1.7.1（安全性修正與介面改版）
-加上 1.7.2（定時流程沒能執行時會說明原因）。1.7.0 的 AAB 打包於 `dc484f1`，之後的 commit 都在這一版。
+加上 1.7.2（定時流程沒能執行時會說明原因，以及 2026-11-09 審查找到的修正：編輯會清空紀錄、「一次」每天執行、背景選單卡住等）。1.7.0 的 AAB 打包於 `dc484f1`，之後的 commit 都在這一版。
 
 - **需要使用者動手**：「啟動 App 捷徑」或通知的「開啟 App 捷徑」若是用變數組成的，更新後會執行失敗，
   要重新從清單挑選。文案裡已寫明。
@@ -24,7 +24,7 @@ Play 從 1.7.0 直接更新到這一版：1.7.1 打包了但沒有上 Play，所
 
 ---
 
-## 繁體中文（zh-TW） — 342 字元
+## 繁體中文（zh-TW） — 419 字元
 
 ```
 【更安全地使用別人分享的流程】
@@ -39,6 +39,10 @@ Play 從 1.7.0 直接更新到這一版：1.7.1 打包了但沒有上 Play，所
 • AI 設定有自己的頁面，AI 輸入框整合成一個
 
 【修正】
+• 編輯流程不再清空它的執行紀錄
+• 「一次」的定時流程真的只執行一次
+• 背景開不出來的選單改用通知提醒您選擇
+• 開關其他流程不再中斷正在執行的流程
 • 定時流程沒能執行時，日誌會寫明原因並通知您
 • 橫向時新增按鈕不再蓋住流程開關
 • 無障礙服務的說明列出所有用途
@@ -46,50 +50,52 @@ Play 從 1.7.0 直接更新到這一版：1.7.1 打包了但沒有上 Play，所
 
 ---
 
-## English（en-US） — 499 字元
+## English（en-US） — 497 字元
 
 ```
 SAFER SHARED FLOWS
-• Shortcuts must be picked from the list; if yours used a variable, pick it again
+• Shortcuts must be picked from the list; if yours used a variable, re-pick it
 • Write file can't write into NexFlow's own folder
-• Each flow: max 5 SMS, 5 calls and 60 web requests a minute; extras are skipped and you're told
+• Per flow: max 5 SMS, 5 calls, 60 web requests a minute
 
 NEW LOOK
 • Android 16/17 style across the app
 • Logs grouped by day
-• Flow editor: tap a row to edit it
 
 FIXED
-• Scheduled flows that can't run say why in Logs
-• Add button no longer hides switches in landscape
+• Editing a flow no longer clears its logs
+• "Once" timers run once, not every day
+• Menus that can't open in the background notify you
+• Scheduled flows that can't run say why
 • Accessibility notice lists every use
 ```
 
 ---
 
-## 日本語（ja-JP） — 451 字元
+## 日本語（ja-JP） — 410 字元
 
 ```
 【共有されたフローをより安全に】
 ・「アプリのショートカットを起動」と通知の「アプリのショートカットを開く」は、一覧から選んだショートカットのみ使えます。変数で組み立てていた場合は選び直してください
 ・「ファイルに書き込み」は NexFlow 自身のフォルダに書き込めなくなりました
-・フローごとに 1 分あたり SMS 5 件、通話 5 件、ネットワーク要求 60 件まで。超えた手順はスキップして通知します
+・フローごとに 1 分あたり SMS 5 件、通話 5 件、ネットワーク要求 60 件まで
 
 【新しいデザイン】
-・設定・フロー・ログ・AI アシスタント・実行の詳細・ウィジェット設定を Android 16／17 の設定スタイルに
+・アプリ全体を Android 16／17 の設定スタイルに
 ・ログを日付ごとに表示
-・フローエディタは行をタップして編集、削除は編集ダイアログ内に
-・AI 設定を専用ページに、AI 入力欄を 1 つにまとめました
+・フローエディタは行をタップして編集
 
 【修正】
+・フローを編集しても実行ログが消えなくなりました
+・「1 回のみ」の時刻指定が毎日実行されなくなりました
+・バックグラウンドで開けないメニューは通知でお知らせします
 ・時刻指定のフローが実行できなかったとき、理由をログに残して通知します
-・横向きで追加ボタンがフローのスイッチに重ならなくなりました
 ・ユーザー補助サービスの説明にすべての用途を記載
 ```
 
 ---
 
-## 简体中文（zh-CN） — 350 字元
+## 简体中文（zh-CN） — 426 字元
 
 ```
 【更安全地使用别人分享的流程】
@@ -104,6 +110,10 @@ FIXED
 • AI 设置有了自己的页面，AI 输入框合而为一
 
 【修正】
+• 编辑流程不再清空它的执行记录
+• 「一次」的定时流程真的只执行一次
+• 后台打不开的菜单改用通知提醒您选择
+• 开关其他流程不再中断正在执行的流程
 • 定时流程没能执行时，日志会写明原因并通知您
 • 横屏时新增按钮不再挡住流程开关
 • 无障碍服务的说明列出全部用途

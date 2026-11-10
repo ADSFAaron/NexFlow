@@ -34,7 +34,7 @@ class ToastActionExecutor @Inject constructor(
 
     override suspend fun execute(action: Action, variables: MutableMap<String, String>): ActionResult {
         val message = action.config["message"]?.takeIf { it.isNotBlank() }
-            ?: return ActionResult.Skipped
+            ?: return ActionResult.Skipped()
         withContext(Dispatchers.Main) {
             // Toasts queue rather than replace: a loop that toasts three times plays out over
             // six seconds, still popping messages long after the flow itself has finished, which

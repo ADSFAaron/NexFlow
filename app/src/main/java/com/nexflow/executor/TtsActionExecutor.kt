@@ -35,7 +35,7 @@ class TtsActionExecutor @Inject constructor(
 
     override suspend fun execute(action: Action, variables: MutableMap<String, String>): ActionResult {
         val text = action.config["text"]?.takeIf { it.isNotBlank() }
-            ?: return ActionResult.Skipped
+            ?: return ActionResult.Skipped()
 
         return suspendCancellableCoroutine { cont ->
             var tts: TextToSpeech? = null

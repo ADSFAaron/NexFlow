@@ -90,6 +90,7 @@ import com.nexflow.ui.common.SettingsTopAppBar
 import com.nexflow.ui.common.settingsItemPadding
 import com.nexflow.ui.common.settingsItemShapes
 import com.nexflow.ui.flows.detail.config.info
+import com.nexflow.ui.menu.MenuPickerBridge
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.ZoneId
@@ -564,6 +565,10 @@ private fun noteText(context: Context, step: ExecutionStep, repeatRounds: Int): 
         note == FlowInterpreter.NOTE_IF_FALSE -> context.getString(R.string.run_step_if_false)
         note == FlowInterpreter.NOTE_MENU_CANCELLED ->
             context.getString(R.string.run_step_menu_cancelled)
+        note == FlowInterpreter.NOTE_MENU_TIMED_OUT -> {
+            val minutes = (MenuPickerBridge.TIMEOUT_MS / 60_000).toInt()
+            context.resources.getQuantityString(R.plurals.run_step_menu_timed_out, minutes, minutes)
+        }
         note.startsWith(FlowInterpreter.NOTE_REPEAT) ->
             context.resources.getQuantityString(R.plurals.run_step_repeat, repeatRounds, repeatRounds)
         note.startsWith(FlowInterpreter.NOTE_MENU) ->

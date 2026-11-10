@@ -280,14 +280,24 @@ class FlowInterpreter(
                     // UI writes "variable_name"; older flows and MacroDroid imports may use "name"
                     val name = action.config["variable_name"] ?: action.config["name"]
                         ?: return fail("SET_VARIABLE missing name")
-                    val interpolated = interpolate(action.config["value"] ?: "", variables)
+                    val template = action.config["value"] ?: ""
+                    val interpolated = interpolate(template, variables)
                     // "{{counter}} + 1" has to come out as a number, not as the text "5 + 1" that
                     // grows by three characters every run. Anything that is not arithmetic — which
-                    // is most values — is stored exactly as interpolated.
+                    // is most values — is stored exactly as interpolated. Judged on the template,
+                    // not on the interpolated text: a value from outside must never be evaluated.
                     val newValue = try {
-                        ExpressionEvaluator.arithmeticOrNull(interpolated) ?: interpolated
+                        ExpressionEvaluator.arithmeticOrNull(template, variables) ?: interpolated
                     } catch (e: ArithmeticException) {
                         return fail("SET_VARIABLE '$name': cannot evaluate \"$interpolated\" (${e.message})", e)
+                    }
+                    // `x = {{x}}{{x}}` inside a REPEAT doubles every round and is out of memory
+                    // within forty. Fail the step long before that, while the message still fits.
+                    if (newValue.length > MAX_VARIABLE_LENGTH) {
+                        return fail(
+                            "SET_VARIABLE '$name': the value is ${newValue.length} characters, more " +
+                                "than the $MAX_VARIABLE_LENGTH a variable can hold",
+                        )
                     }
                     if (name.startsWith(GLOBAL_PREFIX)) {
                         // A g:-write must target a global the user actually declared. Failing here
@@ -343,7 +353,7 @@ class FlowInterpreter(
                                 depth = depth,
                                 iteration = iteration,
                                 status = ExecutionStatus.SKIPPED,
-                                note = NOTE_MENU_CANCELLED,
+                                note = result.note ?: NOTE_MENU_CANCELLED,
                                 durationMs = startedAt.elapsedNow().inWholeMilliseconds,
                             ),
                         )
@@ -535,6 +545,13 @@ class FlowInterpreter(
         /** Upper bound for a single REPEAT block's iteration count. */
         const val MAX_REPEAT_COUNT = 10_000
 
+        /**
+         * Longest value a SET_VARIABLE may store. Four times the largest HTTP response a variable
+         * can receive (256 KB), so no real flow comes near it; a value that doubles each REPEAT
+         * round hits it in a couple of dozen rounds instead of exhausting memory.
+         */
+        const val MAX_VARIABLE_LENGTH = 1_048_576
+
         /** Namespace prefix for global (cross-flow) variables, referenced as `{{g:name}}`. */
         const val GLOBAL_PREFIX = "g:"
 
@@ -558,6 +575,9 @@ class FlowInterpreter(
         const val NOTE_REPEAT = "repeat:"
         const val NOTE_MENU = "menu:"
         const val NOTE_MENU_CANCELLED = "menu_cancelled"
+
+        /** Nobody answered the menu in time; the run stopped there, as for a dismissal. */
+        const val NOTE_MENU_TIMED_OUT = "menu_timed_out"
 
         /** Followed by the per-minute limit that was hit, e.g. `rate_limited:5`. */
         const val NOTE_RATE_LIMITED = "rate_limited:"

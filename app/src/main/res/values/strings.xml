@@ -768,6 +768,7 @@
     <string name="opt_weekends">Weekends only</string>
     <string name="opt_custom_days">Custom days…</string>
     <string name="opt_once">Once</string>
+    <string name="sum_once_passed">already passed</string>
     <string name="opt_falls_below">Falls below</string>
     <string name="opt_rises_above">Rises above</string>
     <string name="opt_any">Any</string>
@@ -923,6 +924,13 @@
     <string name="settings_detailed_log_desc">Also record what each action’s settings came out as — the address actually called, the text actually sent. Stored on this device, and it will include whatever your flows handle.</string>
     <string name="settings_detailed_log_summary">Also records each action\'s settings after variables are filled in</string>
     <string name="run_step_menu_cancelled">Closed without choosing</string>
+    <string name="run_stopped_midway">Stopped before it finished</string>
+    <plurals name="run_step_menu_timed_out">
+        <item quantity="one">No answer within %d minute</item>
+        <item quantity="other">No answer within %d minutes</item>
+    </plurals>
+    <string name="menu_waiting_notification_title">A flow is waiting for your choice</string>
+    <string name="menu_waiting_notification_text">Tap to choose</string>
     <string name="widget_preview_count">4 of 6 on</string>
     <string name="widget_preview_flow_a">Morning routine</string>
     <string name="widget_preview_flow_b">Commute mode</string>

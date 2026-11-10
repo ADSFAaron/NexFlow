@@ -52,6 +52,9 @@ class ShortcutRunActivity : ComponentActivity() {
     private var runToken: String? = null
     private var attachedAsHost = false
 
+    /** The menu this window put on screen; the only one it may answer. */
+    private var displayed: MenuPickerBridge.Request? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -71,12 +74,18 @@ class ShortcutRunActivity : ComponentActivity() {
                 // Only the visible instance renders: two shortcut taps in a row stack two hosts,
                 // and the one underneath must not put a sheet in a window nobody can see.
                 val menu = request?.takeIf { resumed }
-                LaunchedEffect(menu) { setPassThrough(menu == null) }
+                LaunchedEffect(menu) {
+                    setPassThrough(menu == null)
+                    if (menu != null) {
+                        displayed = menu
+                        MenuPickerBridge.markShown(menu)
+                    }
+                }
                 if (menu != null) {
                     MenuPickerSheet(
                         request = menu,
-                        onSelect = { MenuPickerBridge.deliver(it) },
-                        onDismiss = { MenuPickerBridge.deliver(null) },
+                        onSelect = { MenuPickerBridge.deliver(menu, it) },
+                        onDismiss = { MenuPickerBridge.deliver(menu, null) },
                     )
                 }
             }
@@ -123,7 +132,8 @@ class ShortcutRunActivity : ComponentActivity() {
         if (attachedAsHost) MenuPickerBridge.detachHost()
         // Going away for good with a menu still open (task swiped away, activity killed) would
         // leave the flow suspended forever — treat it as a dismissal.
-        if (isFinishing && MenuPickerBridge.request.value != null) MenuPickerBridge.deliver(null)
+        // deliver() ignores it unless that menu is still the pending one.
+        if (isFinishing) displayed?.let { MenuPickerBridge.deliver(it, null) }
     }
 
     private fun setPassThrough(enabled: Boolean) {

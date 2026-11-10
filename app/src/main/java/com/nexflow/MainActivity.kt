@@ -38,8 +38,8 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.automation.repository.FlowRepository
 import com.nexflow.event.ImportEventSource
-import com.nexflow.event.NfcEventSource
 import com.nexflow.event.NfcReaderMode
+import com.nexflow.nfc.NfcTagDispatcher
 import com.nexflow.prefs.OnboardingPrefs
 import com.nexflow.prefs.ServiceEnabledPrefs
 import com.nexflow.service.FlowExecutionService
@@ -212,7 +212,7 @@ class MainActivity : AppCompatActivity() {
         if (NfcReaderMode.scanRequests.value > 0) {
             NfcReaderMode.emitScannedTag(tagId)
         } else {
-            NfcEventSource.emit(tagId)
+            NfcTagDispatcher.dispatch(this, tagId)
         }
     }
 }

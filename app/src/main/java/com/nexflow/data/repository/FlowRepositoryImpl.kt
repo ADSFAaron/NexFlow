@@ -78,6 +78,10 @@ class FlowRepositoryImpl @Inject constructor(
         flowDao.deleteById(id)
     }
 
+    override suspend fun updateTriggers(id: String, triggers: List<Trigger>) {
+        flowDao.setTriggers(id, json.encodeToString(triggers.map { it.toJson() }))
+    }
+
     override suspend fun setEnabled(id: String, enabled: Boolean) {
         flowDao.setEnabled(id, enabled)
     }

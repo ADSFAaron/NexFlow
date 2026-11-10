@@ -100,6 +100,23 @@ class SaveExecutionLogTest {
         assertTrue(repository.observeStepsForLog("log-1").first().isEmpty())
     }
 
+    /**
+     * Saving a flow that already exists is an edit, and an edit must not touch its history. With
+     * `@Insert(REPLACE)` SQLite deleted the old row first, the delete cascaded, and every change in
+     * the editor — a renamed action, a drag to reorder — emptied the flow's run log.
+     */
+    @Test
+    fun savingAnExistingFlowAgain_keepsItsLogsAndSteps() = runBlocking {
+        repository.save(flow("f"))
+        repository.saveExecutionLog(log("f"), steps)
+
+        repository.save(flow("f").copy(name = "Edited"))
+
+        assertEquals("Edited", repository.getById("f")?.name)
+        assertEquals(1, repository.observeLogsForFlow("f").first().size)
+        assertEquals(1, repository.observeStepsForLog("log-1").first().size)
+    }
+
     @Test
     fun deletingAFlow_takesItsLogsAndStepsWithIt() = runBlocking {
         repository.save(flow("f"))

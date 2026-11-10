@@ -58,6 +58,11 @@ core/macrodroid-compat/     # MacroDroid .mdr 格式解析
 | 寫檔路徑來自流程 | 擋 `..` 不夠：絕對路徑就能寫進 `dataDir`（`shared_prefs/nexflow_ai.xml` 存著 AI key 與 endpoint），影響在流程刪除後仍存在 | `WriteFileActionExecutor.isAppPrivate()` 用 canonicalPath 比對 `dataDir` 與 device-protected `dataDir` |
 | `Regex(使用者的 pattern)` 比對外部文字 | java.util.regex 會回溯，`(a+)+$` 加一則特製通知就能卡住觸發器串流 | 用 `TextMatcher.matches`：pattern 長度上限、比對有字元讀取預算，用完就當不符合 |
 | SMS／撥號／HTTP 的次數 | REPEAT 上限 10 000，疊在 SEND_SMS 上就是帳單 | `SlidingWindowRateLimiter`（每流程每分鐘：SMS 5、撥號 5、HTTP 60），超過就略過那一步、不中止流程；`LAUNCH_SHORTCUT` 的 ACTION_CALL 也算撥號 |
+| Room `@Insert(onConflict = REPLACE)` 用在有子表的 entity | SQLite 的 REPLACE 是**先刪再插**，刪除會觸發子表的 `ON DELETE CASCADE`：`flows` 用它的時候，每存一次流程，該流程的執行紀錄就全被清空 | 父表一律用 `@Upsert`（撞主鍵改走 UPDATE）。只有沒有子表、或主鍵每次都是新 UUID 的表才可用 REPLACE |
+| `registerReceiver` 註冊 sticky broadcast（Wi-Fi 狀態、`ACTION_HEADSET_PLUG`、`ACTION_BATTERY_CHANGED`） | 註冊當下系統會把目前的值「as if it had just been broadcast」送進 `onReceive`。引擎每次啟動都會重新註冊，所以不處理就會把「目前狀態」當成新事件觸發 | `isInitialStickyBroadcast` 為 true 時只記錄狀態、不觸發；Wi-Fi 還要比對前一次狀態，一次斷線會連發好幾個中間狀態 |
+| `GeofencingRequest` 的 initial trigger | 預設是 `INITIAL_TRIGGER_ENTER \| INITIAL_TRIGGER_DWELL`：註冊時人在圍欄內就立刻報 ENTER，每次重新註冊都會再報一次 | `setInitialTrigger(0)`：只報真正的進出 |
+| 外部文字送進 `BigDecimal` | `"1e999999999"` 能被解析，`toPlainString()` 直接 OOM（Error，`catch (Exception)` 接不到），加法也會跑上好幾秒 | 只接受純十進位、限制長度；算式的結構只取作者寫的模板，變數值永遠不當算式解析（`ExpressionEvaluator.arithmeticOrNull`） |
+| `Service.stopSelf()` | 不帶參數就是**無條件**停止，`onDestroy` 會取消 scope 裡所有還在跑的工作。「跑完就走」寫成每個請求結束都 `stopSelf()`，第二個請求一結束就把第一個殺掉 | 計數正在跑的請求，歸零時才用 `stopSelfResult(最新的 startId)`（見 `StopWhenIdle`） |
 
 ### 3. 測試
 

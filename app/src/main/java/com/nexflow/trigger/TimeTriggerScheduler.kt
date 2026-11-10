@@ -147,6 +147,11 @@ class TimeTriggerScheduler @Inject constructor(
          * Field semantics are identical to the former TimeTriggerHandler polling loop.
          */
         fun computeNextFireTime(config: Map<String, String>, fromMillis: Long): Long? {
+            // "Once" with its moment fixed: that moment, or nothing once it has passed. Without
+            // one (not yet stamped — see OnceTrigger) it falls through to the next occurrence.
+            if (OnceTrigger.isOnce(config)) {
+                OnceTrigger.at(config)?.let { at -> return at.takeIf { it > fromMillis } }
+            }
             val parts = (config["time"] ?: "08:00").split(":").map { it.toIntOrNull() ?: 0 }
             val targetHour = parts.getOrElse(0) { 8 }
             val targetMinute = parts.getOrElse(1) { 0 }

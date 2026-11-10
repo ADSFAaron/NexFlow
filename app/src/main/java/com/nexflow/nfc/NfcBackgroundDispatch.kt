@@ -21,7 +21,6 @@ import android.content.pm.PackageManager
 import android.util.Log
 import com.nexflow.core.automation.model.Flow
 import com.nexflow.core.automation.model.TriggerType
-import com.nexflow.event.NfcEventSource
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -61,9 +60,6 @@ class NfcBackgroundDispatch @Inject constructor(
      */
     fun disable() {
         setEnabled(false)
-        // Nothing will collect it now, and a stale id delivered whenever the engine next starts
-        // would fire a flow the user triggered minutes or days ago.
-        NfcEventSource.clearPending()
     }
 
     private fun setEnabled(enabled: Boolean) {

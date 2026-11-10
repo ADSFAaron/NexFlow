@@ -18,6 +18,7 @@ package com.nexflow.core.automation.repository
 import com.nexflow.core.automation.model.ExecutionLog
 import com.nexflow.core.automation.model.ExecutionStep
 import com.nexflow.core.automation.model.Flow
+import com.nexflow.core.automation.model.Trigger
 import kotlinx.coroutines.flow.Flow as KFlow
 
 interface FlowRepository {
@@ -27,6 +28,12 @@ interface FlowRepository {
     suspend fun save(flow: Flow)
     suspend fun delete(id: String)
     suspend fun setEnabled(id: String, enabled: Boolean)
+
+    /**
+     * Replaces only [id]'s triggers. For changes the app makes on its own while the user may be
+     * editing or toggling the same flow — a whole-flow [save] from a snapshot would undo that.
+     */
+    suspend fun updateTriggers(id: String, triggers: List<Trigger>)
 
     /**
      * Writes a finished run: the summary and, in the same transaction, the per-action steps it
