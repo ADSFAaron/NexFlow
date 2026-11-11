@@ -270,10 +270,10 @@
     <string name="settings_write_settings_required">Required for Brightness actions</string>
     <string name="settings_dnd">Do Not Disturb access</string>
     <string name="settings_dnd_required">Required for DND toggle actions</string>
-    <string name="settings_adb">Wi-Fi &amp; Airplane mode (ADB)</string>
+    <string name="settings_adb">Airplane mode (ADB)</string>
     <string name="settings_adb_granted">WRITE_SECURE_SETTINGS granted — silent toggling active</string>
-    <string name="settings_adb_required">Run once via ADB to enable silent Wi-Fi / Airplane mode toggling:</string>
-    <string name="settings_adb_summary">Grant once over ADB to toggle Wi-Fi and Airplane mode silently</string>
+    <string name="settings_adb_required">Run once via ADB to enable silent Airplane mode toggling:</string>
+    <string name="settings_adb_summary">Grant once over ADB to toggle Airplane mode silently</string>
     <string name="settings_command_copied">Command copied to clipboard</string>
     <string name="settings_copy_command">Copy command</string>
     <string name="settings_import_flow">Import flow</string>

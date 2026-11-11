@@ -264,10 +264,10 @@
     <string name="settings_write_settings_required">亮度动作所需</string>
     <string name="settings_dnd">勿扰访问权限</string>
     <string name="settings_dnd_required">勿扰切换动作所需</string>
-    <string name="settings_adb">Wi-Fi 与飞行模式（ADB）</string>
+    <string name="settings_adb">飞行模式（ADB）</string>
     <string name="settings_adb_granted">已授予 WRITE_SECURE_SETTINGS — 可静默切换</string>
-    <string name="settings_adb_required">通过 ADB 运行一次以启用静默切换 Wi-Fi／飞行模式：</string>
-    <string name="settings_adb_summary">通过 ADB 授权一次，即可静默切换 Wi-Fi／飞行模式</string>
+    <string name="settings_adb_required">通过 ADB 运行一次以启用静默切换飞行模式：</string>
+    <string name="settings_adb_summary">通过 ADB 授权一次，即可静默切换飞行模式</string>
     <string name="settings_command_copied">命令已复制到剪贴板</string>
     <string name="settings_copy_command">复制命令</string>
     <string name="settings_import_flow">导入流程</string>

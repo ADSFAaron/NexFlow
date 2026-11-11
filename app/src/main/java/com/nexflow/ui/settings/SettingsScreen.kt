@@ -110,6 +110,8 @@ import com.nexflow.ui.common.SettingsSwitchItem
 import com.nexflow.ui.common.SettingsTopAppBar
 import androidx.compose.material3.ListItemDefaults
 import com.nexflow.ui.common.inContainerColors
+import com.nexflow.FlavorFeatures
+import com.nexflow.core.automation.model.ActionType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -498,7 +500,12 @@ fun SettingsScreen(
                     // grant is not flagged as a problem. The command lives in a dialog: a block of
                     // monospace in the middle of the list was the one thing on the page no
                     // settings screen has.
-                    item { shapes ->
+                    // Airplane mode only: Wi-Fi cannot be switched by a third-party app on Android
+                    // 10+ whatever it is granted (setWifiEnabled always returns false), so the
+                    // action opens the system Wi-Fi panel instead. The play flavor neither declares
+                    // WRITE_SECURE_SETTINGS nor offers the airplane action, so `pm grant` could
+                    // only fail there — the row is left out.
+                    if (ActionType.AIRPLANE_TOGGLE !in FlavorFeatures.hiddenActionTypes) item { shapes ->
                         SettingsItem(
                             shapes = shapes,
                             title = stringResource(R.string.settings_adb),
