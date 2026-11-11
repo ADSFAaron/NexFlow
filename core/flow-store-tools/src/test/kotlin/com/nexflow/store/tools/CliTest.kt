@@ -132,4 +132,88 @@ class CliTest {
         assertEquals(2, cli("validate", "--repo", repo.path, "--catalog", newer.path))
         assertTrue(output.any { "newer than this tool" in it }, "$output")
     }
+
+    @Test
+    fun `validate --json records each flow, and --format github cannot be steered by the pull request`() {
+        val repo = repo()
+        put(repo, meta("good-morning"), flow())
+        // A slug that tries to end the annotation line and start a workflow command of its own.
+        val dir = File(repo, "flows/sneaky").apply { mkdirs() }
+        File(dir, "meta.json").writeText(
+            StoreJson.json.encodeToString(StoreMeta.serializer(), meta("x\n::notice::pwned%0A::warning::too")),
+        )
+        File(dir, "flow.json").writeText(FlowSerializer.encode(flow()))
+        val json = File(tmp, "result.json")
+
+        assertEquals(1, cli("validate", "--repo", repo.path, "--catalog", catalog, "--json", json.path, "--format", "github"))
+
+        assertTrue(output.none { it.startsWith("::") && !it.startsWith("::error ") }, "$output")
+        assertTrue(output.filter { it.startsWith("::error ") }.all { "\n" !in it && "%0A::" !in it.substringAfter("::error ").substringBefore("::") }, "$output")
+        val result = StoreJson.json.decodeFromString(ValidationResult.serializer(), json.readText())
+        assertEquals(listOf("good-morning" to true, "sneaky" to false), result.flows.map { it.slug to it.ok })
+        assertTrue(result.flows.first().dryRun.any { "TOAST" in it }, "a passing flow is dry-run too")
+        assertTrue(result.flows.flatMap { it.problems }.none { "\n" in it })
+    }
+
+    @Test
+    fun `revoking a flow is the one way to remove it`() {
+        val base = repo("base").also { put(it, meta("good-morning"), flow()) }
+        val head = repo("head")
+        File(head, "revoked.json").writeText("""{"revoked":[{"slug":"good-morning","reason":"malicious","date":"2026-11-11"}]}""")
+        assertEquals(0, cli("validate", "--repo", head.path, "--catalog", catalog, "--base", base.path), "$output")
+    }
+
+    @Test
+    fun `featured json must name flows that exist, and a flow folder holds only its two files`() {
+        val repo = repo()
+        put(repo, meta("good-morning"), flow())
+        File(repo, "featured.json").writeText("""{"featured":["good-morning","nowhere"]}""")
+        File(repo, "flows/good-morning/README.md").writeText("stale")
+
+        assertEquals(1, cli("validate", "--repo", repo.path, "--catalog", catalog))
+        assertTrue(output.any { "\"nowhere\" is not a flow" in it }, "$output")
+        assertTrue(output.any { "only meta.json and flow.json" in it }, "$output")
+    }
+
+    @Test
+    fun `build-index marks maintainers' flows official, keeps featured order, and escapes the pages`() {
+        val repo = repo()
+        put(repo, meta("good-morning"), flow())
+        val hostile = meta("night-mode").copy(
+            languages = mapOf("en" to StoreMeta.Text("<script>alert(1)</script>", "\"><img src=x onerror=alert(1)>")),
+        )
+        put(repo, hostile, flow())
+        File(repo, "featured.json").writeText("""{"featured":["night-mode","good-morning"]}""")
+        File(repo, "maintainers.json").writeText("""{"maintainers":["Keeper"]}""")
+        File(tmp, "authors.json").writeText("""{"good-morning":"keeper","night-mode":"someone"}""")
+        val out = File(tmp, "site")
+
+        assertEquals(
+            0,
+            cli("build-index", "--repo", repo.path, "--catalog", catalog, "--out", out.path, "--authors", File(tmp, "authors.json").path),
+            "$output",
+        )
+
+        val index = StoreJson.json.decodeFromString(StoreIndex.serializer(), File(out, "index.json").readText())
+        assertEquals(listOf("night-mode", "good-morning"), index.featured)
+        assertEquals(mapOf("good-morning" to true, "night-mode" to false), index.flows.associate { it.slug to it.official })
+        val pages = listOf(File(out, "index.html"), File(out, "flows/night-mode.html"), File(out, "flows/good-morning.html"))
+        pages.forEach { assertTrue(it.exists(), "$it") }
+        pages.forEach { page ->
+            val html = page.readText()
+            assertTrue("<script" !in html && "<img" !in html, "contributor text must be escaped in $page")
+        }
+        assertTrue("&lt;script&gt;" in File(out, "flows/night-mode.html").readText())
+    }
+
+    @Test
+    fun `from-export --json lists the values it took out`() {
+        val export = flow(triggers = listOf(trigger("WIFI", "event" to "CONNECTED", "ssid" to "MyHome")))
+        val file = File(tmp, "export.flow").apply { writeText(FlowSerializer.encode(export)) }
+        val json = File(tmp, "setup.json")
+
+        assertEquals(0, cli("from-export", "--export", file.path, "--slug", "home", "--lang", "en", "--repo", repo().path, "--json", json.path))
+
+        assertTrue("\"ssid\"" in json.readText() && "MyHome" !in json.readText(), json.readText())
+    }
 }

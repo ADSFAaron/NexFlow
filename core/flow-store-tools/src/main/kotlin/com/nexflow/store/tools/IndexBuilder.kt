@@ -22,7 +22,8 @@ import java.io.File
 import java.security.MessageDigest
 
 /**
- * Writes what the store publishes: `index.json` and one bundle per flow. Signing the index is
+ * Writes what the store publishes: `index.json`, one bundle per flow, and the web pages people
+ * read when they browse the store outside the app ([StoreSite]). Signing the index is
  * publish.yml's job, behind the production environment's approval, so this never sees the key.
  */
 object IndexBuilder {
@@ -37,11 +38,14 @@ object IndexBuilder {
         out: File,
         authors: Map<String, String>,
         generatedAt: String,
+        source: String = StoreSite.SOURCE,
     ): List<String> {
         val problems = mutableListOf<String>()
         val revoked = repo.revoked.revoked.map { it.slug }.toSet()
         val entries = mutableListOf<StoreIndex.Entry>()
         val bundles = mutableMapOf<String, ByteArray>()
+        val contents = mutableMapOf<String, StoreBundle>()
+        val maintainers = repo.maintainers.maintainers.map { it.lowercase() }.toSet()
 
         repo.flows().forEach { e ->
             if (e.error != null) { problems += "${e.folder}: ${e.error}"; return@forEach }
@@ -52,12 +56,16 @@ object IndexBuilder {
             if (!report.ok) { report.problems.forEach { problems += "${e.folder}: $it" }; return@forEach }
 
             val path = "bundles/${meta.slug}-${meta.version}.json"
-            val bytes = (StoreJson.json.encodeToString(StoreBundle.serializer(), StoreBundle(meta, flow)) + "\n").toByteArray()
+            val bundle = StoreBundle(meta, flow)
+            val bytes = (StoreJson.json.encodeToString(StoreBundle.serializer(), bundle) + "\n").toByteArray()
             bundles[path] = bytes
+            contents[meta.slug] = bundle
+            val author = authors[meta.slug] ?: "unknown"
             entries += StoreIndex.Entry(
                 slug = meta.slug,
                 version = meta.version,
-                author = authors[meta.slug] ?: "unknown",
+                author = author,
+                official = author.lowercase() in maintainers,
                 languages = meta.languages,
                 tags = meta.tags,
                 minAppVersion = report.minAppVersion,
@@ -72,8 +80,15 @@ object IndexBuilder {
 
         out.mkdirs()
         bundles.forEach { (path, bytes) -> File(out, path).apply { parentFile.mkdirs() }.writeBytes(bytes) }
-        val index = StoreIndex(generatedAt = generatedAt, flows = entries, revoked = repo.revoked.revoked)
+        val listed = entries.map { it.slug }.toSet()
+        val index = StoreIndex(
+            generatedAt = generatedAt,
+            flows = entries,
+            revoked = repo.revoked.revoked,
+            featured = repo.featured.featured.filter { it in listed },
+        )
         File(out, "index.json").writeText(StoreJson.json.encodeToString(StoreIndex.serializer(), index) + "\n")
+        StoreSite.write(out, index, contents, source)
         return emptyList()
     }
 

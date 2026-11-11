@@ -70,6 +70,14 @@ data class StoreRevoked(val revoked: List<Entry> = emptyList()) {
     )
 }
 
+/** `featured.json`: slugs the store lists first, in this order. Maintainers edit it. */
+@Serializable
+data class StoreFeatured(val featured: List<String> = emptyList())
+
+/** `maintainers.json`: GitHub logins whose flows the store marks official. */
+@Serializable
+data class StoreMaintainers(val maintainers: List<String> = emptyList())
+
 /** `index.json`: what the app downloads first, signed at publish. */
 @Serializable
 data class StoreIndex(
@@ -80,12 +88,16 @@ data class StoreIndex(
     @SerialName("generated_at") val generatedAt: String,
     val flows: List<Entry>,
     val revoked: List<StoreRevoked.Entry> = emptyList(),
+    /** From featured.json, minus anything not in [flows]. */
+    val featured: List<String> = emptyList(),
 ) {
     @Serializable
     data class Entry(
         val slug: String,
         val version: Int,
         val author: String,
+        /** The author is in maintainers.json. */
+        val official: Boolean = false,
         val languages: Map<String, StoreMeta.Text>,
         val tags: List<String>,
         @SerialName("min_app_version") val minAppVersion: String,

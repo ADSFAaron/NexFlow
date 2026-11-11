@@ -27,6 +27,8 @@
 | P1 #17 `PersonalFields`／`SensitiveSinks` | 完成 | 合併成 `core/flow-schema` 的 `FieldPolicy`（PERSONAL／SINKS／NEUTRAL，依 key 名稱分類） |
 | P1 #18 `flow-catalog.json` | 完成 | 模型 `FlowCatalog`（core/flow-schema）；`FlowCatalogTest` 產生／比對；`since` 目前全是 1.7.1，P3 定 baseline 時重設 |
 | P1 #19 `flow-store-tools` CLI | 完成 | 規則在 `StoreValidator`；檔案格式見「商店的檔案格式」；`./gradlew :core:flow-store-tools:installDist` 產生執行檔 |
+| P2 CLI 補強 | 完成 | `validate --json/--format github`（含 dry run）、featured／maintainers／official、商店網站頁面（取代每個資料夾的 README） |
+| P2 store#2–#8 商店 repo 內容 | 本機完成，未推 | 商店 repo 分支 `p2-store`；GitHub 端設定（Ruleset、Environment、App、金鑰、Pages）待使用者做，清單在商店 repo 的 `MAINTAINING.md` |
 
 ---
 
@@ -214,6 +216,13 @@
 { "revoked": [ { "slug": "x", "reason": "malicious", "date": "2026-11-09", "note": "…" } ] }
 ```
 `reason` 是 `malicious`（App 自動停用）或 `broken`（只通知）。
+下架＝同一個 PR 裡加進 `revoked.json` **並刪掉** `flows/<slug>/`；`validate --base` 只允許這種刪除，而資料夾留著的話 slug 規則會擋。
+
+**`featured.json`**：`{ "featured": ["slug", …] }`，依序列在最前面；只能列 `flows/` 裡有的。
+**`maintainers.json`**：`{ "maintainers": ["ADSFAaron"] }`，作者在這份名單裡的流程，index 標 `official: true`。
+
+**資料夾裡只能有 `meta.json` 與 `flow.json`。** 給人看的說明不放 repo（CI 要 commit 回受保護的 master 就得有 bypass），
+改由 `build-index` 同時產生商店網站：`index.html` 與 `flows/<slug>.html`，所有投稿者寫的字都 HTML escape，CSP 不允許任何 script。
 
 **`index.json`**（`build-index` 產生，publish 時簽章）
 ```json
@@ -222,15 +231,18 @@
   "generated_at": "2026-11-09T00:00:00Z",
   "flows": [
     {
-      "slug": "…", "version": 3, "author": "…", "languages": { … }, "tags": [ … ],
+      "slug": "…", "version": 3, "author": "…", "official": false, "languages": { … }, "tags": [ … ],
       "min_app_version": "1.8.0", "flavors": ["github", "play"],
       "risks": ["HTTP_REQUEST"], "setup_count": 1,
       "bundle": "bundles/silent-at-night-3.json", "sha256": "…"
     }
   ],
-  "revoked": [ … ]
+  "revoked": [ … ],
+  "featured": [ "slug", … ]
 }
 ```
+- `author` 是**第一個把 `flows/<slug>/meta.json` commit 進 master 的 GitHub 帳號**（publish.yml 用 API 查）。
+  issue 投稿由 App 開 PR，但 commit 的 author 設成投稿者的 noreply 信箱，所以算投稿者的。
 - `bundle` 是 `{ "meta": …, "flow": … }` 合併成一個檔，App 一次下載一個檔、比一次 sha256。
 - `min_app_version` 取流程用到的每個步驟與 key 在 catalog 裡 `since` 的最大值；`flavors` 是所有步驟的交集。
 - `risks` 列出流程用到的高風險動作：SEND_SMS、CALL_PHONE、HTTP_REQUEST、LAUNCH_SHORTCUT、
@@ -243,12 +255,18 @@
 
 **目錄結構**
 ```
-flows/<slug>/{flow.json, meta.json, README.md(CI 產生)}
+flows/<slug>/{flow.json, meta.json}          （說明頁由 build-index 產生在 Pages，不放 repo）
 revoked.json, featured.json, maintainers.json（決定誰的流程算 official）
-README(.zh-TW).md, CONTRIBUTING.md, MODERATION.md, SECURITY.md, LICENSE(CC0-1.0)
+keys/{current.pub, next.pub}
+README(.zh-TW).md, CONTRIBUTING.md, MODERATION.md, SECURITY.md, MAINTAINING.md, LICENSE(CC0-1.0)
 .github/workflows/{validate.yml, report-validate.yml(workflow_run), publish.yml, submission.yml}
-.github/ISSUE_TEMPLATE/{submit-flow.yml, report-flow.yml}, PULL_REQUEST_TEMPLATE.md, CODEOWNERS
+.github/actions/flow-store-tools/（建 CLI 的 composite action）, .github/scripts/（讀不可信資料的 Python）
+.github/nexflow-tools.ref（publish 用的 NexFlow 固定 SHA）
+.github/ISSUE_TEMPLATE/{submit-flow.yml, report-flow.yml, config.yml}, PULL_REQUEST_TEMPLATE.md, CODEOWNERS
 ```
+
+- **CLI 版本**：validate 與 submission 用 repo 變數 `NEXFLOW_REF`（未設＝`master`）；publish 只用 `.github/nexflow-tools.ref` 裡的 SHA，改它要走 PR。
+- **issue 投稿**接受兩種貼上內容：一般 `.flow` 匯出檔（表單填 slug／語言／標題，跑 `from-export`），或 P5 的投稿包 `{meta, flow}`。
 
 - **`validate.yml`**：`pull_request` ＋ 每週排程。checkout NexFlow `master` 跑 CLI，權限唯讀、沒有 secret。結果寫進 job summary 與 annotation。每週排程失敗時（通常是 App 改了 catalog）自動開 issue 並加入 Project。
 - **`report-validate.yml`**：`workflow_run` 觸發，在 PR 留言、@ 原作者。前一個 workflow 的產出只當 JSON 讀，絕不執行。
