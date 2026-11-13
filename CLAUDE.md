@@ -63,6 +63,7 @@ core/flow-store-tools/      # 流程商店 CLI（validate／dry-run／build-inde
 | `registerReceiver` 註冊 sticky broadcast（Wi-Fi 狀態、`ACTION_HEADSET_PLUG`、`ACTION_BATTERY_CHANGED`） | 註冊當下系統會把目前的值「as if it had just been broadcast」送進 `onReceive`。引擎每次啟動都會重新註冊，所以不處理就會把「目前狀態」當成新事件觸發 | `isInitialStickyBroadcast` 為 true 時只記錄狀態、不觸發；Wi-Fi 還要比對前一次狀態，一次斷線會連發好幾個中間狀態 |
 | `GeofencingRequest` 的 initial trigger | 預設是 `INITIAL_TRIGGER_ENTER \| INITIAL_TRIGGER_DWELL`：註冊時人在圍欄內就立刻報 ENTER，每次重新註冊都會再報一次 | `setInitialTrigger(0)`：只報真正的進出 |
 | 外部文字送進 `BigDecimal` | `"1e999999999"` 能被解析，`toPlainString()` 直接 OOM（Error，`catch (Exception)` 接不到），加法也會跑上好幾秒 | 只接受純十進位、限制長度；算式的結構只取作者寫的模板，變數值永遠不當算式解析（`ExpressionEvaluator.arithmeticOrNull`） |
+| App 更新（`adb install -r`、Play 自動更新） | 更新會結束程序，前景服務跟著消失；如果只有 `BOOT_COMPLETED` 會把引擎叫回來，每次更新後所有靠引擎監聽的觸發器都靜默失效，直到使用者自己打開 App | `BootReceiver` 同時收 `ACTION_MY_PACKAGE_REPLACED`（官方列為可從背景啟動前景服務的例外）。它送給更新後的新版本，所以從舊版更新上來的那一次就有效。Glance 也有自己的同名 receiver，測試要用「包含」不要用「等於」 |
 | `Service.stopSelf()` | 不帶參數就是**無條件**停止，`onDestroy` 會取消 scope 裡所有還在跑的工作。「跑完就走」寫成每個請求結束都 `stopSelf()`，第二個請求一結束就把第一個殺掉 | 計數正在跑的請求，歸零時才用 `stopSelfResult(最新的 startId)`（見 `StopWhenIdle`） |
 
 ### 3. 測試

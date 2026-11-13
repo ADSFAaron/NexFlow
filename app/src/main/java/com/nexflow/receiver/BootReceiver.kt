@@ -32,6 +32,16 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * Puts automation back after something outside the app stopped it: a reboot, or an update of the
+ * app itself.
+ *
+ * An update kills the process like a reboot does, but nothing used to bring the engine back
+ * afterwards — every Play auto-update left Wi-Fi, battery, headset and sensor flows silently dead
+ * until the user happened to open NexFlow. [Intent.ACTION_MY_PACKAGE_REPLACED] is delivered to
+ * the newly installed version and, like BOOT_COMPLETED, exempts the receiver from the background
+ * foreground-service start restriction.
+ */
 @AndroidEntryPoint
 class BootReceiver : BroadcastReceiver() {
 
@@ -40,12 +50,15 @@ class BootReceiver : BroadcastReceiver() {
     @Inject lateinit var timeTriggerScheduler: TimeTriggerScheduler
 
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
-        bootTriggerHandler.notifyBoot()
+        val action = intent.action
+        if (action !in HANDLED_ACTIONS) return
+        // "Device started" flows are about the device, not about NexFlow being updated.
+        if (action == Intent.ACTION_BOOT_COMPLETED) bootTriggerHandler.notifyBoot()
 
         // AlarmManager clears all alarms on reboot, so TIME triggers must be re-registered here
         // regardless of the auto-start preference (the alarm itself, not a running service, is
-        // what later wakes the app). BOOT_COMPLETED exempts this from background-start limits.
+        // what later wakes the app). After an update the alarms normally survive; syncing again
+        // costs nothing and covers a scheduler change between versions.
         val pending = goAsync()
         CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
             try {
@@ -55,10 +68,25 @@ class BootReceiver : BroadcastReceiver() {
             }
         }
 
-        // Resume the service only when auto-start is on AND the master switch wasn't
-        // turned off by the user — a reboot must not override an explicit stop.
-        if (AutoStartPrefs.get(context) && ServiceEnabledPrefs.get(context)) {
+        if (shouldResumeService(action, AutoStartPrefs.get(context), ServiceEnabledPrefs.get(context))) {
             FlowExecutionService.start(context)
         }
+    }
+
+    companion object {
+        val HANDLED_ACTIONS = setOf(Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED)
+
+        /**
+         * Never against the master switch: a reboot or update must not override an explicit stop.
+         * After a reboot the service also waits for the auto-start preference, which is about
+         * boot. An update did not reboot anything — it only killed a service the switch says
+         * should be running — so it comes straight back.
+         */
+        fun shouldResumeService(action: String?, autoStart: Boolean, serviceEnabled: Boolean): Boolean =
+            when (action) {
+                Intent.ACTION_BOOT_COMPLETED -> autoStart && serviceEnabled
+                Intent.ACTION_MY_PACKAGE_REPLACED -> serviceEnabled
+                else -> false
+            }
     }
 }
