@@ -16,14 +16,21 @@
 package com.nexflow.ui.ai
 
 import android.content.Context
+import android.net.Uri
 import com.nexflow.R
 import com.nexflow.ai.AiChatOrchestrator
+import com.nexflow.ai.AiImageStore
 import com.nexflow.ai.FlowContextFormatter
 import com.nexflow.ai.GeminiException
 import com.nexflow.core.automation.repository.FlowRepository
 import com.nexflow.core.flowschema.FlowJson
 import com.nexflow.data.toFlowJson
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.File
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
@@ -46,12 +53,16 @@ class AiChatSession @Inject constructor(
     private val orchestrator: AiChatOrchestrator,
     private val flowRepository: FlowRepository,
     private val store: AiConversationStore,
+    private val images: AiImageStore,
     @param:ApplicationContext private val context: Context,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     val messages = MutableStateFlow<List<ChatMessage>>(emptyList())
     val draft = MutableStateFlow("")
+
+    /** Images picked for the next message, as [AiImageStore] names. Sent and cleared by [send]. */
+    val pendingImages = MutableStateFlow<List<String>>(emptyList())
     val isThinking = MutableStateFlow(false)
     val thinkingStep = MutableStateFlow<AiChatOrchestrator.Progress?>(null)
 
@@ -80,6 +91,24 @@ class AiChatSession @Inject constructor(
     /** Flow id this conversation was opened to edit — guards re-seeding on re-entry. */
     private var editingFlowId: String? = null
 
+    /**
+     * Bumped whenever the conversation on screen is swapped for a different one — another flow,
+     * the free chat, or a fresh start — so the screen can drop the old transcript outright
+     * instead of animating every message of it out over the new one.
+     */
+    val conversationId = MutableStateFlow(0)
+
+    /** Takes the current conversation off the screen, ahead of loading another in its place. */
+    private fun clearConversation() {
+        messages.value = emptyList()
+        draft.value = ""
+        savedFlowId = null
+        editingFlow.value = null
+        baselineFlow.value = null
+        orchestrator.reset()
+        conversationId.value++
+    }
+
     /** The in-flight turn, so the user can stop it. */
     private var turnJob: Job? = null
 
@@ -93,6 +122,9 @@ class AiChatSession @Inject constructor(
      */
     fun startFlowEdit(flowId: String) {
         if (editingFlowId == flowId || isThinking.value) return
+        // Off the screen at once: the flow loads asynchronously, and until it does the previous
+        // conversation — another flow's, or the free chat — would sit under this flow's name.
+        clearConversation()
         // Claimed before the suspending load so a second entry can't seed the chat twice.
         editingFlowId = flowId
         scope.launch {
@@ -129,18 +161,44 @@ class AiChatSession @Inject constructor(
         }
     }
 
-    /** Restores the free-form chat, once, when the app comes back after being killed. */
+    /**
+     * Opens the free-form chat: the AI entry on the Flows tab. Coming from a flow's AI edit,
+     * that conversation is put away (it is stored under its flow) and the free chat's own is
+     * read back — before, the flow edit simply stayed on screen, and "start over" then reloaded
+     * the flow rather than giving a blank chat. A turn still running keeps its conversation.
+     */
     fun restoreFreeChat() {
-        if (freeChatRestored || editingFlowId != null || messages.value.isNotEmpty()) return
+        if (editingFlowId != null) {
+            if (isThinking.value) return
+            editingFlowId = null
+            clearConversation()
+            scope.launch { loadFreeChat() }
+            return
+        }
+        restoreFreeChatOnce()
+    }
+
+    private suspend fun loadFreeChat() {
+        val stored = store.load(null) ?: return
+        // Entering a flow edit while this was loading wins — don't stomp on it.
+        if (editingFlowId != null || messages.value.isNotEmpty()) return
+        orchestrator.restoreHistory(stored.history, stored.tokensUsed)
+        savedFlowId = stored.savedFlowId
+        messages.value = stored.messages
+        conversationId.value++
+    }
+
+    /** Restores the free-form chat, once, when the app comes back after being killed. */
+    private fun restoreFreeChatOnce() {
+        if (freeChatRestored || messages.value.isNotEmpty()) return
         freeChatRestored = true
         scope.launch {
             store.purgeOrphans()
-            val stored = store.load(null) ?: return@launch
-            // Entering a flow edit while this was loading wins — don't stomp on it.
-            if (editingFlowId != null || messages.value.isNotEmpty()) return@launch
-            orchestrator.restoreHistory(stored.history, stored.tokensUsed)
-            savedFlowId = stored.savedFlowId
-            messages.value = stored.messages
+            // Once per process is often enough to sweep away images of chats that are gone.
+            store.referencedImages()?.let { stored ->
+                images.prune(stored + messages.value.imageNames() + pendingImages.value)
+            }
+            loadFreeChat()
         }
     }
 
@@ -158,11 +216,33 @@ class AiChatSession @Inject constructor(
 
     fun send(text: String) {
         val trimmed = text.trim()
-        if (trimmed.isEmpty() || isThinking.value) return
-        messages.value += ChatMessage.UserText(trimmed)
+        val attached = pendingImages.value
+        if ((trimmed.isEmpty() && attached.isEmpty()) || isThinking.value) return
+        messages.value += ChatMessage.UserText(trimmed, images = attached)
         draft.value = ""
-        runTurn(trimmed)
+        pendingImages.value = emptyList()
+        runTurn(trimmed, attached)
     }
+
+    /**
+     * Copies picked images in for the next message. They're re-encoded on the way (see
+     * [AiImageStore]), so the picker's URI grants don't have to outlive this call.
+     */
+    fun attachImages(uris: List<Uri>) {
+        val room = AiImageStore.MAX_PER_MESSAGE - pendingImages.value.size
+        if (room <= 0 || uris.isEmpty()) return
+        scope.launch {
+            val names = uris.take(room).mapNotNull { images.import(it) }
+            pendingImages.value = (pendingImages.value + names).take(AiImageStore.MAX_PER_MESSAGE)
+        }
+    }
+
+    fun removePendingImage(name: String) {
+        pendingImages.value -= name
+        scope.launch { images.delete(listOf(name)) }
+    }
+
+    fun imageFile(name: String): File = images.file(name)
 
     /**
      * Re-sends what a failed turn was carrying. The user's own message is still sitting in the
@@ -172,9 +252,9 @@ class AiChatSession @Inject constructor(
     fun retry(errorMessageId: String) {
         if (isThinking.value) return
         val error = messages.value.firstOrNull { it.id == errorMessageId } as? ChatMessage.Error ?: return
-        if (error.retryText.isBlank()) return
+        if (error.retryText.isBlank() && error.retryImages.isEmpty()) return
         messages.value = messages.value.filterNot { it.id == errorMessageId }
-        runTurn(error.retryText)
+        runTurn(error.retryText, error.retryImages)
     }
 
     /** The user hit stop mid-turn. [AiChatOrchestrator] rewinds its own history on cancellation. */
@@ -182,7 +262,7 @@ class AiChatSession @Inject constructor(
         turnJob?.cancel()
     }
 
-    private fun runTurn(text: String) {
+    private fun runTurn(text: String, imageNames: List<String> = emptyList()) {
         isThinking.value = true
         streamingText.value = ""
         turnJob = scope.launch {
@@ -194,6 +274,7 @@ class AiChatSession @Inject constructor(
                 val result = withContext(Dispatchers.Default) {
                     orchestrator.sendUserMessage(
                         text,
+                        imageNames,
                         onProgress = { thinkingStep.value = it },
                         onDelta = { streamingText.value = it },
                     )
@@ -210,7 +291,13 @@ class AiChatSession @Inject constructor(
                     // The text that failed rides along, so the error bubble can offer a retry
                     // instead of making the user type it again.
                     is AiChatOrchestrator.TurnResult.Failure ->
-                        listOf(ChatMessage.Error(result.error.toUserMessage(), retryText = text))
+                        listOf(
+                            ChatMessage.Error(
+                                result.error.toUserMessage(),
+                                retryText = text,
+                                retryImages = imageNames,
+                            ),
+                        )
                 }
             } catch (e: CancellationException) {
                 // Keep what the model had already said. The user watched it arrive and may
@@ -254,8 +341,13 @@ class AiChatSession @Inject constructor(
     fun newChat() {
         if (isThinking.value) return
         val flowId = editingFlowId
+        conversationId.value++
         messages.value = emptyList()
         draft.value = ""
+        // The transcript's own images go with the next prune; these were never in one.
+        val unsent = pendingImages.value
+        pendingImages.value = emptyList()
+        scope.launch { images.delete(unsent) }
         savedFlowId = null
         editingFlowId = null
         orchestrator.reset()
@@ -278,7 +370,12 @@ class AiChatSession @Inject constructor(
 
     private fun GeminiException.toUserMessage(): String = when (this) {
         is GeminiException.InvalidKey -> context.getString(R.string.ai_error_invalid_key)
-        is GeminiException.RateLimited -> context.getString(R.string.ai_error_rate_limited)
+        is GeminiException.RateLimited -> when {
+            noQuota -> context.getString(R.string.ai_error_quota_not_in_tier)
+            daily -> context.getString(R.string.ai_error_quota_daily, dailyQuotaResetTime())
+            else -> context.getString(R.string.ai_error_rate_limited)
+        }
+        is GeminiException.Unavailable -> context.getString(R.string.ai_error_unavailable)
         is GeminiException.ModelNotFound -> context.getString(R.string.ai_error_model_not_found)
         is GeminiException.Network -> context.getString(R.string.ai_error_network)
         is GeminiException.Unknown -> context.getString(R.string.ai_error_generic, message ?: "")
@@ -286,6 +383,21 @@ class AiChatSession @Inject constructor(
 }
 
 /** What the chat header shows about the flow being edited — the flow's own identity. */
+private fun List<ChatMessage>.imageNames(): Set<String> =
+    flatMap { (it as? ChatMessage.UserText)?.images.orEmpty() }.toSet()
+
+/**
+ * When the daily quota comes back, in the user's own clock: Google resets it at midnight
+ * Pacific time, which is the middle of the afternoon in Taiwan and means nothing to anyone
+ * as "midnight PT".
+ */
+private fun dailyQuotaResetTime(): String {
+    val pacific = ZoneId.of("America/Los_Angeles")
+    val reset = ZonedDateTime.now(pacific).toLocalDate().plusDays(1).atStartOfDay(pacific)
+    return reset.withZoneSameInstant(ZoneId.systemDefault()).toLocalTime()
+        .format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
+}
+
 data class EditingFlowInfo(
     val name: String,
     val description: String,

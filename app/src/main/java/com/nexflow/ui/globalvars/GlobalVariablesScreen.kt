@@ -15,7 +15,6 @@
  */
 package com.nexflow.ui.globalvars
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,9 +22,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Public
@@ -40,12 +37,9 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeTopAppBar
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
@@ -55,7 +49,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -72,8 +65,15 @@ import com.nexflow.core.automation.interpreter.FlowInterpreter
 import com.nexflow.core.automation.model.GlobalVariable
 import com.nexflow.core.automation.model.VariableType
 import kotlinx.coroutines.delay
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.SegmentedListItem
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import com.nexflow.ui.common.SettingsDefaults
+import com.nexflow.ui.common.SettingsTopAppBar
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun GlobalVariablesScreen(
     onBack: () -> Unit,
@@ -88,20 +88,8 @@ fun GlobalVariablesScreen(
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        topBar = {
-            LargeTopAppBar(
-                title = { Text(stringResource(R.string.gv_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.action_back),
-                        )
-                    }
-                },
-                scrollBehavior = scrollBehavior,
-            )
-        },
+        containerColor = SettingsDefaults.pageColor,
+        topBar = { SettingsTopAppBar(stringResource(R.string.gv_title), scrollBehavior, onBack = onBack) },
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = { editing = GlobalVariable("", VariableType.STRING, "", "") },
@@ -111,11 +99,14 @@ fun GlobalVariablesScreen(
         },
     ) { innerPadding ->
         LazyColumn(
-            contentPadding = innerPadding,
+            contentPadding = PaddingValues(
+                top = innerPadding.calculateTopPadding(),
+                // Clear of the extended FAB, so the last variable's delete button stays reachable.
+                bottom = innerPadding.calculateBottomPadding() + 96.dp,
+            ),
             modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            item { IntroCard() }
+            item { Intro() }
 
             if (variables.isEmpty()) {
                 item {
@@ -123,14 +114,23 @@ fun GlobalVariablesScreen(
                         stringResource(R.string.gv_empty),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.fillMaxWidth().padding(32.dp),
+                        // Same inset as the intro above it, so the two blocks of text line up.
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
                     )
                 }
             }
 
-            items(variables, key = { it.name }) { variable ->
-                ListItem(
-                    headlineContent = { Text("{{${FlowInterpreter.GLOBAL_PREFIX}${variable.name}}}", fontFamily = FontFamily.Monospace) },
+            // One group of tiles, as in Settings; lazily, so each tile takes its shape from its
+            // index here rather than through SettingsGroup.
+            itemsIndexed(variables, key = { _, v -> v.name }) { index, variable ->
+                SegmentedListItem(
+                    onClick = { editing = variable },
+                    shapes = ListItemDefaults.segmentedShapes(index = index, count = variables.size),
+                    colors = SettingsDefaults.itemColors(),
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp)
+                        .padding(top = if (index == 0) 8.dp else ListItemDefaults.SegmentedGap),
+                    content = { Text("{{${FlowInterpreter.GLOBAL_PREFIX}${variable.name}}}", fontFamily = FontFamily.Monospace) },
                     supportingContent = {
                         Text(
                             stringResource(
@@ -149,7 +149,6 @@ fun GlobalVariablesScreen(
                             )
                         }
                     },
-                    modifier = Modifier.clickable { editing = variable },
                 )
             }
         }
@@ -169,20 +168,18 @@ fun GlobalVariablesScreen(
     }
 }
 
+/**
+ * What global variables are, at the top of the page in plain text — the way Android's own
+ * settings pages open with an explanation, rather than as a coloured card that reads as an alert.
+ */
 @Composable
-private fun IntroCard() {
-    Surface(
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        shape = MaterialTheme.shapes.medium,
-        modifier = Modifier.fillMaxWidth().padding(16.dp),
-    ) {
-        Text(
-            stringResource(R.string.gv_intro),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
-            modifier = Modifier.padding(16.dp),
-        )
-    }
+private fun Intro() {
+    Text(
+        stringResource(R.string.gv_intro),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

@@ -15,7 +15,10 @@
  */
 package com.nexflow.widget
 
+import com.nexflow.core.automation.model.Flow
+import com.nexflow.core.automation.model.TriggerLogic
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -88,4 +91,64 @@ class NexFlowWidgetTest {
         assertEquals(2, rows[0].size)
         assertEquals(1, rows[1].size, "a lone trailing card must not become a full-width row")
     }
+
+    @Test
+    fun `automatic puts recent runs first and tops up with the rest`() {
+        val all = listOf(flow("a"), flow("b"), flow("c"))
+
+        val shown = NexFlowWidget.pickFlows(pinnedIds = null, recent = listOf(flow("c")), all = all)
+
+        assertEquals(listOf("c", "a", "b"), shown.map { it.id })
+    }
+
+    @Test
+    fun `a pick shows exactly those flows in the picked order and nothing else`() {
+        val all = listOf(flow("a"), flow("b"), flow("c"), flow("d"))
+
+        val shown = NexFlowWidget.pickFlows(listOf("d", "b"), recent = listOf(flow("a")), all = all)
+
+        assertEquals(listOf("d", "b"), shown.map { it.id }, "recent runs must not leak into a pick")
+    }
+
+    @Test
+    fun `a picked flow that was deleted drops out instead of drawing a dead card`() {
+        val shown = NexFlowWidget.pickFlows(listOf("gone", "a"), recent = emptyList(), all = listOf(flow("a")))
+
+        assertEquals(listOf("a"), shown.map { it.id })
+    }
+
+    @Test
+    fun `an empty pick stays empty rather than falling back to automatic`() {
+        val shown = NexFlowWidget.pickFlows(emptyList(), recent = listOf(flow("a")), all = listOf(flow("a")))
+
+        assertTrue(shown.isEmpty())
+    }
+
+    @Test
+    fun `stored pick round-trips and absence means automatic`() {
+        val ids = listOf("x", "y")
+
+        assertEquals(ids, NexFlowWidget.decodePinnedIds(NexFlowWidget.encodePinnedIds(ids)))
+        assertNull(NexFlowWidget.decodePinnedIds(null))
+        // Corrupt state keeps the widget in pick mode, showing the "choose flows" hint, rather
+        // than silently switching it back to automatic.
+        assertEquals(emptyList<String>(), NexFlowWidget.decodePinnedIds("{broken"))
+    }
+
+    private fun flow(id: String) = Flow(
+        id = id,
+        schemaVersion = 1,
+        name = id,
+        description = "",
+        author = null,
+        tags = emptyList(),
+        enabled = true,
+        createdAt = 0,
+        updatedAt = 0,
+        triggers = emptyList(),
+        triggerLogic = TriggerLogic.ANY,
+        conditions = emptyList(),
+        actions = emptyList(),
+        variables = emptyList(),
+    )
 }

@@ -35,7 +35,7 @@ class ClipboardActionExecutor @Inject constructor(
 
     override suspend fun execute(action: Action, variables: MutableMap<String, String>): ActionResult {
         val text = action.config["text"]?.takeIf { it.isNotBlank() }
-            ?: return ActionResult.Skipped
+            ?: return ActionResult.Skipped()
         withContext(Dispatchers.Main) {
             val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             cm.setPrimaryClip(ClipData.newPlainText("NexFlow", text))

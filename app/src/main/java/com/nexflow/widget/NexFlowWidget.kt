@@ -1,11 +1,13 @@
 package com.nexflow.widget
 
+import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.glance.GlanceId
@@ -16,8 +18,11 @@ import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
+import androidx.glance.ColorFilter
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.SizeMode
+import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.action.actionStartService
 import androidx.glance.appwidget.appWidgetBackground
 import androidx.glance.appwidget.cornerRadius
@@ -60,15 +65,27 @@ class NexFlowWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        provideContent { Content(context) }
+        val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
+        provideContent { Content(context, appWidgetId) }
     }
 
     @Composable
-    private fun Content(context: Context) {
+    private fun Content(context: Context, appWidgetId: Int) {
         val prefs = currentState<androidx.datastore.preferences.core.Preferences>()
         val enabled = prefs[KEY_ENABLED] ?: 0
         val total = prefs[KEY_TOTAL] ?: 0
         val flows = decodeFlows(prefs[KEY_RECENT_FLOWS])
+        val manual = prefs[KEY_PINNED_IDS] != null
+        // The launcher's own "widget settings" entry is a long-press away and not every launcher
+        // has one, so the widget carries its own way into the same screen.
+        val configure = actionStartActivity(
+            Intent(context, OverviewWidgetConfigureActivity::class.java)
+                .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+                // One task per widget id: without distinct data, PendingIntent treats two
+                // widgets' intents as the same one and both open the first widget's settings.
+                .setData("nexflow://widget/$appWidgetId".toUri())
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK),
+        )
 
         val size = LocalSize.current
         // The header is the first thing to go: on a one-row widget every dp belongs to the
@@ -133,18 +150,37 @@ class NexFlowWidget : GlanceAppWidget() {
                                 .cornerRadius(10.dp)
                                 .padding(horizontal = 8.dp, vertical = 3.dp),
                         )
+                        Spacer(modifier = GlanceModifier.width(4.dp))
+                        Box(
+                            modifier = GlanceModifier
+                                .size(HEADER_ICON_TOUCH)
+                                .cornerRadius(HEADER_ICON_TOUCH / 2)
+                                .clickable(configure),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Image(
+                                provider = ImageProvider(R.drawable.ic_widget_edit),
+                                contentDescription = context.getString(R.string.widget_overview_edit),
+                                colorFilter = ColorFilter.tint(GlanceTheme.colors.onSurfaceVariant),
+                                modifier = GlanceModifier.size(18.dp),
+                            )
+                        }
                     }
                 }
 
                 if (flows.isEmpty()) {
+                    // A hand-picked widget with nothing in it (its flows were all deleted, or none
+                    // were picked) says so and leads back to the picker, not into the app.
                     Box(
                         modifier = GlanceModifier
                             .fillMaxSize()
-                            .clickable(actionStartActivity<MainActivity>()),
+                            .clickable(if (manual) configure else actionStartActivity<MainActivity>()),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            text = context.getString(R.string.widget_no_runs),
+                            text = context.getString(
+                                if (manual) R.string.widget_overview_none_picked else R.string.widget_no_runs,
+                            ),
                             style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 13.sp),
                         )
                     }
@@ -295,7 +331,15 @@ class NexFlowWidget : GlanceAppWidget() {
     companion object {
         val KEY_ENABLED = intPreferencesKey("enabled_count")
         val KEY_TOTAL = intPreferencesKey("total_count")
+        /** The cards this widget draws — whichever [pickFlows] chose, despite the key's name. */
         val KEY_RECENT_FLOWS = stringPreferencesKey("recent_flows")
+
+        /**
+         * The flows the user picked for this widget, as a JSON list of ids in display order.
+         * Absent means the widget fills itself from recent runs; present but empty means the
+         * user asked for hand-picked flows and has none left.
+         */
+        val KEY_PINNED_IDS = stringPreferencesKey("pinned_flow_ids")
 
         private val CARD_GAP = 10.dp
 
@@ -323,12 +367,15 @@ class NexFlowWidget : GlanceAppWidget() {
         /** Header row height plus [HEADER_GAP] — what the grid has to budget for it. */
         private val HEADER_HEIGHT = 34.dp
 
+        /** Tap target around the header's edit icon; the icon itself is smaller. */
+        private val HEADER_ICON_TOUCH = 28.dp
+
         /** Badge diameter on a stacked card; also the size its bitmap is rasterised at. */
         private val BADGE_SIZE = 32.dp
 
         /**
-         * How many flows to keep in widget state. Not how many are shown — that is whatever the
-         * grid works out the widget's current size fits, and the rest stay one scroll away.
+         * How many flows to keep in widget state, and how many the user can pick. Not how many are
+         * shown — that is whatever the grid works out the widget's current size fits.
          */
         const val MAX_FLOWS = 12
 
@@ -364,10 +411,27 @@ class NexFlowWidget : GlanceAppWidget() {
             }
         }
 
-        suspend fun updateRecentFlows(context: Context, flows: List<Flow>) {
+        internal fun decodePinnedIds(encoded: String?): List<String>? =
+            encoded?.let { raw -> runCatching { json.decodeFromString<List<String>>(raw) }.getOrDefault(emptyList()) }
+
+        internal fun encodePinnedIds(ids: List<String>): String = json.encodeToString(ids)
+
+        /**
+         * What a widget shows. With no pick ([pinnedIds] null) it is the recently run flows,
+         * topped up with the rest so a large widget is not half empty. With a pick it is exactly
+         * those flows in the order chosen, minus any since deleted — never topped up, because a
+         * flow the user left out showing up anyway is the thing picking was meant to stop.
+         */
+        internal fun pickFlows(pinnedIds: List<String>?, recent: List<Flow>, all: List<Flow>): List<Flow> {
+            if (pinnedIds == null) return (recent + all).distinctBy { it.id }.take(MAX_FLOWS)
+            val byId = all.associateBy { it.id }
+            return pinnedIds.distinct().mapNotNull { byId[it] }.take(MAX_FLOWS)
+        }
+
+        private fun encodeFlows(context: Context, flows: List<Flow>): String =
             // JSON, not the old "id|name" join: a flow named "Home, work" or "A|B" used to split
             // into entries that pointed at no flow at all.
-            val encoded = json.encodeToString(
+            json.encodeToString(
                 flows.map { flow ->
                     WidgetFlow(
                         id = flow.id,
@@ -378,15 +442,43 @@ class NexFlowWidget : GlanceAppWidget() {
                     )
                 },
             )
-            val manager = androidx.glance.appwidget.GlanceAppWidgetManager(context)
+
+        /** Re-fills every overview widget, each according to its own pick. */
+        suspend fun updateFlows(context: Context, recent: List<Flow>, all: List<Flow>) {
+            val manager = GlanceAppWidgetManager(context)
             manager.getGlanceIds(NexFlowWidget::class.java).forEach { id ->
                 updateAppWidgetState(context, PreferencesGlanceStateDefinition, id) { prefs ->
                     prefs.toMutablePreferences().apply {
-                        this[KEY_RECENT_FLOWS] = encoded
+                        val pinned = decodePinnedIds(this[KEY_PINNED_IDS])
+                        this[KEY_RECENT_FLOWS] = encodeFlows(context, pickFlows(pinned, recent, all))
                     }
                 }
                 NexFlowWidget().update(context, id)
             }
+        }
+
+        /**
+         * Saves one widget's pick — null [pinnedIds] for automatic — and redraws it at once,
+         * rather than waiting for the engine's next sync, which does not run while it is off.
+         */
+        suspend fun configure(
+            context: Context,
+            id: GlanceId,
+            pinnedIds: List<String>?,
+            recent: List<Flow>,
+            all: List<Flow>,
+        ) {
+            updateAppWidgetState(context, PreferencesGlanceStateDefinition, id) { prefs ->
+                prefs.toMutablePreferences().apply {
+                    if (pinnedIds == null) remove(KEY_PINNED_IDS) else this[KEY_PINNED_IDS] = encodePinnedIds(pinnedIds)
+                    this[KEY_RECENT_FLOWS] = encodeFlows(context, pickFlows(pinnedIds, recent, all))
+                    // The header counts are otherwise written only by the engine; a widget
+                    // configured while it is off would show "0 of 0" until it next starts.
+                    this[KEY_ENABLED] = all.count { it.enabled }
+                    this[KEY_TOTAL] = all.size
+                }
+            }
+            NexFlowWidget().update(context, id)
         }
     }
 }

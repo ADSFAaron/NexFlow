@@ -43,12 +43,14 @@ import com.nexflow.shortcut.ShortcutSyncManager
 import com.nexflow.widget.NexFlowWidget
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -60,6 +62,26 @@ class FlowExecutionService : Service() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var engineStarted = false
+    private val stopWhenIdle = StopWhenIdle(
+        stop = { startId -> stopSelfResult(startId) },
+        keepRunning = { ServiceEnabledPrefs.get(this) },
+    )
+
+    /**
+     * Serves one request in the background and reports its end to [stopWhenIdle] on the main
+     * thread — NonCancellable, so the count stays right even when the service is torn down
+     * mid-run.
+     */
+    private fun serveOnce(block: suspend () -> Unit) {
+        stopWhenIdle.runStarted()
+        serviceScope.launch {
+            try {
+                block()
+            } finally {
+                withContext(NonCancellable + Dispatchers.Main) { stopWhenIdle.runEnded() }
+            }
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -109,6 +131,7 @@ class FlowExecutionService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        stopWhenIdle.onStartCommand(startId)
         if (intent?.action == ACTION_STOP) {
             // Notification Stop = the user turned automation off; persist that intent so
             // reopening the app (or a reboot) doesn't silently restart the service.
@@ -125,7 +148,9 @@ class FlowExecutionService : Service() {
                     ?: emptyMap()
                 val triggerId = intent.getStringExtra(EXTRA_TRIGGER_ID)
                 val runToken = intent.getStringExtra(EXTRA_RUN_TOKEN)
-                serviceScope.launch {
+                // Manual runs are allowed while the master switch is off, but the service must
+                // not linger afterwards — see StopWhenIdle for why that is not a plain stopSelf().
+                serveOnce {
                     try {
                         flowEngine.runNow(flowId, triggerVariables, triggerId)
                     } finally {
@@ -133,14 +158,23 @@ class FlowExecutionService : Service() {
                         // window waits on this to dismiss itself.
                         runToken?.let { _runFinished.tryEmit(it) }
                     }
-                    // Manual runs are allowed while the master switch is off, but the
-                    // service must not linger afterwards — run one flow, then leave.
-                    if (!ServiceEnabledPrefs.get(this@FlowExecutionService)) stopSelf()
                 }
+            } else {
+                stopWhenIdle.nothingToDo()
             }
             if (!serviceEnabled) return START_NOT_STICKY
             // Master switch on: fall through so a run request also (re)starts the engine —
             // e.g. after the OS killed the sticky service, the next widget run revives it.
+        }
+        if (intent?.action == ACTION_NFC_TAG) {
+            val tagId = intent.getStringExtra(EXTRA_TAG_ID)
+            // NfcTagRunActivity only sends this with automation on; a tag is not a manual run.
+            if (tagId != null && serviceEnabled) {
+                serveOnce { flowEngine.runForNfcTag(tagId) }
+            } else {
+                stopWhenIdle.nothingToDo()
+            }
+            if (!serviceEnabled) return START_NOT_STICKY
         }
         if (serviceEnabled && !engineStarted) {
             engineStarted = true
@@ -244,6 +278,10 @@ class FlowExecutionService : Service() {
          */
         const val EXTRA_RUN_TOKEN = "run_token"
 
+        /** A tag scanned while nothing was listening for it; see [dispatchNfcTag]. */
+        const val ACTION_NFC_TAG = "com.nexflow.action.NFC_TAG"
+        const val EXTRA_TAG_ID = "tag_id"
+
         private val _running = MutableStateFlow(false)
         val running: StateFlow<Boolean> = _running.asStateFlow()
 
@@ -305,6 +343,25 @@ class FlowExecutionService : Service() {
                 android.util.Log.w("FlowExecutionService", "Could not start service to run flow", e)
                 return false
             }
+        }
+
+        /**
+         * Runs the flows bound to [tagId] through the service, which starts the engine as well.
+         * For a tag that woke a closed app: there is no engine yet to hear it as an event.
+         *
+         * @return false when the system refused to start the service.
+         */
+        fun dispatchNfcTag(context: Context, tagId: String): Boolean = try {
+            context.startForegroundService(
+                Intent(context, FlowExecutionService::class.java).apply {
+                    action = ACTION_NFC_TAG
+                    putExtra(EXTRA_TAG_ID, tagId)
+                },
+            )
+            true
+        } catch (e: Exception) {
+            android.util.Log.w("FlowExecutionService", "Could not start service for an NFC tag", e)
+            false
         }
 
         fun stop(context: Context) {

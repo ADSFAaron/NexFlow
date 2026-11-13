@@ -56,8 +56,15 @@ class ChatMessageSerializationTest {
     fun `every message type survives a round trip`() {
         val original = listOf(
             ChatMessage.UserText("turn the volume up", id = "m1", timestamp = 1000),
+            ChatMessage.UserText("this form", images = listOf("a.jpg", "b.jpg"), id = "m5", timestamp = 1500),
             ChatMessage.AssistantText("Done.", stopped = true, id = "m2", timestamp = 2000),
-            ChatMessage.Error("no network", retryText = "turn the volume up", id = "m3", timestamp = 3000),
+            ChatMessage.Error(
+                "no network",
+                retryText = "turn the volume up",
+                retryImages = listOf("a.jpg"),
+                id = "m3",
+                timestamp = 3000,
+            ),
             ChatMessage.FlowPreview(flow, saved = true, id = "m4", timestamp = 4000),
         )
 
@@ -96,5 +103,19 @@ class ChatMessageSerializationTest {
 
         assertEquals(original, restored)
         assertEquals("sig-123", restored[1].parts.single().thoughtSignature)
+    }
+
+    @Test
+    fun `a transcript saved before images existed still loads`() {
+        // What every user upgrading has on disk: no images, no retryImages.
+        val stored = """
+            [{"type":"user","text":"hi","id":"m1","timestamp":1},
+             {"type":"error","text":"rate limited","retryText":"hi","id":"m2","timestamp":2}]
+        """.trimIndent()
+
+        val restored = json.decodeFromString(messagesSerializer, stored)
+
+        assertEquals(ChatMessage.UserText("hi", id = "m1", timestamp = 1), restored[0])
+        assertEquals(ChatMessage.Error("rate limited", retryText = "hi", id = "m2", timestamp = 2), restored[1])
     }
 }

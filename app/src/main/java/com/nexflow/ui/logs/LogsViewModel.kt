@@ -20,6 +20,9 @@ import androidx.lifecycle.viewModelScope
 import com.nexflow.core.automation.model.ExecutionLog
 import com.nexflow.core.automation.repository.FlowRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -37,15 +40,31 @@ class LogsViewModel @Inject constructor(
     private val repository: FlowRepository,
 ) : ViewModel() {
 
-    val logEntries: StateFlow<List<LogEntry>> = combine(
+    /**
+     * Null until the database has answered. Starting from an empty list instead made the page
+     * show "No logs yet" for a beat on every visit before the real list replaced it.
+     */
+    val logEntries: StateFlow<List<LogEntry>?> = combine(
         repository.observeAll(),
         repository.observeRecentLogs(200),
     ) { flows, logs ->
         val nameById = flows.associate { it.id to it.name }
         logs.map { log -> LogEntry(log, nameById[log.flowId] ?: "Unknown Flow") }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun clearAll() {
         viewModelScope.launch { repository.deleteAllLogs() }
     }
 }
+
+/** One day's runs, newest first, under a "Today" / "Yesterday" / date heading. */
+data class LogDay(val date: LocalDate, val entries: List<LogEntry>)
+
+/**
+ * Splits [entries] (newest first, as the repository returns them) into calendar days in [zone].
+ * The days come out in the order they first appear, so newest first as well.
+ */
+fun groupByDay(entries: List<LogEntry>, zone: ZoneId): List<LogDay> =
+    entries
+        .groupBy { Instant.ofEpochMilli(it.log.triggeredAt).atZone(zone).toLocalDate() }
+        .map { (date, dayEntries) -> LogDay(date, dayEntries) }

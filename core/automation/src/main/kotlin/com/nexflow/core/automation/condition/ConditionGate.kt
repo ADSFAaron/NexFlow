@@ -18,6 +18,7 @@ package com.nexflow.core.automation.condition
 import com.nexflow.core.automation.model.Condition
 import com.nexflow.core.automation.model.ConditionType
 import kotlinx.coroutines.CancellationException
+import com.nexflow.core.automation.LogText
 
 /**
  * Decides whether a triggered flow may actually run: every condition must hold (AND), with
@@ -48,10 +49,10 @@ class ConditionGate(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                return ConditionResult.Unsatisfied(condition, "Condition $type failed: ${e.message}")
+                return ConditionResult.Unsatisfied(condition, LogText.of("cond_failed", type, e.message))
             }
             if (!satisfied) {
-                return ConditionResult.Unsatisfied(condition, "Condition $type not met")
+                return ConditionResult.Unsatisfied(condition, LogText.of("cond_not_met", type))
             }
         }
         return ConditionResult.Satisfied
@@ -59,10 +60,10 @@ class ConditionGate(
 
     companion object {
         fun unknownTypeMessage(type: String): String =
-            "Unknown condition type '$type' — cannot verify it, so the flow was not run"
+            LogText.of("cond_unknown_type", type)
 
         fun noEvaluatorMessage(type: ConditionType): String =
-            "Condition $type is not supported in this build — the flow was not run"
+            LogText.of("cond_no_evaluator", type)
     }
 }
 

@@ -23,6 +23,7 @@ import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import io.mockk.verify
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
@@ -50,6 +51,7 @@ class AiChatOrchestratorTest {
     private val prefs = mockk<SharedPreferences> {
         every { getString("gemini_api_key", null) } returns "test-key"
         every { getString("gemini_model", null) } returns null
+        every { getString("ai_provider", null) } returns null
     }
     private val context = mockk<Context> {
         every { getSharedPreferences(any(), any()) } returns prefs
@@ -57,14 +59,19 @@ class AiChatOrchestratorTest {
         every { getString(any(), *anyVararg()) } returns "x"
     }
     private val client = mockk<GeminiClient>()
-    private val installedApps = mockk<InstalledAppsSource>()
+    private val compatibleClient = mockk<OpenAiCompatibleClient>()
+    private val installedApps = mockk<InstalledAppsSource> {
+        coEvery { launchablePackages() } returns setOf("com.spotify.music")
+    }
     private val globals = mockk<GlobalVariableRepository> {
         coEvery { currentValues() } returns emptyMap()
     }
 
     private val appShortcuts = mockk<AppShortcutsSource>()
+    private val images = mockk<AiImageStore>()
 
-    private fun orchestrator() = AiChatOrchestrator(client, installedApps, appShortcuts, globals, context)
+    private fun orchestrator() =
+        AiChatOrchestrator(client, compatibleClient, installedApps, appShortcuts, globals, images, context)
 
     private fun textResponse(text: String) = GenerateContentResponse(
         candidates = listOf(
@@ -93,8 +100,13 @@ class AiChatOrchestratorTest {
     private fun failingStream(error: GeminiException): Flow<GenerateContentResponse> =
         flow { throw error }
 
-    private fun createFlowArgs(actionType: String = "TOAST") = buildJsonObject {
+    private fun createFlowArgs(
+        actionType: String = "TOAST",
+        summary: String? = "Done — review and enable it.",
+    ) = buildJsonObject {
+        summary?.let { put("summary", it) }
         put("name", "Test flow")
+        put("description", "Shows a toast")
         put("trigger_logic", "ANY")
         putJsonArray("triggers") {
             add(buildJsonObject { put("type", "MANUAL") })
@@ -107,6 +119,33 @@ class AiChatOrchestratorTest {
                 },
             )
         }
+    }
+
+    @Test
+    fun `a custom service gets the request and Gemini is left alone`() = runTest {
+        every { prefs.getString("ai_provider", null) } returns "CUSTOM"
+        every { prefs.getString("custom_base_url", null) } returns "http://localhost:11434/v1"
+        every { prefs.getString("custom_model", null) } returns "qwen3"
+        every { prefs.getString("custom_api_key", null) } returns null
+        val endpoint = slot<CustomEndpoint>()
+        every { compatibleClient.streamGenerateContent(capture(endpoint), any()) } returns
+            chunks(textResponse("hi"))
+
+        val result = orchestrator().sendUserMessage("hello")
+
+        assertEquals("hi", (result as TurnResult.Assistant).text)
+        assertEquals(CustomEndpoint("http://localhost:11434/v1", null, "qwen3"), endpoint.captured)
+        verify(exactly = 0) { client.streamGenerateContent(any(), any(), any()) }
+    }
+
+    @Test
+    fun `a custom service that lost its settings fails without calling anything`() = runTest {
+        every { prefs.getString("ai_provider", null) } returns "CUSTOM"
+        every { prefs.getString("custom_base_url", null) } returns null
+
+        val result = orchestrator().sendUserMessage("hello")
+
+        assertInstanceOf(GeminiException.InvalidKey::class.java, (result as TurnResult.Failure).error)
     }
 
     @Test
@@ -238,12 +277,13 @@ class AiChatOrchestratorTest {
     }
 
     @Test
-    fun `valid create_flow yields FlowReady with the model summary`() = runTest {
+    fun `valid create_flow ends the turn with the summary from its own arguments`() = runTest {
         every { client.streamGenerateContent(any(), any(), any()) } returns
-            chunks(functionCallResponse(AiTools.CREATE_FLOW, createFlowArgs())) andThen
-            chunks(textResponse("Done — review and enable it."))
+            chunks(functionCallResponse(AiTools.CREATE_FLOW, createFlowArgs()))
 
         val result = orchestrator().sendUserMessage("toast hi when I tap run")
+
+        verify(exactly = 1) { client.streamGenerateContent(any(), any(), any()) }
 
         assertInstanceOf(TurnResult.FlowReady::class.java, result)
         val ready = result as TurnResult.FlowReady
@@ -256,13 +296,108 @@ class AiChatOrchestratorTest {
     fun `invalid create_flow is repaired via error functionResponse`() = runTest {
         every { client.streamGenerateContent(any(), any(), any()) } returns
             chunks(functionCallResponse(AiTools.CREATE_FLOW, createFlowArgs("FROBNICATE"))) andThen
-            chunks(functionCallResponse(AiTools.CREATE_FLOW, createFlowArgs())) andThen
-            chunks(textResponse("Fixed and saved."))
+            chunks(functionCallResponse(AiTools.CREATE_FLOW, createFlowArgs(summary = "Fixed and saved.")))
 
         val result = orchestrator().sendUserMessage("do the thing")
 
         assertInstanceOf(TurnResult.FlowReady::class.java, result)
         assertEquals("Fixed and saved.", (result as TurnResult.FlowReady).summaryText)
+    }
+
+    @Test
+    fun `a create_flow with no summary falls back to the flow's description`() = runTest {
+        every { client.streamGenerateContent(any(), any(), any()) } returns
+            chunks(functionCallResponse(AiTools.CREATE_FLOW, createFlowArgs(summary = null)))
+
+        val ready = orchestrator().sendUserMessage("toast hi") as TurnResult.FlowReady
+
+        assertEquals(ready.flow.description, ready.summaryText)
+    }
+
+    @Test
+    fun `the message after a finished flow follows a model turn, not a functionResponse`() = runTest {
+        val orchestrator = orchestrator()
+        every { client.streamGenerateContent(any(), any(), any()) } returns
+            chunks(functionCallResponse(AiTools.CREATE_FLOW, createFlowArgs()))
+        orchestrator.sendUserMessage("toast hi")
+
+        val next = slot<GenerateContentRequest>()
+        every { client.streamGenerateContent(any(), any(), capture(next)) } returns
+            chunks(textResponse("ok"))
+        orchestrator.sendUserMessage("change it")
+
+        val contents = next.captured.contents
+        assertEquals("user", contents.last().role)
+        assertEquals("model", contents[contents.lastIndex - 1].role)
+        assertEquals("Done — review and enable it.", contents[contents.lastIndex - 1].parts.single().text)
+    }
+
+    @Test
+    fun `a step that searched as well as built keeps going, because it asked for an answer`() = runTest {
+        coEvery { installedApps.search(any()) } returns emptyList()
+        val both = GenerateContentResponse(
+            candidates = listOf(
+                GeminiCandidate(
+                    content = GeminiContent(
+                        role = "model",
+                        parts = listOf(
+                            GeminiPart(
+                                functionCall = GeminiFunctionCall(
+                                    AiTools.SEARCH_INSTALLED_APPS,
+                                    buildJsonObject { put("query", "x") },
+                                ),
+                            ),
+                            GeminiPart(functionCall = GeminiFunctionCall(AiTools.CREATE_FLOW, createFlowArgs())),
+                        ),
+                    ),
+                ),
+            ),
+        )
+        every { client.streamGenerateContent(any(), any(), any()) } returns
+            chunks(both) andThen chunks(textResponse("Reply after the search."))
+
+        val ready = orchestrator().sendUserMessage("hello") as TurnResult.FlowReady
+
+        assertEquals("Reply after the search.", ready.summaryText)
+    }
+
+    private fun openAppArgs(packageName: String) = buildJsonObject {
+        put("name", "Open")
+        put("description", "Opens an app")
+        put("summary", "Opens it.")
+        putJsonArray("triggers") { add(buildJsonObject { put("type", "MANUAL") }) }
+        putJsonArray("actions") {
+            add(
+                buildJsonObject {
+                    put("type", "OPEN_APP")
+                    put("config", """{"package_name":"$packageName"}""")
+                },
+            )
+        }
+    }
+
+    @Test
+    fun `an app that isn't installed goes back to the model for repair`() = runTest {
+        val repair = mutableListOf<GenerateContentRequest>()
+        every { client.streamGenerateContent(any(), any(), capture(repair)) } returns
+            chunks(functionCallResponse(AiTools.CREATE_FLOW, openAppArgs("com.made.up"))) andThen
+            chunks(functionCallResponse(AiTools.CREATE_FLOW, openAppArgs("com.spotify.music")))
+
+        val result = orchestrator().sendUserMessage("open my music app")
+
+        assertInstanceOf(TurnResult.FlowReady::class.java, result)
+        val errors = repair.last().contents.last().parts.single().functionResponse?.response.toString()
+        assertTrue("com.made.up" in errors && "search_installed_apps" in errors, errors)
+    }
+
+    @Test
+    fun `editing a flow may keep an app that has since been uninstalled`() = runTest {
+        val orchestrator = orchestrator()
+        orchestrator.startFlowEditing("""actions: OPEN_APP config: {"package_name":"com.gone.app"}""")
+        every { client.streamGenerateContent(any(), any(), any()) } returns
+            chunks(functionCallResponse(AiTools.CREATE_FLOW, openAppArgs("com.gone.app")))
+
+        assertInstanceOf(TurnResult.FlowReady::class.java, orchestrator.sendUserMessage("rename it"))
     }
 
     @Test
@@ -298,7 +433,7 @@ class AiChatOrchestratorTest {
             every { getSharedPreferences(any(), any()) } returns emptyPrefs
         }
 
-        val result = AiChatOrchestrator(client, installedApps, appShortcuts, globals, keylessContext)
+        val result = AiChatOrchestrator(client, compatibleClient, installedApps, appShortcuts, globals, images, keylessContext)
             .sendUserMessage("hello")
 
         val failure = assertInstanceOf(TurnResult.Failure::class.java, result)
@@ -374,8 +509,7 @@ class AiChatOrchestratorTest {
                 ),
             ) andThen
             chunks(functionCallResponse(AiTools.CREATE_FLOW, createFlowArgs("FROBNICATE"))) andThen
-            chunks(functionCallResponse(AiTools.CREATE_FLOW, createFlowArgs())) andThen
-            chunks(textResponse("done"))
+            chunks(functionCallResponse(AiTools.CREATE_FLOW, createFlowArgs()))
 
         val steps = mutableListOf<AiChatOrchestrator.Progress>()
         orchestrator().sendUserMessage("hello", onProgress = { steps += it })
@@ -592,5 +726,188 @@ class AiChatOrchestratorTest {
         val userTurns = nextRequest.captured.contents.filter { it.role == "user" }
         assertEquals(1, userTurns.size, "the cancelled turn must not linger in the history")
         assertEquals("second", userTurns.single().parts.single().text)
+    }
+
+    // --- Busy server (503 "high demand") -------------------------------------
+
+    @Test
+    fun `a busy server is retried and the turn succeeds once it gets through`() = runTest {
+        val busy = GeminiException.Unavailable("This model is currently experiencing high demand.")
+        every { client.streamGenerateContent(any(), any(), any()) } returns
+            failingStream(busy) andThen failingStream(busy) andThen chunks(textResponse("hi"))
+
+        val steps = mutableListOf<AiChatOrchestrator.Progress>()
+        val result = orchestrator().sendUserMessage("hello", onProgress = { steps += it })
+
+        assertEquals("hi", (result as TurnResult.Assistant).text)
+        assertEquals(
+            listOf(
+                AiChatOrchestrator.Progress.Contacting,
+                AiChatOrchestrator.Progress.Retrying(1, 3),
+                AiChatOrchestrator.Progress.Retrying(2, 3),
+                // Back to what it was doing, not left saying the server is busy.
+                AiChatOrchestrator.Progress.Contacting,
+            ),
+            steps,
+        )
+    }
+
+    @Test
+    fun `a server that stays busy is reported after three retries`() = runTest {
+        var calls = 0
+        every { client.streamGenerateContent(any(), any(), any()) } answers {
+            calls++
+            failingStream(GeminiException.Unavailable("high demand"))
+        }
+
+        val result = orchestrator().sendUserMessage("hello")
+
+        assertInstanceOf(GeminiException.Unavailable::class.java, (result as TurnResult.Failure).error)
+        assertEquals(4, calls, "one request plus three retries")
+    }
+
+    @Test
+    fun `other errors are not retried`() = runTest {
+        var calls = 0
+        every { client.streamGenerateContent(any(), any(), any()) } answers {
+            calls++
+            failingStream(GeminiException.ModelNotFound("models/nope is not found"))
+        }
+
+        val result = orchestrator().sendUserMessage("hello")
+
+        assertInstanceOf(GeminiException.ModelNotFound::class.java, (result as TurnResult.Failure).error)
+        assertEquals(1, calls)
+    }
+
+    @Test
+    fun `a stream that fails after showing text is not replayed`() = runTest {
+        // Retrying here would put the start of the answer on screen twice.
+        var calls = 0
+        every { client.streamGenerateContent(any(), any(), any()) } answers {
+            calls++
+            flow {
+                emit(textResponse("Half an ans"))
+                throw GeminiException.Unavailable("high demand")
+            }
+        }
+
+        val result = orchestrator().sendUserMessage("hello")
+
+        assertInstanceOf(GeminiException.Unavailable::class.java, (result as TurnResult.Failure).error)
+        assertEquals(1, calls)
+    }
+
+    @Test
+    fun `a retried step after a tool call does not run the tool again`() = runTest {
+        coEvery { installedApps.search(any()) } returns emptyList()
+        every { client.streamGenerateContent(any(), any(), any()) } returns
+            chunks(functionCallResponse(AiTools.SEARCH_INSTALLED_APPS, buildJsonObject { put("query", "x") })) andThen
+            failingStream(GeminiException.Unavailable("high demand")) andThen
+            chunks(textResponse("done"))
+
+        val result = orchestrator().sendUserMessage("hello")
+
+        assertEquals("done", (result as TurnResult.Assistant).text)
+        io.mockk.coVerify(exactly = 1) { installedApps.search(any()) }
+    }
+
+    // --- Quota (429) ---------------------------------------------------------
+
+    @Test
+    fun `a spent per-minute quota is waited out for as long as Google says`() = runTest {
+        val perMinute = GeminiException.RateLimited("quota exceeded", retryAfterMillis = 2_500)
+        every { client.streamGenerateContent(any(), any(), any()) } returns
+            failingStream(perMinute) andThen chunks(textResponse("hi"))
+
+        val steps = mutableListOf<AiChatOrchestrator.Progress>()
+        val start = testScheduler.currentTime
+        val result = orchestrator().sendUserMessage("hello", onProgress = { steps += it })
+
+        assertEquals("hi", (result as TurnResult.Assistant).text)
+        // Google's delay plus a second of slack, so the retry doesn't land on the window's edge.
+        assertEquals(3_500, testScheduler.currentTime - start)
+        assertEquals(
+            listOf(
+                AiChatOrchestrator.Progress.Contacting,
+                AiChatOrchestrator.Progress.WaitingForQuota(4),
+                AiChatOrchestrator.Progress.WaitingForQuota(3),
+                AiChatOrchestrator.Progress.WaitingForQuota(2),
+                AiChatOrchestrator.Progress.WaitingForQuota(1),
+                AiChatOrchestrator.Progress.Contacting,
+            ),
+            steps,
+        )
+    }
+
+    @Test
+    fun `a 429 without a delay still gets a few waits before it is reported`() = runTest {
+        var calls = 0
+        every { client.streamGenerateContent(any(), any(), any()) } answers {
+            calls++
+            failingStream(GeminiException.RateLimited("quota exceeded"))
+        }
+
+        val result = orchestrator().sendUserMessage("hello")
+
+        assertInstanceOf(GeminiException.RateLimited::class.java, (result as TurnResult.Failure).error)
+        assertEquals(4, calls, "one request plus three waits")
+    }
+
+    @Test
+    fun `a daily quota or a model outside the plan fails at once`() = runTest {
+        for (error in listOf(
+            GeminiException.RateLimited("per day", retryAfterMillis = 1_000, daily = true),
+            GeminiException.RateLimited("limit: 0", retryAfterMillis = 1_000, noQuota = true),
+            // Not a per-minute window whatever it claims to be, and nobody waits ten minutes.
+            GeminiException.RateLimited("later", retryAfterMillis = 600_000),
+        )) {
+            var calls = 0
+            every { client.streamGenerateContent(any(), any(), any()) } answers {
+                calls++
+                failingStream(error)
+            }
+
+            val result = orchestrator().sendUserMessage("hello")
+
+            assertEquals(error, (result as TurnResult.Failure).error)
+            assertEquals(1, calls, error.message)
+        }
+    }
+
+    // --- Images --------------------------------------------------------------
+
+    @Test
+    fun `an attached image is sent as bytes but kept in history as its file name`() = runTest {
+        coEvery { images.base64("a.jpg") } returns "QUJD"
+        val request = slot<GenerateContentRequest>()
+        every { client.streamGenerateContent(any(), any(), capture(request)) } returns
+            chunks(textResponse("I see a form."))
+
+        val orchestrator = orchestrator()
+        orchestrator.sendUserMessage("fill this in", imageNames = listOf("a.jpg"))
+
+        val sent = request.captured.contents.first().parts
+        assertEquals("fill this in", sent[0].text)
+        assertEquals(GeminiBlob("image/jpeg", "QUJD"), sent[1].inlineData)
+        // The persisted history must stay small: a reference, never the bytes.
+        assertEquals(
+            GeminiBlob("image/jpeg", "a.jpg"),
+            orchestrator.exportHistory().first().parts[1].inlineData,
+        )
+    }
+
+    @Test
+    fun `an image whose file is gone becomes a note instead of a broken request`() = runTest {
+        coEvery { images.base64("gone.jpg") } returns null
+        val request = slot<GenerateContentRequest>()
+        every { client.streamGenerateContent(any(), any(), capture(request)) } returns
+            chunks(textResponse("ok"))
+
+        orchestrator().sendUserMessage("", imageNames = listOf("gone.jpg"))
+
+        val part = request.captured.contents.first().parts.single()
+        assertEquals(null, part.inlineData)
+        assertTrue(part.text!!.contains("no longer included"))
     }
 }

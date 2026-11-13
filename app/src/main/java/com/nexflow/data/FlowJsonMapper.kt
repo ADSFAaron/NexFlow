@@ -22,6 +22,7 @@ import com.nexflow.core.automation.model.Flow as AutomationFlow
 import com.nexflow.core.automation.model.Trigger
 import com.nexflow.core.automation.model.TriggerLogic
 import com.nexflow.core.automation.model.TriggerType
+import com.nexflow.trigger.OnceTrigger
 import com.nexflow.core.automation.model.Variable
 import com.nexflow.core.automation.model.VariableType
 import com.nexflow.core.flowschema.ActionJson
@@ -66,7 +67,9 @@ fun FlowJson.toDomain(forceDisabled: Boolean = true): AutomationFlow {
             Trigger(
                 id = tj.id,
                 type = runCatching { TriggerType.valueOf(tj.type) }.getOrDefault(TriggerType.MANUAL),
-                config = tj.config.toStringMap(),
+                // A "once" moment from elsewhere is another device's or another day's — already
+                // spent. Dropped, so the trigger is armed afresh when the flow is enabled here.
+                config = tj.config.toStringMap() - OnceTrigger.KEY_AT,
             )
         },
         triggerLogic = runCatching { TriggerLogic.valueOf(triggerLogic) }.getOrDefault(TriggerLogic.ANY),

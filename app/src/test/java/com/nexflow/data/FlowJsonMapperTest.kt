@@ -25,6 +25,7 @@ import com.nexflow.core.flowschema.FlowSerializer
 import com.nexflow.core.flowschema.GlobalVariableJson
 import com.nexflow.core.flowschema.TriggerJson
 import com.nexflow.core.flowschema.VariableJson
+import com.nexflow.trigger.OnceTrigger
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -62,6 +63,30 @@ class FlowJsonMapperTest {
         actions = listOf(ActionJson("a1", actionType, actionConfig, order = 0, enabled = true)),
         variables = variables,
     )
+
+    /**
+     * A "once" moment in a file or an AI reply belongs to another device or another day and is
+     * already spent; kept, the imported trigger would never fire. Dropped, the engine arms it
+     * afresh when the flow is enabled here.
+     */
+    @Test
+    fun `a once trigger's fixed moment does not travel`() {
+        val json = flowJson().copy(
+            triggers = listOf(
+                TriggerJson(
+                    "t1",
+                    "TIME",
+                    buildJsonObject {
+                        put("time", "08:00")
+                        put("repeat", "ONCE")
+                        put(OnceTrigger.KEY_AT, "1700000000000")
+                    },
+                ),
+            ),
+        )
+        val config = json.toDomain().triggers.single().config
+        assertEquals(mapOf("time" to "08:00", "repeat" to "ONCE"), config)
+    }
 
     @Test
     fun `forceDisabled is the default and overrides the json flag`() {

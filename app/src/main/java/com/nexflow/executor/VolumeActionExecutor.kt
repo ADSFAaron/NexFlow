@@ -24,6 +24,7 @@ import com.nexflow.core.automation.model.ActionType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import kotlin.math.roundToInt
+import com.nexflow.core.automation.LogText
 
 /**
  * Sets a stream's volume from a percentage of that stream's range on *this* device.
@@ -51,14 +52,14 @@ class VolumeActionExecutor @Inject constructor(
             // this device's scale, which is what it always was — reinterpreting it as a percent
             // would turn every one of them down to a tenth on the spot.
             else -> action.config[LEGACY_LEVEL_KEY]?.toIntOrNull()
-                ?: return ActionResult.Failure("No volume level specified")
+                ?: return ActionResult.Failure(LogText.of("volume_no_level"))
         }
 
         return try {
             am.setStreamVolume(stream, target.coerceIn(0, maxVolume), 0)
             ActionResult.Success
         } catch (e: SecurityException) {
-            ActionResult.Failure("Volume adjust blocked — grant Do Not Disturb access in Settings: ${e.message}", e)
+            ActionResult.Failure(LogText.of("volume_dnd", e.message), e)
         }
     }
 

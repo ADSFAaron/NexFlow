@@ -16,10 +16,9 @@
 package com.nexflow.data.local.dao
 
 import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import androidx.room.Upsert
 import com.nexflow.data.local.entity.FlowEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -35,7 +34,12 @@ interface FlowDao {
     @Query("SELECT * FROM flows WHERE id = :id")
     suspend fun getById(id: String): FlowEntity?
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    /**
+     * A real upsert (INSERT, or UPDATE on a key clash), never `@Insert(REPLACE)`. SQLite's REPLACE
+     * deletes the old row before inserting the new one, and that delete fires the `ON DELETE
+     * CASCADE` on execution_logs: every edit of a flow used to wipe its whole run history.
+     */
+    @Upsert
     suspend fun upsert(entity: FlowEntity)
 
     @Query("DELETE FROM flows WHERE id = :id")
@@ -47,6 +51,10 @@ interface FlowDao {
      * user's finger — which reads as the flow having vanished. Flipping a switch is not an edit
      * to the flow.
      */
+    /** Leaves `updated_at` alone too: the app stamping a trigger is not the user editing it. */
+    @Query("UPDATE flows SET triggers = :triggersJson WHERE id = :id")
+    suspend fun setTriggers(id: String, triggersJson: String)
+
     @Query("UPDATE flows SET enabled = :enabled WHERE id = :id")
     suspend fun setEnabled(id: String, enabled: Boolean)
 }

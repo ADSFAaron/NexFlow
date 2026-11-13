@@ -46,6 +46,9 @@ class HeadsetTriggerHandler @Inject constructor(
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(ctx: Context, intent: Intent) {
                 if (intent.action != AudioManager.ACTION_HEADSET_PLUG) return
+                // Sticky: registering redelivers whether a headset is plugged in right now. That is
+                // the current state, not someone plugging one in, so it must not fire.
+                if (isInitialStickyBroadcast) return
                 // state: 0 = unplugged, 1 = plugged
                 val state = intent.getIntExtra("state", -1)
                 val eventMatches = when (targetEvent) {

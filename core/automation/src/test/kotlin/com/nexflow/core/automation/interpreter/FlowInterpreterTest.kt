@@ -109,6 +109,65 @@ class FlowInterpreterTest {
         assertEquals(listOf("low"), executor.messages)
     }
 
+    // ----- SET_VARIABLE: values from outside are text, never arithmetic -----
+
+    /**
+     * A counter still counts: the operator is in the template, the operand is a variable.
+     */
+    @Test
+    fun `set variable computes arithmetic the flow itself wrote`() = runTest {
+        val executor = RecordingExecutor()
+        interpreter(executor).execute(
+            flow(
+                listOf(
+                    action(ActionType.SET_VARIABLE, 0, mapOf("variable_name" to "n", "value" to "{{n}} + 1")),
+                    action(ActionType.TOAST, 1, mapOf("message" to "{{n}}")),
+                ),
+                variables = listOf(Variable("n", VariableType.INTEGER, "5")),
+            ),
+        )
+        assertEquals(listOf("6"), executor.messages)
+    }
+
+    /**
+     * An SMS reading "3 - 1" is stored as "3 - 1". And one reading "1e999999999 * 1" used to make
+     * BigDecimal write out a billion digits and run the app out of memory.
+     */
+    @Test
+    fun `set variable stores text from a trigger exactly as received`() = runTest {
+        for (body in listOf("3 - 1", "1e999999999 * 1", "1e99999999 + 1")) {
+            val executor = RecordingExecutor()
+            val result = interpreter(executor).execute(
+                flow(
+                    listOf(
+                        action(ActionType.SET_VARIABLE, 0, mapOf("variable_name" to "last", "value" to "{{trigger.body}}")),
+                        action(ActionType.TOAST, 1, mapOf("message" to "{{last}}")),
+                    ),
+                ),
+                triggerVariables = mapOf("body" to body),
+            )
+            assertTrue(result is InterpreterResult.Success, body)
+            assertEquals(listOf(body), executor.messages, body)
+        }
+    }
+
+    /** `x = {{x}}{{x}}` in a loop doubles every round; it must fail, not exhaust memory. */
+    @Test
+    fun `a value that outgrows the cap fails the step`() = runTest {
+        val result = interpreter().execute(
+            flow(
+                listOf(
+                    action(ActionType.REPEAT_BLOCK, 0, mapOf("count" to "40")),
+                    action(ActionType.SET_VARIABLE, 1, mapOf("variable_name" to "x", "value" to "{{x}}{{x}}")),
+                    action(ActionType.END_REPEAT, 2),
+                ),
+                variables = listOf(Variable("x", VariableType.STRING, "ab")),
+            ),
+        )
+        assertTrue(result is InterpreterResult.Failure)
+        assertTrue((result as InterpreterResult.Failure).message.contains("${FlowInterpreter.MAX_VARIABLE_LENGTH}"))
+    }
+
     // ----- SET_VARIABLE config keys -----
 
     @Test

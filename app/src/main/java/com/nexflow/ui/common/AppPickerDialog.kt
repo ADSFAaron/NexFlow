@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import com.nexflow.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import androidx.compose.material3.ListItemDefaults
 
 data class InstalledApp(
     val packageName: String,
@@ -137,6 +138,7 @@ fun AppPickerDialog(
             LazyColumn {
                 items(filtered, key = { it.packageName }) { app ->
                     ListItem(
+                        colors = ListItemDefaults.inContainerColors(),
                         leadingContent = {
                             Image(
                                 bitmap = app.icon.toBitmap().asImageBitmap(),

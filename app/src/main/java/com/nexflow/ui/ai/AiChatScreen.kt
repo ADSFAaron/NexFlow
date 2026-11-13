@@ -15,6 +15,26 @@
  */
 package com.nexflow.ui.ai
 
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ListItem
+import androidx.compose.material.icons.outlined.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.runtime.key
+import com.nexflow.ui.common.inContainerColors
+import androidx.compose.material.icons.outlined.RestartAlt
+import com.nexflow.ui.common.SettingsGroupTitle
+import com.nexflow.ui.common.settingsItemShapes
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.ListItemShapes
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.nexflow.ui.common.SettingsBackButton
+import com.nexflow.ui.common.SettingsDefaults
+import com.nexflow.ui.common.SettingsGroup
+import com.nexflow.ui.common.SettingsItem
+import androidx.compose.material3.TopAppBarDefaults
 import android.Manifest
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -22,8 +42,8 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.text.format.DateUtils
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -31,21 +51,27 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.interaction.DragInteraction
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
@@ -61,19 +87,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.Send
-import androidx.compose.material.icons.outlined.AddComment
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ArrowDownward
+import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ContentCopy
@@ -84,16 +109,16 @@ import androidx.compose.material.icons.outlined.Stop
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
@@ -107,7 +132,6 @@ import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -119,21 +143,23 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -143,17 +169,19 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -161,7 +189,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.nexflow.R
+import coil3.compose.AsyncImage
 import com.nexflow.ai.AiChatOrchestrator
+import com.nexflow.ai.AiImageStore
 import com.nexflow.core.automation.model.ActionType
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.flowschema.FlowJson
@@ -171,6 +201,7 @@ import com.nexflow.ui.common.MarkdownText
 import com.nexflow.ui.common.geminiGradientTint
 import com.nexflow.ui.flows.detail.config.configSummary
 import com.nexflow.ui.flows.detail.config.info
+import java.io.File
 import java.time.Instant
 import java.time.ZoneId
 import kotlinx.coroutines.launch
@@ -202,10 +233,31 @@ fun AiChatScreen(
             }
         }
     }
-    val listState = rememberLazyListState()
+    // A different conversation gets a fresh list, scrolled from the top, rather than the old
+    // one's position and item animations.
+    val conversationId by vm.conversationId.collectAsState()
+    val listState = remember(conversationId) { LazyListState() }
+    var showMenu by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+
+    val pendingImages by vm.pendingImages.collectAsState()
+    val imageLimitText = pluralStringResource(
+        R.plurals.ai_image_limit,
+        AiImageStore.MAX_PER_MESSAGE,
+        AiImageStore.MAX_PER_MESSAGE,
+    )
+    // The system photo picker: no storage permission, and the user hands over only what they
+    // chose. Picking more than there is room for keeps the first ones and says why.
+    val pickImages = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickMultipleVisualMedia(AiImageStore.MAX_PER_MESSAGE),
+    ) { uris ->
+        if (uris.size > AiImageStore.MAX_PER_MESSAGE - vm.pendingImages.value.size) {
+            scope.launch { snackbarHostState.showSnackbar(imageLimitText) }
+        }
+        vm.attachImages(uris)
+    }
 
     val voice = remember { VoiceInputController(context) }
     DisposableEffect(voice) { onDispose { voice.destroy() } }
@@ -274,19 +326,26 @@ fun AiChatScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    // Flow-edit mode gets a profile-card header instead of an app bar: the flow's own icon and
-    // name are what identify the conversation, and the card carries the same close / new-chat
-    // actions the bar would have.
+    // In flow-edit mode the bar carries the flow's own icon and name — they are what identify
+    // the conversation — laid out like the flow editor's bar the user just came from.
     val editingFlow = uiState.editingFlow
 
-    // The header is pinned, so close / new chat stay reachable no matter how long the
-    // transcript gets. It starts as the full profile card and shrinks to a one-line bar as
-    // soon as the user engages with the conversation — otherwise it would eat half the screen
-    // the moment the keyboard opens.
-    var headerExpanded by rememberSaveable { mutableStateOf(true) }
-    var suggestionsDismissed by rememberSaveable { mutableStateOf(false) }
+    // Openers, for the blank page. They stop once the user has said something — suggestions
+    // help someone who is exploring and annoy someone who already knows what they want — so
+    // they need no dismiss button: the first message is what ends them. A new chat shows them
+    // under the greeting; a flow-edit chat opens with the assistant's intro, so there they
+    // follow it as replies to it.
+    val suggestions = stringArrayResource(
+        if (editingFlow != null) R.array.ai_suggestions_edit else R.array.ai_suggestions_new,
+    ).toList()
+    val showSuggestions = !uiState.apiKeyMissing &&
+        !uiState.isThinking &&
+        uiState.messages.none { it is ChatMessage.UserText }
+    val showQuickReplies = showSuggestions && uiState.messages.isNotEmpty()
 
-    val itemCount = uiState.messages.size + if (uiState.isThinking) 1 else 0
+    val itemCount = uiState.messages.size +
+        (if (uiState.isThinking) 1 else 0) +
+        (if (showQuickReplies) 1 else 0)
 
     // Following the conversation means staying at the bottom; reading back through it means
     // being left alone. `canScrollForward` is false exactly when the last item is fully shown.
@@ -297,15 +356,11 @@ fun AiChatScreen(
     LaunchedEffect(atBottom, uiState.isThinking) {
         if (atBottom) followTail = true
     }
-    // One signal, two consequences: a drag is the user taking over, so the card gets out of the
-    // way and the list stops chasing the tail. Only a *drag* counts — the auto-scroll below
-    // moves the list too, and that must not be mistaken for the user pushing anything away.
+    // A drag is the user taking over, so the list stops chasing the tail. Only a *drag* counts —
+    // the auto-scroll below moves the list too, and that must not be mistaken for the user.
     LaunchedEffect(listState) {
         listState.interactionSource.interactions.collect { interaction ->
-            if (interaction is DragInteraction.Start) {
-                headerExpanded = false
-                followTail = false
-            }
+            if (interaction is DragInteraction.Start) followTail = false
         }
     }
 
@@ -352,185 +407,218 @@ fun AiChatScreen(
         if (imeVisible && followTail) scrollToTail()
     }
 
+    if (showMenu) {
+        ChatMenuSheet(
+            editingFlow = editingFlow != null,
+            canStartOver = uiState.messages.isNotEmpty() && !uiState.isThinking,
+            onAttach = {
+                showMenu = false
+                if (pendingImages.size >= AiImageStore.MAX_PER_MESSAGE) {
+                    scope.launch { snackbarHostState.showSnackbar(imageLimitText) }
+                } else {
+                    pickImages.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                }
+            },
+            onStartOver = {
+                showMenu = false
+                vm.newChat()
+            },
+            onOpenSettings = {
+                showMenu = false
+                onOpenSettings()
+            },
+            onDismiss = { showMenu = false },
+        )
+    }
+
+    // The settings pages' page colour, with the soft Gemini glow drawn over it from the very top
+    // of the screen. It used to start under an opaque bar, which left a hard edge across the
+    // page where the bar ended; the bar is transparent now and the glow runs behind it.
+    val pageColor = SettingsDefaults.pageColor
+    val glow = MaterialTheme.colorScheme.primary.copy(alpha = 0.07f)
+    val glowHeightPx = with(LocalDensity.current) { AmbientGlowHeight.toPx() }
     Scaffold(
+        modifier = Modifier
+            .background(pageColor)
+            .background(Brush.verticalGradient(listOf(glow, Color.Transparent), endY = glowHeightPx)),
+        containerColor = Color.Transparent,
         topBar = {
-            if (editingFlow == null) {
-                TopAppBar(
-                    title = { Text(stringResource(R.string.ai_chat_title)) },
-                    navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            Icon(
-                                Icons.AutoMirrored.Outlined.ArrowBack,
-                                contentDescription = stringResource(R.string.action_back),
-                            )
+            TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = Color.Transparent,
+                ),
+                navigationIcon = { SettingsBackButton(onBack) },
+                title = {
+                    if (editingFlow == null) {
+                        Text(stringResource(R.string.ai_chat_title))
+                    } else {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            FlowAvatar(flow = editingFlow, size = 34.dp, ringSize = 34.dp)
+                            Spacer(Modifier.width(12.dp))
+                            Column {
+                                Text(editingFlow.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                // The user is spending their own API quota; don't make them guess
+                                // how fast. Under the name, where the old header card kept it.
+                                if (uiState.tokensUsed > 0) {
+                                    Text(
+                                        text = pluralStringResource(
+                                            R.plurals.ai_tokens_used,
+                                            uiState.tokensUsed,
+                                            uiState.tokensUsed,
+                                        ),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
                         }
-                    },
-                    actions = {
-                        IconButton(
-                            onClick = { vm.newChat() },
-                            enabled = uiState.messages.isNotEmpty() && !uiState.isThinking,
-                        ) {
-                            Icon(
-                                Icons.Outlined.AddComment,
-                                contentDescription = stringResource(R.string.ai_new_chat),
-                            )
-                        }
-                    },
-                )
-            }
+                    }
+                },
+            )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
-            // Soft ambient wash at the top — the Gemini design language's gradient "glow"
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.07f),
-                                Color.Transparent,
-                            ),
-                        ),
-                    ),
-            )
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .imePadding(),
             ) {
-                if (editingFlow != null) {
-                    FlowChatHeader(
-                        flow = editingFlow,
-                        expanded = headerExpanded,
-                        onToggleExpanded = { headerExpanded = !headerExpanded },
-                        onClose = onBack,
-                        onNewChat = { vm.newChat() },
-                        onOpenSettings = onOpenSettings,
-                        newChatEnabled = uiState.messages.isNotEmpty() && !uiState.isThinking,
-                        tokensUsed = uiState.tokensUsed,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                    )
-                }
+                Box(modifier = Modifier.weight(1f)) {
+                    // Keyed on the conversation, so swapping one for another (another flow, the free
+                    // chat, a fresh start) replaces the list outright. Unkeyed, the old messages
+                    // left through the list's item-removal animation and were drawn over the new
+                    // conversation — and, the bar being transparent, over the bar too.
+                    key(conversationId) {
+                        when {
+                            uiState.apiKeyMissing -> ApiKeyMissingContent(
+                                onOpenSettings = onOpenSettings,
+                                modifier = Modifier.fillMaxSize(),
+                            )
 
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        // Tapping the transcript is the user saying "let me read" — get the card
-                        // out of the way. Taps that land on a bubble or a button are consumed
-                        // there and never reach this detector.
-                        .pointerInput(Unit) {
-                            detectTapGestures { headerExpanded = false }
-                        },
-                ) {
-                    when {
-                        uiState.apiKeyMissing -> ApiKeyMissingContent(
-                            onOpenSettings = onOpenSettings,
-                            modifier = Modifier.fillMaxSize(),
-                        )
+                            uiState.messages.isEmpty() -> GreetingContent(
+                                suggestions = if (showSuggestions) suggestions else emptyList(),
+                                onPick = { vm.sendMessage(it) },
+                                modifier = Modifier.fillMaxSize(),
+                            )
 
-                        uiState.messages.isEmpty() -> GreetingContent(modifier = Modifier.fillMaxSize())
-
-                        else -> LazyColumn(
-                            state = listState,
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            itemsIndexed(uiState.messages, key = { _, m -> m.id }) { index, message ->
-                                val itemModifier = Modifier.animateItem(
-                                    fadeInSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
-                                    placementSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
-                                    fadeOutSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
-                                )
-                                // Same, minus the fade out. Retry deletes the error bubble and
-                                // starts the turn in the same breath, so the thinking indicator
-                                // is placed in the very slot the error is still fading out of —
-                                // two opaque bubbles drawn on top of each other. Nothing else in
-                                // this list is ever replaced in place, so only this one bubble
-                                // has to leave immediately.
-                                val replacedItemModifier = Modifier.animateItem(
-                                    fadeInSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
-                                    placementSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
-                                    fadeOutSpec = null,
-                                )
-                                // A day rule opens the transcript and marks every date change after it.
-                                val previous = uiState.messages.getOrNull(index - 1)
-                                if (previous == null || !isSameDay(previous.timestamp, message.timestamp)) {
-                                    DaySeparator(message.timestamp)
-                                }
-                                // One time per burst, on the last bubble of it — a clock on
-                                // every line is noise nobody reads.
-                                val showTimestamp = !message.groupsWith(
-                                    uiState.messages.getOrNull(index + 1),
-                                )
-                                when (message) {
-                                    is ChatMessage.UserText -> MessageBubble(
-                                        text = message.text,
-                                        timestamp = message.timestamp,
-                                        fromUser = true,
-                                        // Long-press → Edit reloads the sent text into the input field
-                                        onEdit = { vm.updateDraft(message.text) },
-                                        showTimestamp = showTimestamp,
-                                        modifier = itemModifier,
+                            else -> LazyColumn(
+                                state = listState,
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                itemsIndexed(uiState.messages, key = { _, m -> m.id }) { index, message ->
+                                    val itemModifier = Modifier.animateItem(
+                                        fadeInSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
+                                        placementSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
+                                        fadeOutSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
                                     )
-
-                                    is ChatMessage.AssistantText -> MessageBubble(
-                                        text = message.text,
-                                        timestamp = message.timestamp,
-                                        fromUser = false,
-                                        // Gemini answers in markdown; render it instead of showing
-                                        // raw ** and - characters.
-                                        renderMarkdown = true,
-                                        announce = index == uiState.messages.lastIndex,
-                                        stopped = message.stopped,
-                                        showTimestamp = showTimestamp,
-                                        modifier = itemModifier,
-                                    )
-
-                                    is ChatMessage.Error -> ErrorBubble(
-                                        text = message.text,
-                                        onRetry = if (message.retryText.isNotBlank() && !uiState.isThinking) {
-                                            { vm.retry(message.id) }
-                                        } else {
-                                            null
-                                        },
-                                        modifier = replacedItemModifier,
-                                    )
-
-                                    is ChatMessage.FlowPreview -> FlowPreviewCard(
-                                        flow = message.flow,
-                                        saved = message.saved,
-                                        isUpdate = uiState.hasSavedFlow,
-                                        baseline = uiState.baselineFlow,
-                                        onSave = { vm.saveFlow(message) },
-                                        modifier = itemModifier,
-                                    )
-                                }
-                            }
-                            // While a turn runs the tail of the list is either the answer
-                            // forming in place, or — before the first token — the indicator.
-                            if (uiState.isThinking) {
-                                item(key = "thinking") {
-                                    // Fades in with the list's own item animation like every
-                                    // other bubble; leaves at once, because the answer it turns
-                                    // into is placed in this same slot.
-                                    val indicatorModifier = Modifier.animateItem(
+                                    // Same, minus the fade out. Retry deletes the error bubble and
+                                    // starts the turn in the same breath, so the thinking indicator
+                                    // is placed in the very slot the error is still fading out of —
+                                    // two opaque bubbles drawn on top of each other. Nothing else in
+                                    // this list is ever replaced in place, so only this one bubble
+                                    // has to leave immediately.
+                                    val replacedItemModifier = Modifier.animateItem(
                                         fadeInSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
                                         placementSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
                                         fadeOutSpec = null,
                                     )
-                                    val streaming = uiState.streamingText
-                                    if (streaming.isNullOrBlank()) {
-                                        ThinkingBubble(step = uiState.thinkingStep, modifier = indicatorModifier)
-                                    } else {
-                                        StreamingBubble(text = streaming, modifier = indicatorModifier)
+                                    // A day rule opens the transcript and marks every date change after it.
+                                    val previous = uiState.messages.getOrNull(index - 1)
+                                    if (previous == null || !isSameDay(previous.timestamp, message.timestamp)) {
+                                        DaySeparator(message.timestamp)
+                                    }
+                                    // One time per burst, on the last bubble of it — a clock on
+                                    // every line is noise nobody reads.
+                                    val showTimestamp = !message.groupsWith(
+                                        uiState.messages.getOrNull(index + 1),
+                                    )
+                                    when (message) {
+                                        is ChatMessage.UserText -> MessageBubble(
+                                            text = message.text,
+                                            images = message.images.map(vm::imageFile),
+                                            timestamp = message.timestamp,
+                                            fromUser = true,
+                                            // Long-press → Edit reloads the sent text into the input field
+                                            onEdit = { vm.updateDraft(message.text) },
+                                            showTimestamp = showTimestamp,
+                                            modifier = itemModifier,
+                                        )
+
+                                        is ChatMessage.AssistantText -> MessageBubble(
+                                            text = message.text,
+                                            timestamp = message.timestamp,
+                                            fromUser = false,
+                                            // Gemini answers in markdown; render it instead of showing
+                                            // raw ** and - characters.
+                                            renderMarkdown = true,
+                                            announce = index == uiState.messages.lastIndex,
+                                            stopped = message.stopped,
+                                            showTimestamp = showTimestamp,
+                                            modifier = itemModifier,
+                                        )
+
+                                        is ChatMessage.Error -> ErrorBubble(
+                                            text = message.text,
+                                            onRetry = if (
+                                                (message.retryText.isNotBlank() || message.retryImages.isNotEmpty()) &&
+                                                !uiState.isThinking
+                                            ) {
+                                                { vm.retry(message.id) }
+                                            } else {
+                                                null
+                                            },
+                                            modifier = replacedItemModifier,
+                                        )
+
+                                        is ChatMessage.FlowPreview -> FlowPreviewCard(
+                                            flow = message.flow,
+                                            saved = message.saved,
+                                            isUpdate = uiState.hasSavedFlow,
+                                            baseline = uiState.baselineFlow,
+                                            onSave = { vm.saveFlow(message) },
+                                            modifier = itemModifier,
+                                        )
+                                    }
+                                }
+                                if (showQuickReplies) {
+                                    item(key = "quick-replies") {
+                                        QuickReplies(
+                                            suggestions = suggestions,
+                                            onPick = { vm.sendMessage(it) },
+                                            modifier = Modifier.animateItem(
+                                                fadeInSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
+                                                placementSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
+                                                // Leaves at once: the user's message takes its place.
+                                                fadeOutSpec = null,
+                                            ),
+                                        )
+                                    }
+                                }
+                                // While a turn runs the tail of the list is either the answer
+                                // forming in place, or — before the first token — the indicator.
+                                if (uiState.isThinking) {
+                                    item(key = "thinking") {
+                                        // Fades in with the list's own item animation like every
+                                        // other bubble; leaves at once, because the answer it turns
+                                        // into is placed in this same slot.
+                                        val indicatorModifier = Modifier.animateItem(
+                                            fadeInSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
+                                            placementSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
+                                            fadeOutSpec = null,
+                                        )
+                                        val streaming = uiState.streamingText
+                                        if (streaming.isNullOrBlank()) {
+                                            ThinkingBubble(step = uiState.thinkingStep, modifier = indicatorModifier)
+                                        } else {
+                                            StreamingBubble(text = streaming, modifier = indicatorModifier)
+                                        }
                                     }
                                 }
                             }
@@ -546,132 +634,200 @@ fun AiChatScreen(
                             scope.launch { scrollToTail(animated = true) }
                         },
                     )
-                }
 
-                // Openers, for the blank page. They stop once the user has said something —
-                // suggestions help someone who is exploring and annoy someone who already
-                // knows what they want — and the dismiss button ends them for good.
-                if (!uiState.apiKeyMissing &&
-                    !suggestionsDismissed &&
-                    !uiState.isThinking &&
-                    uiState.messages.none { it is ChatMessage.UserText }
-                ) {
-                    SuggestionChips(
-                        suggestions = stringArrayResource(
-                            if (editingFlow != null) {
-                                R.array.ai_suggestions_edit
-                            } else {
-                                R.array.ai_suggestions_new
-                            },
-                        ).toList(),
-                        onPick = { vm.sendMessage(it) },
-                        onDismiss = { suggestionsDismissed = true },
+                    // At the foot of the transcript, right above the composer — not in the
+                    // Scaffold's slot, which is the bottom of the screen and so lay over the
+                    // composer itself. Here it also rides up with the keyboard.
+                    SnackbarHost(
+                        hostState = snackbarHostState,
+                        modifier = Modifier.align(Alignment.BottomCenter),
                     )
                 }
 
                 if (!uiState.apiKeyMissing) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.Bottom,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        // Expressive pill-shaped input, matching the M3 conversation pattern.
-                        // While dictating, a sweeping Gemini-gradient border + shimmering
-                        // placeholder signal "listening" (per the Gemini visual design language).
-                        TextField(
-                            value = fieldValue,
-                            onValueChange = {
-                                fieldValue = it
-                                vm.updateDraft(it.text)
-                            },
+                    ChatInputBar(
+                        value = fieldValue,
+                        onValueChange = {
+                            fieldValue = it
+                            vm.updateDraft(it.text)
+                        },
+                        pendingImages = pendingImages.map { it to vm.imageFile(it) },
+                        onRemoveImage = vm::removePendingImage,
+                        isThinking = uiState.isThinking,
+                        isListening = voice.isListening,
+                        canSend = fieldValue.text.isNotBlank() || pendingImages.isNotEmpty(),
+                        onOpenMenu = { showMenu = true },
+                        onMic = {
+                            if (voice.isListening) {
+                                voice.stop()
+                            } else if (
+                                ContextCompat.checkSelfPermission(
+                                    context,
+                                    Manifest.permission.RECORD_AUDIO,
+                                ) == PackageManager.PERMISSION_GRANTED
+                            ) {
+                                voiceBaseline = fieldValue.text
+                                voice.start()
+                            } else {
+                                micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                            }
+                        },
+                        onSendOrStop = {
+                            if (uiState.isThinking) vm.stop() else vm.sendMessage(fieldValue.text)
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The composer: one rounded surface that holds everything about the next message — what's
+ * attached, what's typed, and the controls to add to it or send it.
+ *
+ * Earlier this was a filled text field with icons tucked into its slots and the send button
+ * floating beside it, with attachments in a strip of their own above. Each piece was fine, but
+ * together they read as parts laid next to each other rather than one control. Here the surface
+ * *is* the control: attachments sit inside it above the text, and send lives in its corner.
+ *
+ * Send only appears once there is something to send. An always-present, greyed-out button is
+ * a control that does nothing most of the time; letting it arrive with the first character is
+ * the cue that the message is ready. While a turn runs the same slot is stop — aborting a bad
+ * answer has to be the most obvious control on screen, not something buried in a menu.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+internal fun ChatInputBar(
+    value: TextFieldValue,
+    onValueChange: (TextFieldValue) -> Unit,
+    pendingImages: List<Pair<String, File>>,
+    onRemoveImage: (String) -> Unit,
+    isThinking: Boolean,
+    isListening: Boolean,
+    canSend: Boolean,
+    /** The "+": attach an image, start over, pick the model — see [ChatMenuSheet]. */
+    onOpenMenu: () -> Unit,
+    onMic: () -> Unit,
+    onSendOrStop: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val interactionSource = remember { MutableInteractionSource() }
+    // Text field look without the text field's container: the surface below is the container.
+    val fieldColors = TextFieldDefaults.colors(
+        focusedContainerColor = Color.Transparent,
+        unfocusedContainerColor = Color.Transparent,
+        disabledContainerColor = Color.Transparent,
+        focusedIndicatorColor = Color.Transparent,
+        unfocusedIndicatorColor = Color.Transparent,
+        disabledIndicatorColor = Color.Transparent,
+    )
+    // Through the button's colours rather than the icon's tint, so the disabled state (while a
+    // turn runs) still dims them — an explicit tint would override that and leave them looking live.
+    val quietIconColors = IconButtonDefaults.iconButtonColors(contentColor = colorScheme.onSurfaceVariant)
+    Surface(
+        shape = RoundedCornerShape(InputBarCorner),
+        color = colorScheme.surfaceContainerHigh,
+        shadowElevation = 2.dp,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            // While dictating, a sweeping Gemini-gradient border + shimmering placeholder signal
+            // "listening" (per the Gemini visual design language).
+            .then(if (isListening) Modifier.voiceListeningGlow(InputBarCorner) else Modifier),
+    ) {
+        Column {
+            if (pendingImages.isNotEmpty()) {
+                PendingImages(
+                    files = pendingImages,
+                    onRemove = onRemoveImage,
+                    modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 12.dp),
+                )
+            }
+            val textStyle = MaterialTheme.typography.bodyLarge
+            ComposerLayout(lineHeight = textStyle.lineHeight, modifier = Modifier.padding(4.dp)) {
+                // A screenshot often says what a sentence can't — which button, which field.
+                IconButton(onClick = onOpenMenu, enabled = !isThinking, colors = quietIconColors) {
+                    Icon(
+                        Icons.Outlined.Add,
+                        contentDescription = stringResource(R.string.action_more),
+                    )
+                }
+                // Official pattern for a custom-container field: BasicTextField + the M3
+                // decoration box, with text colour and cursor passed to the BasicTextField.
+                // It stays the same child of the same layout in both arrangements — moving it
+                // between a Row and a Column would recreate it and drop focus and the keyboard.
+                BasicTextField(
+                    value = value,
+                    onValueChange = onValueChange,
+                    interactionSource = interactionSource,
+                    textStyle = textStyle.copy(color = colorScheme.onSurface),
+                    cursorBrush = SolidColor(colorScheme.primary),
+                    maxLines = 6,
+                    // Enter is a newline. What gets typed here is often several lines — a URL,
+                    // then what to fill in where — and a keyboard that sends on Enter fires off
+                    // half a request. Sending is the button's job.
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                    ),
+                    decorationBox = { innerTextField ->
+                        TextFieldDefaults.DecorationBox(
+                            value = value.text,
+                            innerTextField = innerTextField,
+                            enabled = true,
+                            singleLine = false,
+                            visualTransformation = VisualTransformation.None,
+                            interactionSource = interactionSource,
                             placeholder = {
-                                if (voice.isListening) {
+                                if (isListening) {
                                     Text(stringResource(R.string.ai_listening), style = voiceShimmerTextStyle())
                                 } else {
                                     Text(stringResource(R.string.ai_input_hint))
                                 }
                             },
-                            shape = RoundedCornerShape(28.dp),
-                            // The mic lives inside the pill, so the input row reads as one control
-                            // with the send button beside it rather than three floating pieces.
-                            trailingIcon = {
-                                IconButton(
-                                    onClick = {
-                                        if (voice.isListening) {
-                                            voice.stop()
-                                        } else if (
-                                            ContextCompat.checkSelfPermission(
-                                                context,
-                                                Manifest.permission.RECORD_AUDIO,
-                                            ) == PackageManager.PERMISSION_GRANTED
-                                        ) {
-                                            voiceBaseline = fieldValue.text
-                                            voice.start()
-                                        } else {
-                                            micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                                        }
-                                    },
-                                    enabled = !uiState.isThinking,
-                                ) {
-                                    Icon(
-                                        if (voice.isListening) Icons.Outlined.Stop else Icons.Outlined.Mic,
-                                        contentDescription = stringResource(
-                                            if (voice.isListening) R.string.ai_mic_stop_content_desc
-                                            else R.string.ai_mic_content_desc,
-                                        ),
-                                        tint = if (voice.isListening) {
-                                            MaterialTheme.colorScheme.primary
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurfaceVariant
-                                        },
-                                    )
-                                }
-                            },
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent,
-                                disabledIndicatorColor = Color.Transparent,
-                            ),
-                            modifier = Modifier
-                                .weight(1f)
-                                // Typing needs the room the expanded card is holding.
-                                .onFocusChanged { if (it.isFocused) headerExpanded = false }
-                                .then(if (voice.isListening) Modifier.voiceListeningGlow() else Modifier),
-                            maxLines = 4,
-                            // A chat's keyboard ends in send, not a newline nobody wants here.
-                            keyboardOptions = KeyboardOptions(
-                                capitalization = KeyboardCapitalization.Sentences,
-                                imeAction = ImeAction.Send,
-                            ),
-                            keyboardActions = KeyboardActions(
-                                onSend = {
-                                    if (fieldValue.text.isNotBlank() && !uiState.isThinking) {
-                                        vm.sendMessage(fieldValue.text)
-                                    }
-                                },
-                            ),
+                            colors = fieldColors,
+                            // 12dp above and below one 24sp line = the 48dp of the buttons
+                            // beside it, so a one-line draft sits level with them.
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = FieldVerticalPadding),
+                            container = {},
                         )
-                        // While a turn runs, send becomes stop — aborting a bad answer has to
-                        // be the most obvious control on screen, not something buried in a menu.
-                        FilledIconButton(
-                            onClick = {
-                                if (uiState.isThinking) vm.stop() else vm.sendMessage(fieldValue.text)
-                            },
-                            enabled = uiState.isThinking || fieldValue.text.isNotBlank(),
-                            modifier = Modifier.padding(bottom = 4.dp),
-                        ) {
+                    },
+                )
+                IconButton(
+                    onClick = onMic,
+                    enabled = !isThinking,
+                    colors = if (isListening) {
+                        IconButtonDefaults.iconButtonColors(contentColor = colorScheme.primary)
+                    } else {
+                        quietIconColors
+                    },
+                ) {
+                    Icon(
+                        if (isListening) Icons.Outlined.Stop else Icons.Outlined.Mic,
+                        contentDescription = stringResource(
+                            if (isListening) R.string.ai_mic_stop_content_desc else R.string.ai_mic_content_desc,
+                        ),
+                    )
+                }
+                // Always one child, even while the button is hidden, so the layout below can
+                // count on four. The call is qualified because the enclosing Column's scope would
+                // otherwise pick ColumnScope.AnimatedVisibility, which can't be used from here.
+                Box {
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = isThinking || canSend,
+                        enter = scaleIn(MaterialTheme.motionScheme.fastSpatialSpec()) +
+                            expandHorizontally(MaterialTheme.motionScheme.fastSpatialSpec()) +
+                            fadeIn(MaterialTheme.motionScheme.fastEffectsSpec()),
+                        exit = scaleOut(MaterialTheme.motionScheme.fastSpatialSpec()) +
+                            shrinkHorizontally(MaterialTheme.motionScheme.fastSpatialSpec()) +
+                            fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()),
+                    ) {
+                        FilledIconButton(onClick = onSendOrStop) {
                             Icon(
-                                if (uiState.isThinking) {
-                                    Icons.Outlined.Stop
-                                } else {
-                                    Icons.AutoMirrored.Outlined.Send
-                                },
+                                if (isThinking) Icons.Outlined.Stop else Icons.Outlined.ArrowUpward,
                                 contentDescription = stringResource(
-                                    if (uiState.isThinking) R.string.ai_stop else R.string.ai_send,
+                                    if (isThinking) R.string.ai_stop else R.string.ai_send,
                                 ),
                             )
                         }
@@ -681,6 +837,88 @@ fun AiChatScreen(
         }
     }
 }
+
+/**
+ * Places the composer's four children — leading button, text field, mic, send — in one of two
+ * arrangements without ever changing which child is which. (Moving the field between a Row and
+ * a Column would recreate it and drop focus and the keyboard.)
+ *
+ * Compact is one row, everything centred on the row's height. A draft that would wrap in that
+ * row gets the full width instead, with the buttons in a row beneath it: squeezed between + on one side and mic and send on the other, a long request wraps every
+ * few words into a narrow column that is hard to read back before sending.
+ *
+ * Which arrangement is decided here, from the field's height *at the compact width*, rather
+ * than from a line count reported back after layout. Both directions use that same measure, so
+ * the switch happens at the same point whether the draft is growing or shrinking — judging by
+ * the line count in the current arrangement would oscillate, since text that wraps at the
+ * compact width fits on one line at the full width. And it costs no extra frame: the layout
+ * that shows the draft is already the right one.
+ */
+@Composable
+private fun ComposerLayout(
+    lineHeight: TextUnit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Layout(content = content, modifier = modifier) { measurables, constraints ->
+        check(measurables.size == 4) { "ComposerLayout expects exactly four children" }
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val leading = measurables[0].measure(loose)
+        val mic = measurables[2].measure(loose)
+        val send = measurables[3].measure(loose)
+        val width = constraints.maxWidth
+        val buttonsHeight = maxOf(leading.height, mic.height, send.height)
+
+        val compactFieldWidth = (width - leading.width - mic.width - send.width).coerceAtLeast(0)
+        // Half a line of slack, so rounding never mistakes one line for two.
+        val oneLine = lineHeight.toPx() + FieldVerticalPadding.toPx() * 2
+        val expanded = measurables[1].minIntrinsicHeight(compactFieldWidth) > oneLine + lineHeight.toPx() / 2
+
+        // Expanded, the field is inset so its text starts where the + glyph does.
+        val inset = ExpandedFieldInset.roundToPx()
+        val fieldWidth = if (expanded) width - inset * 2 else compactFieldWidth
+        val field = measurables[1].measure(
+            Constraints(minWidth = fieldWidth, maxWidth = fieldWidth, maxHeight = constraints.maxHeight),
+        )
+        if (expanded) {
+            // The button row tucks into the field's bottom padding rather than stacking below it.
+            val rowTop = field.height - FieldVerticalPadding.roundToPx() / 2
+            val height = rowTop + buttonsHeight
+            layout(width, height) {
+                field.placeRelative(inset, 0)
+                fun yOf(childHeight: Int) = rowTop + (buttonsHeight - childHeight) / 2
+                leading.placeRelative(0, yOf(leading.height))
+                mic.placeRelative(width - send.width - mic.width, yOf(mic.height))
+                send.placeRelative(width - send.width, yOf(send.height))
+            }
+        } else {
+            // Compact only ever holds one line (more would have expanded), so centring is right
+            // — and it matters, because one line isn't always the 48dp of the buttons: on some
+            // phones the CJK system font sets a line a few dp taller than Latin text does.
+            // Bottom-aligned, that difference all lands above the buttons and they sit visibly
+            // low beside a Chinese placeholder.
+            val height = maxOf(buttonsHeight, field.height)
+            layout(width, height) {
+                fun yOf(childHeight: Int) = (height - childHeight) / 2
+                leading.placeRelative(0, yOf(leading.height))
+                field.placeRelative(leading.width, yOf(field.height))
+                mic.placeRelative(width - send.width - mic.width, yOf(mic.height))
+                send.placeRelative(width - send.width, yOf(send.height))
+            }
+        }
+    }
+}
+
+private val FieldVerticalPadding = 12.dp
+
+/**
+ * Field's own 4dp start padding + this = 16dp: where the + glyph's stroke starts (its 24dp
+ * icon sits 12dp into the 48dp button, and the glyph is drawn 4–5dp inside the icon).
+ */
+private val ExpandedFieldInset = 12.dp
+
+/** Corner of the composer: half its one-line height, so an empty composer is a true pill. */
+private val InputBarCorner = 28.dp
 
 /**
  * Sweeping Gemini-gradient border around the input pill while dictation is active —
@@ -742,12 +980,30 @@ private fun voiceShimmerTextStyle(): TextStyle {
 
 private const val SHIMMER_WIDTH_PX = 600f
 
+/**
+ * The blank page of a new chat: a short, large greeting that hands the turn to the user, and
+ * under it a few things they could ask — each one sends as-is when tapped.
+ *
+ * The greeting is deliberately a headline rather than a paragraph of instructions; the
+ * suggestions below it are the examples, and they can be acted on instead of only read.
+ * Scrolls when the keyboard leaves too little room, centred otherwise.
+ */
 @Composable
-private fun GreetingContent(modifier: Modifier = Modifier) {
-    Box(modifier = modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+internal fun GreetingContent(
+    suggestions: List<String>,
+    onPick: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(32.dp),
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .heightIn(min = maxHeight)
+                // 8 + the group's own 16 keeps the tiles 24dp from the edges, as the text was.
+                .padding(horizontal = 8.dp, vertical = 32.dp),
         ) {
             Icon(
                 Icons.Outlined.AutoAwesome,
@@ -760,9 +1016,21 @@ private fun GreetingContent(modifier: Modifier = Modifier) {
             Spacer(Modifier.height(16.dp))
             Text(
                 text = stringResource(R.string.ai_greeting),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.headlineSmall,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.semantics { heading() },
             )
+            if (suggestions.isNotEmpty()) {
+                Spacer(Modifier.height(24.dp))
+                // One group of tiles, as on the settings pages: each suggestion is a row to tap.
+                SettingsGroup(title = null, modifier = Modifier.widthIn(max = 480.dp)) {
+                    suggestions.forEach { suggestion ->
+                        item { shapes ->
+                            SettingsItem(shapes = shapes, title = suggestion, onClick = { onPick(suggestion) })
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -818,204 +1086,6 @@ private fun ApiKeyMissingContent(onOpenSettings: () -> Unit, modifier: Modifier 
 }
 
 /**
- * Pinned header for a flow-scoped conversation: the flow's own icon and name stand in for the
- * "who am I talking about" that an avatar gives a person-to-person chat.
- *
- * It replaces the app bar in this mode, so it carries the actions the bar would have had —
- * close, new chat, and the AI settings the user may need to switch models mid-conversation.
- * Because it never scrolls away, those actions stay one tap away however long the transcript
- * grows; [expanded] is what keeps that from costing half the screen, shrinking the profile
- * card to a single bar as soon as the user starts reading or typing.
- */
-@Composable
-private fun FlowChatHeader(
-    flow: EditingFlowInfo,
-    expanded: Boolean,
-    onToggleExpanded: () -> Unit,
-    onClose: () -> Unit,
-    onNewChat: () -> Unit,
-    onOpenSettings: () -> Unit,
-    newChatEnabled: Boolean,
-    tokensUsed: Int,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        shape = RoundedCornerShape(28.dp),
-        // It floats over the moving transcript, so it needs a shadow to separate from it.
-        shadowElevation = 3.dp,
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        AnimatedContent(
-            targetState = expanded,
-            transitionSpec = { fadeIn() togetherWith fadeOut() },
-            label = "flow-chat-header",
-        ) { isExpanded ->
-            if (isExpanded) {
-                ExpandedFlowHeader(
-                    flow = flow,
-                    onCollapse = onToggleExpanded,
-                    onClose = onClose,
-                    onNewChat = onNewChat,
-                    onOpenSettings = onOpenSettings,
-                    newChatEnabled = newChatEnabled,
-                    tokensUsed = tokensUsed,
-                )
-            } else {
-                CollapsedFlowHeader(
-                    flow = flow,
-                    onExpand = onToggleExpanded,
-                    onClose = onClose,
-                    onNewChat = onNewChat,
-                    onOpenSettings = onOpenSettings,
-                    newChatEnabled = newChatEnabled,
-                )
-            }
-        }
-    }
-}
-
-/** The full profile card: big identity mark, description, and named actions. */
-@Composable
-private fun ExpandedFlowHeader(
-    flow: EditingFlowInfo,
-    onCollapse: () -> Unit,
-    onClose: () -> Unit,
-    onNewChat: () -> Unit,
-    onOpenSettings: () -> Unit,
-    newChatEnabled: Boolean,
-    tokensUsed: Int,
-) {
-    Box(modifier = Modifier.fillMaxWidth()) {
-        IconButton(
-            onClick = onClose,
-            modifier = Modifier.align(Alignment.TopEnd),
-        ) {
-            Icon(
-                Icons.Outlined.Close,
-                contentDescription = stringResource(R.string.action_close),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier
-                .fillMaxWidth()
-                // Tapping the card itself is the second way to put it away, for users who
-                // never discover that tapping the transcript does it.
-                .clickable(
-                    onClickLabel = stringResource(R.string.ai_flow_header_collapse),
-                    onClick = onCollapse,
-                )
-                .padding(horizontal = 24.dp)
-                .padding(top = 24.dp, bottom = 20.dp),
-        ) {
-            FlowAvatar(flow = flow, size = 72.dp, ringSize = 96.dp)
-
-            Spacer(Modifier.height(16.dp))
-            Text(
-                text = flow.name,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                // The flow's own description when it has one, otherwise say what this
-                // screen is — the card must never show an empty second line.
-                text = flow.description.ifBlank {
-                    stringResource(R.string.ai_editing_flow_subtitle)
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-
-            // The user is spending their own API quota; don't make them guess how fast.
-            if (tokensUsed > 0) {
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    text = pluralStringResource(R.plurals.ai_tokens_used, tokensUsed, tokensUsed),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
-                )
-            }
-
-            Spacer(Modifier.height(20.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                // Named, not just drawn: a bare speech-bubble glyph under a flow's portrait
-                // reads as "comment on this", which is not what it does.
-                HeaderAction(
-                    icon = Icons.Outlined.AddComment,
-                    label = stringResource(R.string.ai_new_chat),
-                    onClick = onNewChat,
-                    enabled = newChatEnabled,
-                )
-                HeaderAction(
-                    icon = Icons.Outlined.Tune,
-                    label = stringResource(R.string.settings_ai_model),
-                    onClick = onOpenSettings,
-                )
-            }
-        }
-    }
-}
-
-/** The one-line form: still says which flow this is, still offers every action. */
-@Composable
-private fun CollapsedFlowHeader(
-    flow: EditingFlowInfo,
-    onExpand: () -> Unit,
-    onClose: () -> Unit,
-    onNewChat: () -> Unit,
-    onOpenSettings: () -> Unit,
-    newChatEnabled: Boolean,
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(
-                onClickLabel = stringResource(R.string.ai_flow_header_expand),
-                onClick = onExpand,
-            )
-            .padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
-    ) {
-        FlowAvatar(flow = flow, size = 36.dp, ringSize = 36.dp)
-        Spacer(Modifier.width(12.dp))
-        Text(
-            text = flow.name,
-            style = MaterialTheme.typography.titleMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
-        IconButton(onClick = onNewChat, enabled = newChatEnabled) {
-            Icon(
-                Icons.Outlined.AddComment,
-                contentDescription = stringResource(R.string.ai_new_chat),
-            )
-        }
-        IconButton(onClick = onOpenSettings) {
-            Icon(
-                Icons.Outlined.Tune,
-                contentDescription = stringResource(R.string.settings_ai_model),
-            )
-        }
-        IconButton(onClick = onClose) {
-            Icon(
-                Icons.Outlined.Close,
-                contentDescription = stringResource(R.string.action_close),
-            )
-        }
-    }
-}
-
-/**
  * The flow's icon on its own colour, ringed in a soft tint of that colour — the same identity
  * mark the flow shows everywhere else in the app, at whatever size the header needs.
  */
@@ -1044,49 +1114,67 @@ private fun FlowAvatar(flow: EditingFlowInfo, size: Dp, ringSize: Dp) {
     }
 }
 
-/** One of the header card's round, raised action buttons, with its name underneath. */
+/**
+ * What the composer's "+" opens, after the Gemini app's own: the things a conversation can be
+ * given or have done to it, each named, in a sheet rather than as glyphs in the bar. Starting
+ * over used to be a bare icon up there that nobody read as "throw this conversation away".
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun HeaderAction(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    onClick: () -> Unit,
-    enabled: Boolean = true,
+private fun ChatMenuSheet(
+    editingFlow: Boolean,
+    canStartOver: Boolean,
+    onAttach: () -> Unit,
+    onStartOver: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onDismiss: () -> Unit,
 ) {
-    val contentColor = MaterialTheme.colorScheme.onSurface
-        .copy(alpha = if (enabled) 1f else 0.38f)
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Surface(
-            onClick = onClick,
-            enabled = enabled,
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            shadowElevation = 2.dp,
-            modifier = Modifier.size(48.dp),
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    icon,
-                    // The visible label sits outside the button, so the button still needs
-                    // its own description for TalkBack.
-                    contentDescription = label,
-                    modifier = Modifier.size(22.dp),
-                    tint = contentColor,
-                )
-            }
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(modifier = Modifier.padding(bottom = 16.dp)) {
+            ChatMenuItem(
+                icon = Icons.Outlined.Image,
+                title = stringResource(R.string.ai_attach_image),
+                onClick = onAttach,
+            )
+            ChatMenuItem(
+                icon = Icons.Outlined.RestartAlt,
+                title = stringResource(R.string.ai_start_over),
+                summary = stringResource(
+                    if (editingFlow) R.string.ai_start_over_desc_flow else R.string.ai_start_over_desc,
+                ),
+                enabled = canStartOver,
+                onClick = onStartOver,
+            )
+            ChatMenuItem(
+                icon = Icons.Outlined.Tune,
+                title = stringResource(R.string.settings_ai_model),
+                onClick = onOpenSettings,
+            )
         }
-        Spacer(Modifier.height(6.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = contentColor,
-            textAlign = TextAlign.Center,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.widthIn(max = 96.dp),
-        )
     }
 }
+
+@Composable
+private fun ChatMenuItem(
+    icon: ImageVector,
+    title: String,
+    onClick: () -> Unit,
+    summary: String? = null,
+    enabled: Boolean = true,
+) {
+    ListItem(
+        colors = ListItemDefaults.inContainerColors(),
+        leadingContent = { Icon(icon, contentDescription = null) },
+        headlineContent = { Text(title) },
+        supportingContent = summary?.let { { Text(it) } },
+        modifier = Modifier
+            .clickable(enabled = enabled, onClick = onClick)
+            .alpha(if (enabled) 1f else 0.38f),
+    )
+}
+
+/** How far down the page the ambient glow fades out, measured from the top of the screen. */
+private val AmbientGlowHeight = 260.dp
 
 /**
  * How wide a bubble may get. Fixed dp would squeeze enlarged text into the same narrow column,
@@ -1108,39 +1196,24 @@ private fun bubbleMaxWidth(): Dp = 340.dp * LocalDensity.current.fontScale
 private fun bubbleGutter(): Dp = (56.dp / LocalDensity.current.fontScale).coerceAtLeast(28.dp)
 
 /**
- * Tappable openers above the input. Horizontally scrollable rather than wrapped, so a long
- * suggestion never pushes the input row off a small screen.
+ * Suggested replies to the assistant's opening message in a flow-edit chat, wrapped under it
+ * the way quick replies sit under a message — part of the conversation, not a strip bolted
+ * onto the input. Tapping one sends it.
  */
 @Composable
-private fun SuggestionChips(
+internal fun QuickReplies(
     suggestions: List<String>,
     onPick: (String) -> Unit,
-    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth(),
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier.fillMaxWidth(),
     ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier
-                .weight(1f)
-                .horizontalScroll(rememberScrollState())
-                .padding(start = 16.dp),
-        ) {
-            suggestions.forEach { suggestion ->
-                SuggestionChip(
-                    onClick = { onPick(suggestion) },
-                    label = { Text(suggestion) },
-                )
-            }
-        }
-        IconButton(onClick = onDismiss) {
-            Icon(
-                Icons.Outlined.Close,
-                contentDescription = stringResource(R.string.ai_suggestions_dismiss),
-                modifier = Modifier.size(18.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        suggestions.forEach { suggestion ->
+            SuggestionChip(
+                onClick = { onPick(suggestion) },
+                label = { Text(suggestion) },
             )
         }
     }
@@ -1214,7 +1287,7 @@ private fun StreamingBubble(text: String, modifier: Modifier = Modifier) {
         horizontalAlignment = Alignment.Start,
     ) {
         Surface(
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            color = SettingsDefaults.tileColor,
             contentColor = MaterialTheme.colorScheme.onSurface,
             shape = RoundedCornerShape(
                 topStart = 22.dp,
@@ -1270,6 +1343,8 @@ private fun MessageBubble(
     /** The user stopped this reply part-way — say so instead of pretending it's complete. */
     stopped: Boolean = false,
     showTimestamp: Boolean = true,
+    /** Images the user attached, shown above the text. */
+    images: List<File> = emptyList(),
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -1287,8 +1362,9 @@ private fun MessageBubble(
     ) {
         Box {
             Surface(
+                // The assistant speaks in the settings tiles' colour, a step off the page.
                 color = if (fromUser) MaterialTheme.colorScheme.primaryContainer
-                else MaterialTheme.colorScheme.surfaceContainerHigh,
+                else SettingsDefaults.tileColor,
                 contentColor = if (fromUser) MaterialTheme.colorScheme.onPrimaryContainer
                 else MaterialTheme.colorScheme.onSurface,
                 // A single small corner points the bubble at its sender; the other three stay
@@ -1320,9 +1396,27 @@ private fun MessageBubble(
                     ),
             ) {
                 Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                    if (images.isNotEmpty()) {
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.padding(bottom = if (text.isNotEmpty()) 8.dp else 0.dp),
+                        ) {
+                            images.forEach { file ->
+                                AsyncImage(
+                                    model = file,
+                                    contentDescription = stringResource(R.string.ai_attached_image),
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .size(if (images.size == 1) 200.dp else 96.dp)
+                                        .clip(RoundedCornerShape(14.dp)),
+                                )
+                            }
+                        }
+                    }
                     if (renderMarkdown) {
                         MarkdownText(markdown = text, style = MaterialTheme.typography.bodyLarge)
-                    } else {
+                    } else if (text.isNotEmpty()) {
                         Text(text = text, style = MaterialTheme.typography.bodyLarge)
                     }
                     Row(
@@ -1347,6 +1441,46 @@ private fun MessageBubble(
                 onCopy = { copyToClipboard(context, text) },
                 onEdit = onEdit,
             )
+        }
+    }
+}
+
+/** Images picked for the next message, each with a way to take it back out. */
+@Composable
+private fun PendingImages(
+    files: List<Pair<String, File>>,
+    onRemove: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+    ) {
+        files.forEach { (name, file) ->
+            Box {
+                AsyncImage(
+                    model = file,
+                    contentDescription = stringResource(R.string.ai_attached_image),
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(72.dp)
+                        .clip(RoundedCornerShape(14.dp)),
+                )
+                FilledTonalIconButton(
+                    onClick = { onRemove(name) },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .size(28.dp),
+                ) {
+                    Icon(
+                        Icons.Outlined.Close,
+                        contentDescription = stringResource(R.string.ai_remove_image),
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
         }
     }
 }
@@ -1522,7 +1656,7 @@ private fun copyToClipboard(context: Context, text: String) {
 @Composable
 private fun ThinkingBubble(step: AiChatOrchestrator.Progress?, modifier: Modifier = Modifier) {
     Surface(
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        color = SettingsDefaults.tileColor,
         shape = RoundedCornerShape(20.dp),
         modifier = modifier,
     ) {
@@ -1546,6 +1680,10 @@ private fun ThinkingBubble(step: AiChatOrchestrator.Progress?, modifier: Modifie
                     AiChatOrchestrator.Progress.BuildingFlow -> stringResource(R.string.ai_step_building_flow)
                     is AiChatOrchestrator.Progress.Repairing ->
                         stringResource(R.string.ai_step_repairing, step.attempt)
+                    is AiChatOrchestrator.Progress.Retrying ->
+                        stringResource(R.string.ai_step_retrying, step.attempt, step.maxAttempts)
+                    is AiChatOrchestrator.Progress.WaitingForQuota ->
+                        stringResource(R.string.ai_step_waiting_quota, step.secondsLeft)
                     null -> null
                 }
                 if (stepText != null) {
@@ -1560,8 +1698,9 @@ private fun ThinkingBubble(step: AiChatOrchestrator.Progress?, modifier: Modifie
     }
 }
 
+// internal: app/src/screenshotTest renders a proposal with a diff.
 @Composable
-private fun FlowPreviewCard(
+internal fun FlowPreviewCard(
     flow: FlowJson,
     saved: Boolean,
     isUpdate: Boolean,
@@ -1574,211 +1713,205 @@ private fun FlowPreviewCard(
     // The model is told to resend the COMPLETE flow, so a one-line change comes back as a full
     // reprint. Without a diff the user has to spot the difference by eye, every single time.
     val diff = remember(flow, baseline) { baseline?.let { diffFlows(it, flow) } }
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        ),
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = flow.name, style = MaterialTheme.typography.titleLarge)
-            if (flow.description.isNotBlank()) {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = flow.description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Spacer(Modifier.height(12.dp))
-
-            if (diff != null) {
-                FlowDiffContent(diff = diff, context = context)
-            } else {
-                flow.triggers.forEach { trigger ->
-                    val type = runCatching { TriggerType.valueOf(trigger.type) }.getOrNull() ?: return@forEach
-                    val info = type.info(context)
-                    PreviewRow(
-                        icon = { Icon(info.icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary) },
-                        label = info.label,
-                        summary = type.configSummary(context, trigger.config.toStringMap()),
-                    )
-                }
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                flow.actions.sortedBy { it.order }.forEach { action ->
-                    val type = runCatching { ActionType.valueOf(action.type) }.getOrNull() ?: return@forEach
-                    val info = type.info(context)
-                    PreviewRow(
-                        icon = { Icon(info.icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.secondary) },
-                        label = info.label,
-                        summary = type.configSummary(context, action.config.toStringMap()),
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(12.dp))
-            Text(
-                text = stringResource(R.string.ai_flow_disabled_note),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(8.dp))
-            Button(
-                onClick = onSave,
-                enabled = !saved,
-                modifier = Modifier.align(Alignment.End),
-            ) {
-                Text(
-                    stringResource(
-                        when {
-                            saved -> R.string.ai_flow_saved
-                            isUpdate -> R.string.ai_update_flow
-                            else -> R.string.ai_save_flow
-                        },
-                    ),
-                )
-            }
+    // Laid out like the flow editor — the same sections, the same tiles with the same icons —
+    // so what the user approves here looks like what they will find when they open the flow.
+    // It used to be a card of indented text lines split by a rule, a third look for the same
+    // triggers and actions.
+    val triggers: List<PreviewStep>
+    val actions: List<PreviewStep>
+    if (diff != null) {
+        triggers = diff.triggers.map { previewStep(it, context, isTrigger = true) }
+        actions = diff.actions.map { previewStep(it, context, isTrigger = false) }
+    } else {
+        triggers = flow.triggers.mapNotNull { trigger ->
+            val type = runCatching { TriggerType.valueOf(trigger.type) }.getOrNull() ?: return@mapNotNull null
+            val info = type.info(context)
+            PreviewStep(info.icon, info.label, type.configSummary(context, trigger.config.toStringMap()))
+        }
+        actions = flow.actions.sortedBy { it.order }.mapNotNull { action ->
+            val type = runCatching { ActionType.valueOf(action.type) }.getOrNull() ?: return@mapNotNull null
+            val info = type.info(context)
+            PreviewStep(info.icon, info.label, type.configSummary(context, action.config.toStringMap()))
         }
     }
-}
 
-/**
- * The proposal as a change list. Unchanged steps are dimmed rather than hidden — the user still
- * needs to see the shape of the flow they're approving, just not to hunt through it.
- */
-@Composable
-private fun FlowDiffContent(diff: FlowDiff, context: Context) {
-    if (diff.isEmpty) {
+    // A panel of its own, a step off the page, so the proposal reads as one thing the assistant
+    // handed over rather than tiles loose among the bubbles; the tiles inside keep the tile
+    // colour, a step off the panel.
+    Surface(
+        color = SettingsDefaults.panelColor,
+        shape = RoundedCornerShape(28.dp),
+        modifier = modifier.fillMaxWidth().padding(vertical = 4.dp),
+    ) {
+    Column(modifier = Modifier.padding(12.dp)) {
         Text(
-            text = stringResource(R.string.ai_diff_no_changes),
+            text = flow.name,
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+        )
+        if (flow.description.isNotBlank()) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = flow.description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 8.dp),
+            )
+        }
+        if (diff?.isEmpty == true) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.ai_diff_no_changes),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 8.dp),
+            )
+        }
+
+        PreviewGroup(title = stringResource(R.string.fd_section_when), steps = triggers)
+        PreviewGroup(title = stringResource(R.string.fd_section_then), steps = actions)
+
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = stringResource(R.string.ai_flow_disabled_note),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 8.dp),
         )
         Spacer(Modifier.height(8.dp))
+        Button(
+            onClick = onSave,
+            enabled = !saved,
+            modifier = Modifier.align(Alignment.End),
+        ) {
+            Text(
+                stringResource(
+                    when {
+                        saved -> R.string.ai_flow_saved
+                        isUpdate -> R.string.ai_update_flow
+                        else -> R.string.ai_save_flow
+                    },
+                ),
+            )
+        }
     }
-    diff.triggers.forEach { row -> DiffRow(row = row, context = context, isTrigger = true) }
-    if (diff.triggers.isNotEmpty() && diff.actions.isNotEmpty()) {
-        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
     }
-    diff.actions.forEach { row -> DiffRow(row = row, context = context, isTrigger = false) }
 }
 
-@Composable
-private fun DiffRow(row: FlowDiffRow, context: Context, isTrigger: Boolean) {
+/** One trigger or action of a proposal, ready to draw. [kind] is null outside a diff. */
+private data class PreviewStep(
+    val icon: ImageVector?,
+    val label: String,
+    val summary: String,
+    val kind: DiffKind? = null,
+    /** "key: before → after" for an edited step — the whole point of the diff for it. */
+    val changes: List<String> = emptyList(),
+)
+
+private fun previewStep(row: FlowDiffRow, context: Context, isTrigger: Boolean): PreviewStep {
     // A type the app doesn't know can't be summarised; the raw name is still better than a gap.
+    val icon: ImageVector?
     val label: String
     val summary: String
     if (isTrigger) {
         val type = runCatching { TriggerType.valueOf(row.type) }.getOrNull()
+        icon = type?.info(context)?.icon
         label = type?.info(context)?.label ?: row.type
         summary = type?.configSummary(context, row.config).orEmpty()
     } else {
         val type = runCatching { ActionType.valueOf(row.type) }.getOrNull()
+        icon = type?.info(context)?.icon
         label = type?.info(context)?.label ?: row.type
         summary = type?.configSummary(context, row.config).orEmpty()
     }
+    val changes = if (row.kind == DiffKind.CHANGED) {
+        row.changedKeys.map { key ->
+            context.getString(
+                R.string.ai_diff_field_change,
+                key,
+                row.previousConfig[key].orEmpty(),
+                row.config[key].orEmpty(),
+            )
+        }
+    } else {
+        emptyList()
+    }
+    return PreviewStep(icon, label, summary, row.kind, changes)
+}
 
-    // Colour alone can't carry the meaning — every row also has a marker and a word.
-    val accent = when (row.kind) {
-        DiffKind.ADDED -> MaterialTheme.colorScheme.primary
-        DiffKind.REMOVED -> MaterialTheme.colorScheme.error
-        DiffKind.CHANGED -> MaterialTheme.colorScheme.tertiary
-        DiffKind.UNCHANGED -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
-    val marker = when (row.kind) {
-        DiffKind.ADDED -> "+"
-        DiffKind.REMOVED -> "−"
-        DiffKind.CHANGED -> "~"
-        DiffKind.UNCHANGED -> " "
-    }
-    val kindLabel = when (row.kind) {
-        DiffKind.ADDED -> stringResource(R.string.ai_diff_added)
-        DiffKind.REMOVED -> stringResource(R.string.ai_diff_removed)
-        DiffKind.CHANGED -> stringResource(R.string.ai_diff_changed)
-        DiffKind.UNCHANGED -> null
-    }
-
-    Row(
-        verticalAlignment = Alignment.Top,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-    ) {
-        Text(
-            text = marker,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Bold,
-            color = accent,
-        )
-        Spacer(Modifier.width(8.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = if (row.kind == DiffKind.UNCHANGED) {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    },
-                )
-                if (kindLabel != null) {
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = kindLabel,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = accent,
-                    )
-                }
-            }
-            if (summary.isNotBlank()) {
-                Text(
-                    text = summary,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textDecoration = if (row.kind == DiffKind.REMOVED) {
-                        TextDecoration.LineThrough
-                    } else {
-                        null
-                    },
-                )
-            }
-            // "Volume 8 → 15" is the whole point of the diff for an edited step.
-            if (row.kind == DiffKind.CHANGED) {
-                row.changedKeys.forEach { key ->
-                    Text(
-                        text = stringResource(
-                            R.string.ai_diff_field_change,
-                            key,
-                            row.previousConfig[key].orEmpty(),
-                            row.config[key].orEmpty(),
-                        ),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = accent,
-                    )
-                }
-            }
+/** A section of the proposal: the editor's section title over one group of tiles. */
+@Composable
+private fun PreviewGroup(title: String, steps: List<PreviewStep>) {
+    if (steps.isEmpty()) return
+    SettingsGroupTitle(title)
+    Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
+        steps.forEachIndexed { index, step ->
+            PreviewStepTile(step = step, shapes = settingsItemShapes(index, steps.size))
         }
     }
 }
 
 @Composable
-private fun PreviewRow(icon: @Composable () -> Unit, label: String, summary: String) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(vertical = 4.dp),
+private fun PreviewStepTile(step: PreviewStep, shapes: ListItemShapes) {
+    // Colour alone can't carry the meaning — a changed row also says in words what happened.
+    val accent = when (step.kind) {
+        DiffKind.ADDED -> MaterialTheme.colorScheme.primary
+        DiffKind.REMOVED -> MaterialTheme.colorScheme.error
+        DiffKind.CHANGED -> MaterialTheme.colorScheme.tertiary
+        DiffKind.UNCHANGED, null -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    val kindLabel = when (step.kind) {
+        DiffKind.ADDED -> stringResource(R.string.ai_diff_added)
+        DiffKind.REMOVED -> stringResource(R.string.ai_diff_removed)
+        DiffKind.CHANGED -> stringResource(R.string.ai_diff_changed)
+        DiffKind.UNCHANGED, null -> null
+    }
+    // Unchanged steps are dimmed rather than hidden: the user still needs to see the shape of
+    // the flow they're approving, just not to hunt through it.
+    val dimmed = step.kind == DiffKind.UNCHANGED
+    Surface(
+        color = SettingsDefaults.tileColor,
+        shape = shapes.shape,
+        modifier = Modifier.fillMaxWidth(),
     ) {
-        icon()
-        Spacer(Modifier.width(8.dp))
-        Text(text = label, style = MaterialTheme.typography.bodyLarge)
-        Spacer(Modifier.width(8.dp))
-        Text(
-            text = summary,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .alpha(if (dimmed) 0.6f else 1f),
+        ) {
+            Icon(
+                step.icon ?: Icons.Outlined.ErrorOutline,
+                contentDescription = null,
+                tint = if (step.kind == null || dimmed) MaterialTheme.colorScheme.onSurfaceVariant else accent,
+                modifier = Modifier.size(24.dp),
+            )
+            Spacer(Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = step.label,
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    if (kindLabel != null) {
+                        Spacer(Modifier.width(8.dp))
+                        Text(text = kindLabel, style = MaterialTheme.typography.labelMedium, color = accent)
+                    }
+                }
+                if (step.summary.isNotBlank()) {
+                    Text(
+                        text = step.summary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textDecoration = if (step.kind == DiffKind.REMOVED) TextDecoration.LineThrough else null,
+                    )
+                }
+                step.changes.forEach { change ->
+                    Text(text = change, style = MaterialTheme.typography.labelMedium, color = accent)
+                }
+            }
+        }
     }
 }
 

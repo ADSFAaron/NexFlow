@@ -53,8 +53,15 @@ object FlowDraftMapper {
      * @param knownGlobals names of the global variables that exist on this device. A generated
      *   SET_VARIABLE writing any other `g:` name is an error, not a new global — the engine
      *   refuses to run it, so it has to go back to Gemini for repair instead of shipping.
+     * @param isInstalled whether a package name is real on this device. A made-up one is
+     *   well-formed, so without this it passes validation and the flow only fails when it runs.
      */
-    fun fromArgs(args: JsonObject, context: Context, knownGlobals: Set<String> = emptySet()): DraftResult {
+    fun fromArgs(
+        args: JsonObject,
+        context: Context,
+        knownGlobals: Set<String> = emptySet(),
+        isInstalled: (String) -> Boolean = { true },
+    ): DraftResult {
         val errors = mutableListOf<String>()
 
         val name = args.stringValue("name")?.trim().orEmpty()
@@ -64,11 +71,11 @@ object FlowDraftMapper {
         if (triggerLogic !in listOf("ANY", "ALL")) errors += "trigger_logic: must be ANY or ALL"
 
         val triggers = (args["triggers"] as? JsonArray).orEmpty()
-            .mapIndexedNotNull { i, element -> parseTrigger(element, i, context, errors) }
+            .mapIndexedNotNull { i, element -> parseTrigger(element, i, context, isInstalled, errors) }
         if (triggers.isEmpty()) errors += "triggers: at least one trigger is required"
 
         val actions = (args["actions"] as? JsonArray).orEmpty()
-            .mapIndexedNotNull { i, element -> parseAction(element, i, context, errors) }
+            .mapIndexedNotNull { i, element -> parseAction(element, i, context, isInstalled, errors) }
         if (actions.isEmpty()) errors += "actions: at least one action is required"
 
         errors += validateMenuMarkers(actions)
@@ -104,6 +111,7 @@ object FlowDraftMapper {
         element: JsonElement,
         index: Int,
         context: Context,
+        isInstalled: (String) -> Boolean,
         errors: MutableList<String>,
     ): TriggerJson? {
         val obj = element as? JsonObject
@@ -119,7 +127,7 @@ object FlowDraftMapper {
                     }"
             }
         val config = parseConfig(obj["config"], "triggers[$index].config", errors)
-        validateConfig(config, type.info(context).fields, "triggers[$index]", type.name, errors)
+        validateConfig(config, type.info(context).fields, "triggers[$index]", type.name, isInstalled, errors)
         return TriggerJson(id = UUID.randomUUID().toString(), type = type.name, config = config)
     }
 
@@ -127,6 +135,7 @@ object FlowDraftMapper {
         element: JsonElement,
         index: Int,
         context: Context,
+        isInstalled: (String) -> Boolean,
         errors: MutableList<String>,
     ): ActionJson? {
         val obj = element as? JsonObject
@@ -142,7 +151,7 @@ object FlowDraftMapper {
                     }"
             }
         val config = parseConfig(obj["config"], "actions[$index].config", errors)
-        validateConfig(config, type.info(context).fields, "actions[$index]", type.name, errors)
+        validateConfig(config, type.info(context).fields, "actions[$index]", type.name, isInstalled, errors)
         return ActionJson(
             id = UUID.randomUUID().toString(),
             type = type.name,
@@ -183,9 +192,11 @@ object FlowDraftMapper {
         fields: List<com.nexflow.ui.flows.detail.config.ConfigField>,
         prefix: String,
         typeName: String,
+        isInstalled: (String) -> Boolean,
         errors: MutableList<String>,
     ) {
         val allowedKeys = AiCatalog.capturableKeys(fields)
+        val packageKeys = AiCatalog.packageKeys(fields)
         config.forEach { (key, value) ->
             if (key !in allowedKeys) {
                 errors += "$prefix.config: unknown key \"$key\" for $typeName. " +
@@ -205,6 +216,10 @@ object FlowDraftMapper {
                 if (n == null || n !in range) {
                     errors += "$prefix.config.$key: must be an integer in ${range.first}..${range.last}"
                 }
+            }
+            if (key in packageKeys && content.isNotBlank() && !isInstalled(content)) {
+                errors += "$prefix.config.$key: \"$content\" is not installed on this device. " +
+                    "Call search_installed_apps and use a package_name it returns."
             }
         }
     }

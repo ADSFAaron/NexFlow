@@ -274,4 +274,24 @@ class FlowInterpreterStepReportTest {
         assertEquals(ActionType.TOAST, steps[1].actionType)
         assertEquals(1, steps[1].depth)
     }
+
+    /** "Closed it" and "nobody was there to answer" end the run the same way but read differently. */
+    @Test
+    fun `a menu that ends unanswered says whether it was dismissed or timed out`() = runTest {
+        for ((skipped, note) in listOf(
+            ActionResult.Skipped() to FlowInterpreter.NOTE_MENU_CANCELLED,
+            ActionResult.Skipped(FlowInterpreter.NOTE_MENU_TIMED_OUT) to FlowInterpreter.NOTE_MENU_TIMED_OUT,
+        )) {
+            val unanswered = object : ActionExecutor {
+                override val supportedType = ActionType.SHOW_MENU
+                override suspend fun execute(action: Action, variables: MutableMap<String, String>) = skipped
+            }
+            val (result, steps) = run(
+                listOf(action(ActionType.SHOW_MENU, 0), action(ActionType.END_MENU, 1)),
+                extra = arrayOf(unanswered),
+            )
+            assertTrue(result is InterpreterResult.Cancelled)
+            assertEquals(note, steps.single().note)
+        }
+    }
 }

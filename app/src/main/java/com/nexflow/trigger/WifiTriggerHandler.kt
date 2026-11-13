@@ -51,6 +51,9 @@ class WifiTriggerHandler @Inject constructor(
         val targetEvent = trigger.config["event"]?.uppercase() ?: "CONNECTED"
 
         val receiver = object : BroadcastReceiver() {
+            /** Connected or not, as of the last broadcast; null until the first one arrives. */
+            private var lastConnected: Boolean? = null
+
             override fun onReceive(ctx: Context, intent: Intent) {
                 if (intent.action != WifiManager.NETWORK_STATE_CHANGED_ACTION) return
 
@@ -58,6 +61,16 @@ class WifiTriggerHandler @Inject constructor(
                     ?: return
 
                 val isConnected = networkInfo.isConnected
+                // Fire on a change only. This broadcast is sticky, so registering redelivers the
+                // current state "as if it had just been broadcast" (Context.registerReceiver) —
+                // which made every engine restart announce the network the phone was already on.
+                // And one connection goes through several detailed states (connecting,
+                // authenticating, obtaining an address...), each its own broadcast: without the
+                // comparison a single disconnect fired DISCONNECTED several times.
+                val changed = lastConnected != isConnected
+                lastConnected = isConnected
+                if (isInitialStickyBroadcast || !changed) return
+
                 val eventMatches = when (targetEvent) {
                     "CONNECTED" -> isConnected
                     "DISCONNECTED" -> !isConnected

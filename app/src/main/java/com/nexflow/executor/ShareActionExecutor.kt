@@ -23,6 +23,7 @@ import com.nexflow.core.automation.model.Action
 import com.nexflow.core.automation.model.ActionType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import com.nexflow.core.automation.LogText
 
 class ShareActionExecutor @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -32,7 +33,7 @@ class ShareActionExecutor @Inject constructor(
 
     override suspend fun execute(action: Action, variables: MutableMap<String, String>): ActionResult {
         val text = action.config["text"]?.trim()?.takeIf { it.isNotBlank() }
-            ?: return ActionResult.Failure("Share: no text configured")
+            ?: return ActionResult.Failure(LogText.of("share_no_text"))
 
         return runCatching {
             val intent = Intent(Intent.ACTION_SEND).apply {
@@ -44,6 +45,6 @@ class ShareActionExecutor @Inject constructor(
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             })
             ActionResult.Success
-        }.getOrElse { ActionResult.Failure("Share failed: ${it.message}") }
+        }.getOrElse { failureFrom("share_failed", it) }
     }
 }

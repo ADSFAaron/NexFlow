@@ -26,5 +26,9 @@ interface ActionExecutor {
 sealed class ActionResult {
     data object Success : ActionResult()
     data class Failure(val message: String, val cause: Throwable? = null) : ActionResult()
-    data object Skipped : ActionResult()
+    /**
+     * Did not run, without that being an error. [note] is a log token saying why (see the NOTE_
+     * constants in FlowInterpreter); null leaves the choice of wording to the interpreter.
+     */
+    data class Skipped(val note: String? = null) : ActionResult()
 }

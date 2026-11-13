@@ -6,25 +6,13 @@ import android.graphics.Bitmap
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
@@ -35,8 +23,6 @@ import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.stringResource
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -44,15 +30,13 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.state.updateAppWidgetState
-import androidx.lifecycle.lifecycleScope
-import com.nexflow.R
 import com.nexflow.core.automation.model.Flow
 import com.nexflow.core.automation.repository.FlowRepository
 import com.nexflow.ui.common.FlowIcons
+import com.nexflow.ui.common.FlowPickerPage
 import com.nexflow.ui.theme.NexFlowTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
@@ -62,15 +46,21 @@ class WidgetConfigureActivity : ComponentActivity() {
 
     @Inject lateinit var flowRepository: FlowRepository
 
-    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Draw behind the status and navigation bars like MainActivity, so the page colour
+        // reaches the screen edges; Android 15+ forces this, but on 12-14 the bars stay black.
+        enableEdgeToEdge()
 
         val appWidgetId = intent.getIntExtra(
             AppWidgetManager.EXTRA_APPWIDGET_ID,
             AppWidgetManager.INVALID_APPWIDGET_ID,
         )
-        if (appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
+        // The activity is exported (the launcher has to reach it), so the id is whatever the
+        // caller sent. One that is not a NexFlow widget makes Glance's getGlanceIdBy throw
+        // "Invalid AppWidget ID" — close instead of crashing.
+        val provider = AppWidgetManager.getInstance(this).getAppWidgetInfo(appWidgetId)?.provider
+        if (appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID || provider?.packageName != packageName) {
             finish()
             return
         }
@@ -78,53 +68,32 @@ class WidgetConfigureActivity : ComponentActivity() {
         // Default RESULT_CANCELED: if user backs out, widget is not added to home screen
         setResult(RESULT_CANCELED, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId))
 
+        // The legacy copy is written on every save, so it is the quick synchronous way to know
+        // which flow a widget being reconfigured runs now.
+        val current = getSharedPreferences(PREFS, MODE_PRIVATE).getString("${KEY_FLOW_ID}_$appWidgetId", null)
+
         setContent {
             NexFlowTheme {
                 val flows by flowRepository.observeAll().collectAsState(emptyList())
+                // The icon is rasterised from a vector painter, which only exists in composition:
+                // the tap records the flow, and the block below draws its icon and saves. Holding
+                // it as state also turns a second tap during the save into a no-op.
+                var picked by remember { mutableStateOf<Flow?>(null) }
 
-                Scaffold(
-                    topBar = {
-                        TopAppBar(title = { Text(stringResource(R.string.widget_configure_title)) })
-                    },
-                ) { innerPadding ->
-                    if (flows.isEmpty()) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(innerPadding),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center,
-                        ) {
-                            Text(
-                                text = stringResource(R.string.widget_no_flows),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(innerPadding),
-                            contentPadding = PaddingValues(vertical = 8.dp),
-                        ) {
-                            items(flows, key = { it.id }) { flow ->
-                                FlowPickerItem(
-                                    flow = flow,
-                                    onClick = { iconBitmap ->
-                                        lifecycleScope.launch {
-                                            saveAndUpdate(appWidgetId, flow, iconBitmap)
-                                            setResult(
-                                                RESULT_OK,
-                                                Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId),
-                                            )
-                                            finish()
-                                        }
-                                    },
-                                )
-                                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                            }
-                        }
+                FlowPickerPage(
+                    flows = flows,
+                    selectedId = picked?.id ?: current,
+                    onPick = { flow -> if (picked == null) picked = flow },
+                    onBack = ::finish,
+                )
+
+                picked?.let { flow ->
+                    val iconPainter = rememberVectorPainter(FlowIcons.vector(flow.icon))
+                    val density = LocalDensity.current
+                    LaunchedEffect(flow) {
+                        saveAndUpdate(appWidgetId, flow, renderWidgetIcon(iconPainter, density))
+                        setResult(RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId))
+                        finish()
                     }
                 }
             }
@@ -184,33 +153,6 @@ class WidgetConfigureActivity : ComponentActivity() {
         val PREF_ICON_PATH = stringPreferencesKey("icon_path")
         val PREF_ICON_COLOR = stringPreferencesKey("icon_color")
         val PREF_ICON_STAMP = longPreferencesKey("icon_stamp")
-    }
-}
-
-@Composable
-private fun FlowPickerItem(flow: Flow, onClick: (Bitmap) -> Unit) {
-    // The vector painter must be created in composition; the actual rasterisation
-    // happens on click, off the UI clock.
-    val iconPainter = rememberVectorPainter(FlowIcons.vector(flow.icon))
-    val density = LocalDensity.current
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = { onClick(renderWidgetIcon(iconPainter, density)) })
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-    ) {
-        Text(
-            text = flow.name,
-            style = MaterialTheme.typography.bodyLarge,
-        )
-        if (flow.description.isNotBlank()) {
-            Text(
-                text = flow.description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 2.dp),
-            )
-        }
     }
 }
 

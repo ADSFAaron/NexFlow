@@ -76,7 +76,6 @@ import androidx.compose.material3.FloatingActionButtonMenu
 import androidx.compose.material3.FloatingActionButtonMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -86,7 +85,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -152,6 +150,9 @@ import com.nexflow.permissions.PermissionReminder
 import com.nexflow.prefs.ServiceEnabledPrefs
 import com.nexflow.ui.common.FlowIcons
 import com.nexflow.ui.common.PermissionSetupDialogs
+import com.nexflow.ui.common.SettingsDefaults
+import com.nexflow.ui.common.SettingsSwitch
+import com.nexflow.ui.common.SettingsTopAppBar
 import com.nexflow.ui.common.geminiGradientTint
 import com.nexflow.ui.flows.detail.config.info
 import com.nexflow.service.FlowExecutionService
@@ -160,6 +161,10 @@ import com.nexflow.ui.flowimport.ImportReviewDialog
 import com.nexflow.ui.flowimport.ImportViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -171,6 +176,7 @@ fun FlowsScreen(
     onAiClick: () -> Unit = {},
 ) {
     val flows by vm.flows.collectAsState()
+    val flowsLoaded by vm.loaded.collectAsState()
     val flowsMissingPermissions by vm.flowsMissingPermissions.collectAsState()
     val runningFlows by vm.runningFlows.collectAsState()
     // What the indicators actually show: the live set, with each flow held on screen long
@@ -183,6 +189,8 @@ fun FlowsScreen(
     var permissionReminder by remember { mutableStateOf<PermissionReminder?>(null) }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val listState = rememberLazyListState()
+    // Phone in landscape (< 480dp tall). Decides both the FAB's size and the list's gutter.
+    val compactHeight = LocalConfiguration.current.screenHeightDp < 480
     val context = LocalContext.current
     var fabMenuExpanded by rememberSaveable { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -289,10 +297,13 @@ fun FlowsScreen(
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        // The same page and bar as the Settings and Logs tabs, so switching tabs does not
+        // change the background under the bottom bar.
+        containerColor = SettingsDefaults.pageColor,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            LargeTopAppBar(
-                title = { Text(stringResource(R.string.flows_title)) },
+            SettingsTopAppBar(
+                title = stringResource(R.string.flows_title),
                 scrollBehavior = scrollBehavior,
                 actions = {
                     IconButton(onClick = onAiClick) {
@@ -347,12 +358,26 @@ fun FlowsScreen(
                         modifier = Modifier.align(Alignment.TopCenter),
                     )
                 }
-                EmptyFlowsContent(modifier = Modifier.fillMaxSize())
+                // Not before the flows have been read: an empty list is also what the page
+                // starts from, and "No flows yet" would flash on every launch.
+                if (flowsLoaded) EmptyFlowsContent(modifier = Modifier.fillMaxSize())
             }
         } else {
+            // Phone in landscape: the screen is too short for the FAB to sit below the first
+            // card, and the cards run to the right edge — so the FAB lands on the first card's
+            // switch before anything has scrolled. A gutter the FAB's width on that side keeps
+            // the cards out from under it. Upright, the FAB only overlaps the list's end, which
+            // the spacer at the bottom already scrolls clear.
+            val layoutDirection = LocalLayoutDirection.current
             LazyColumn(
                 state = listState,
-                contentPadding = innerPadding,
+                contentPadding = PaddingValues(
+                    start = innerPadding.calculateStartPadding(layoutDirection),
+                    top = innerPadding.calculateTopPadding(),
+                    end = innerPadding.calculateEndPadding(layoutDirection) +
+                        if (compactHeight) FabGutter else 0.dp,
+                    bottom = innerPadding.calculateBottomPadding(),
+                ),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxSize(),
             ) {
@@ -469,7 +494,6 @@ fun FlowsScreen(
                 // Compact height (phone in landscape, < 480dp tall): the large 96dp FAB's
                 // expanded menu doesn't fit — the item column becomes scroll-constrained and
                 // the close button overlaps the pills. Fall back to the baseline FAB size.
-                val compactHeight = LocalConfiguration.current.screenHeightDp < 480
                 ToggleFloatingActionButton(
                     checked = fabMenuExpanded,
                     onCheckedChange = { fabMenuExpanded = it },
@@ -995,7 +1019,9 @@ internal fun FlowCard(
     running: Boolean = false,
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+        // A card rather than a segmented tile (a flow has too much on it for one), but in the
+        // tiles' colour, so it stands off the page exactly as a settings tile does.
+        colors = CardDefaults.cardColors(containerColor = SettingsDefaults.tileColor),
         modifier = modifier.fillMaxWidth(),
         onClick = onClick,
     ) {
@@ -1031,7 +1057,7 @@ internal fun FlowCard(
                 // The card's own click opens the detail screen, so the row can't be the
                 // toggleable — give the bare Switch an explicit label for TalkBack instead.
                 val switchDesc = stringResource(R.string.flows_flow_switch_desc, flow.name)
-                Switch(
+                SettingsSwitch(
                     checked = flow.enabled,
                     onCheckedChange = onToggle,
                     modifier = Modifier
@@ -1216,3 +1242,6 @@ private fun CreateFlowDialog(onDismiss: () -> Unit, onCreate: (String, String) -
         },
     )
 }
+
+/** Room for the baseline 56dp FAB plus the FAB menu's own 16dp edge spacing and a little air. */
+private val FabGutter = 56.dp + 16.dp + 8.dp

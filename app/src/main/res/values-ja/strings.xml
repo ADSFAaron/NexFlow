@@ -1,8 +1,8 @@
 <resources>
-    <string name="accessibility_service_description">NexFlow はユーザー補助サービスを 3 つの自動化機能に使用します。フローのスクリーンショット アクション実行時に画面を撮影すること、フローのシミュレートタップ アクション実行時に指定した座標でタップ操作を行うこと、前面に表示されたアプリを検出して「アプリ起動」トリガーを発火させることです。本サービスは前面アプリのパッケージ名のみを読み取り、画面の内容・テキスト・パスワードは読み取らず、いかなるデータもサーバーに送信しません。本サービスはお客様が手動で有効にした場合にのみ動作します。</string>
+    <string name="accessibility_service_description">NexFlow はユーザー補助サービスを 3 つの自動化機能に使用します。フローのスクリーンショット アクション実行時に画面を撮影して端末の「Pictures/Screenshots」フォルダに保存すること、フローのタップ／スワイプのシミュレート アクション実行時に指定した座標でタップやスワイプの操作を行うこと、前面に表示されたアプリを検出して「アプリ起動」トリガーを発火させることです。フローが撮影するスクリーンショットを除き、本サービスは前面アプリのパッケージ名のみを読み取り、画面上のテキスト・ボタン・パスワードは読み取らず、いかなるデータもサーバーに送信しません。本サービスはお客様が手動で有効にした場合にのみ動作します。</string>
 
     <!-- Widgets -->
-    <string name="widget_overview_description">最近のフローを表示してすばやく起動</string>
+    <string name="widget_overview_description">最近のフローや選んだフローを表示してすばやく起動</string>
     <string name="widget_single_description">単一フローのクイック起動ショートカット</string>
     <string name="widget_wide_description">ワイド版・単一フローのクイック起動ショートカット</string>
     <string name="widget_not_configured">タップしてフローを選択</string>
@@ -10,6 +10,15 @@
     <string name="widget_no_flows">フローがありません — まずアプリ内で作成してください</string>
     <string name="widget_no_runs">実行履歴がありません</string>
     <string name="widget_enabled_count">%1$d/%2$d 有効</string>
+    <string name="widget_overview_configure_title">ウィジェットのフロー</string>
+    <string name="widget_overview_mode_auto">自動</string>
+    <string name="widget_overview_mode_manual">手動で選択</string>
+    <string name="widget_overview_mode_auto_hint">最近実行したフローを表示し、空いた枠はほかのフローで埋めます。</string>
+    <string name="widget_overview_mode_manual_hint">チェックしたフローだけを、チェックした順に表示します（%1$d/%2$d）。</string>
+    <string name="widget_overview_position">%1$d 番目</string>
+    <string name="widget_overview_save">保存</string>
+    <string name="widget_overview_edit">フローを選択</string>
+    <string name="widget_overview_none_picked">フローが選択されていません。タップして選択</string>
     <string name="widget_preview_count">4/6 有効</string>
 
     <!-- Foreground service / tile -->
@@ -61,7 +70,7 @@
     <string name="fd_flow_skipped">スキップしました — 条件が成立していません</string>
     <string name="fd_export_flow">フローをエクスポート</string>
     <string name="fd_export">エクスポート</string>
-    <string name="fd_edit_with_ai">Gemini で編集</string>
+    <string name="fd_edit_with_ai">AI で編集</string>
     <string name="fd_section_when">〜のとき</string>
     <string name="fd_section_only_if">しかも〜の場合だけ</string>
     <string name="fd_section_then">実行する</string>
@@ -140,9 +149,23 @@
     <string name="settings_ai_model">AI モデル</string>
     <string name="settings_ai_model_need_key">先に API キーを設定してください</string>
     <string name="settings_ai_model_load_failed">モデル一覧を読み込めませんでした</string>
+    <string name="settings_ai_provider">AI サービス</string>
+    <string name="settings_ai_section_service">サービス</string>
+    <string name="settings_ai_value_unset">未設定</string>
+    <string name="settings_ai_not_configured">未設定 — AI アシスタントを使うには設定が必要です</string>
+    <!-- "Google Gemini · gemini-3.5-flash": the service in use and its model -->
+    <string name="settings_ai_summary">%1$s · %2$s</string>
+    <string name="settings_ai_provider_gemini">Google Gemini</string>
+    <string name="settings_ai_provider_custom">その他のサービス（OpenAI 互換）</string>
+    <string name="settings_ai_custom_desc">試験的な機能です。OpenAI、OpenRouter、Ollama などのサービスで使えますが、結果はモデルによって異なります。メッセージ、添付した画像、AI で編集するフローの全設定（トークンやパスワードを含む）がこのアドレスに送信されます。</string>
+    <string name="settings_ai_custom_url">ベース URL</string>
+    <string name="settings_ai_custom_url_error">https:// で始まるアドレスを入力してください。http:// は localhost でのみ使えます。</string>
+    <string name="settings_ai_custom_key">API キー（任意）</string>
+    <string name="settings_ai_custom_model">モデル名</string>
+    <string name="settings_ai_custom_model_error">モデル名を入力してください。</string>
     <string name="action_retry">再試行</string>
     <string name="ai_chat_title">AI アシスタント</string>
-    <string name="ai_greeting" formatted="false">作りたい自動化を説明してください — 例:「イヤホンを接続したら、メディア音量を 80% にして Spotify を開く」</string>
+    <string name="ai_greeting">スマホに何を任せますか？</string>
     <string name="ai_input_hint">自動化の内容を入力…</string>
     <string name="ai_send">送信</string>
     <string name="ai_stop">停止</string>
@@ -158,19 +181,18 @@
     <plurals name="ai_tokens_used">
         <item quantity="other">%1$d トークン使用</item>
     </plurals>
-    <string name="ai_suggestions_dismiss">候補を隠す</string>
     <string name="ai_retry">再試行</string>
     <string name="ai_key_get">無料で API キーを取得</string>
     <string name="ai_thinking">考え中…</string>
-    <string name="ai_step_contacting">Gemini と通信中…</string>
+    <string name="ai_step_contacting">AI サービスと通信中…</string>
     <string name="ai_step_searching_apps">インストール済みアプリを検索中…</string>
     <string name="ai_step_searching_shortcuts">アプリのショートカットを検索中…</string>
     <string name="ai_step_building_flow">フローを生成・検証中…</string>
     <string name="ai_step_repairing">検証エラーを修正中(%1$d 回目)…</string>
-    <string name="ai_new_chat">新しいチャット</string>
-    <string name="ai_editing_flow_subtitle">Gemini でこのフローを編集</string>
-    <string name="ai_flow_header_expand">フロー情報を表示</string>
-    <string name="ai_flow_header_collapse">フロー情報を隠す</string>
+    <string name="ai_step_retrying">AI サービスが混雑中のため再試行しています（%1$d/%2$d）…</string>
+    <string name="ai_start_over">最初から</string>
+    <string name="ai_start_over_desc">この会話を消去</string>
+    <string name="ai_start_over_desc_flow">この会話を消去して、このフローの編集を最初からやり直す</string>
     <string name="ai_editing_flow_intro">「%1$s」を読み込みました。変更したい内容を教えてください — 例えばステップの追加、時刻の変更、開くアプリの変更などです。</string>
     <string name="ai_update_flow">フローを更新</string>
     <string name="ai_save_flow">フローを保存</string>
@@ -179,8 +201,18 @@
     <string name="ai_key_missing_title">Gemini API キーが必要です</string>
     <string name="ai_key_missing_body">設定で Gemini API キーを追加してください。aistudio.google.com で無料で取得できます。</string>
     <string name="ai_key_missing_button">設定を開く</string>
-    <string name="ai_error_invalid_key">API キーが拒否されました。設定で Gemini API キーを確認してください。</string>
-    <string name="ai_error_rate_limited">レート制限に達しました。しばらくしてからもう一度お試しください。</string>
+    <string name="ai_error_invalid_key">API キーが拒否されました。設定で確認してください。</string>
+    <string name="ai_error_rate_limited">待機後も 1 分あたりのリクエスト上限を超えています。1 分ほどしてから再試行するか、設定で別のモデルを選んでください（クォータはモデルごとに別々です）。</string>
+    <string name="ai_error_quota_daily">このモデルの本日のクォータを使い切りました。%1$s にリセットされます。それまでは設定で別のモデルを選べます（クォータはモデルごとに別々です）。</string>
+    <string name="ai_error_quota_not_in_tier">お使いの API キーのプランにはこのモデルが含まれていません（クォータが 0）。設定で別のモデルを選ぶか、Google AI Studio でプロジェクトの課金を有効にしてください。</string>
+    <string name="ai_step_waiting_quota">1 分あたりの上限に達しました。%1$d 秒後に自動で続行します…</string>
+    <string name="ai_attach_image">画像を添付</string>
+    <string name="ai_remove_image">画像を削除</string>
+    <string name="ai_attached_image">添付した画像</string>
+    <plurals name="ai_image_limit">
+        <item quantity="other">1 件のメッセージに添付できる画像は %1$d 枚までです</item>
+    </plurals>
+    <string name="ai_error_unavailable">AI サービスが現在混雑しており、自動で再試行しても処理できませんでした。サービス側の一時的な状況で、通常は数分で解消します。しばらくしてから再度お試しいただくか、設定で別のモデルを選んでください。</string>
     <string name="ai_error_model_not_found">モデルが見つかりません。設定で別のモデルを選択してください。</string>
     <string name="ai_error_network">ネットワークエラー。接続を確認してもう一度お試しください。</string>
     <string name="ai_error_generic">エラーが発生しました:%1$s</string>
@@ -232,9 +264,10 @@
     <string name="settings_write_settings_required">明るさアクションに必要</string>
     <string name="settings_dnd">サイレントモードへのアクセス</string>
     <string name="settings_dnd_required">サイレントモード切り替えアクションに必要</string>
-    <string name="settings_adb">Wi-Fi・機内モード（ADB）</string>
+    <string name="settings_adb">機内モード（ADB）</string>
     <string name="settings_adb_granted">WRITE_SECURE_SETTINGS 許可済み — サイレント切り替えが有効</string>
-    <string name="settings_adb_required">ADB で一度実行すると Wi-Fi／機内モードをサイレントに切り替えられます：</string>
+    <string name="settings_adb_required">ADB で一度実行すると機内モードをサイレントに切り替えられます：</string>
+    <string name="settings_adb_summary">ADB で一度許可すると機内モードをサイレントに切り替えられます</string>
     <string name="settings_command_copied">コマンドをクリップボードにコピーしました</string>
     <string name="settings_copy_command">コマンドをコピー</string>
     <string name="settings_import_flow">フローをインポート</string>
@@ -391,6 +424,8 @@
     <string name="logs_clear_all">すべてのログを消去</string>
     <string name="logs_empty_title">ログがありません</string>
     <string name="logs_empty_subtitle">フローの実行履歴がここに表示されます</string>
+    <string name="logs_today">今日</string>
+    <string name="logs_yesterday">昨日</string>
 
     <!-- ===================== Trigger / Action catalog ===================== -->
     <string name="cat_control_flow">制御フロー</string>
@@ -716,6 +751,7 @@
     <string name="opt_weekends">週末のみ</string>
     <string name="opt_custom_days">カスタム曜日…</string>
     <string name="opt_once">1回</string>
+    <string name="sum_once_passed">終了済み</string>
     <string name="opt_falls_below">下回る</string>
     <string name="opt_rises_above">上回る</string>
     <string name="opt_any">すべて</string>
@@ -827,8 +863,28 @@
     <!-- 1 回の実行を手順ごとに記録したもの。履歴一覧から開く -->
     <string name="run_detail_title">実行の詳細</string>
     <string name="run_detail_gone">この実行はすでに保存されていません。</string>
+    <string name="run_detail_steps">ステップ</string>
     <string name="run_no_steps">この実行は手順の記録が導入される前のもので、結果だけが残っています。</string>
     <string name="run_step_disabled">オフのためスキップ</string>
+    <plurals name="run_step_rate_limited">
+        <item quantity="other">1 分あたり %1$d 回の上限を超えたためスキップ</item>
+    </plurals>
+    <string name="rate_limit_notification_title">アクションの上限に達しました</string>
+    <plurals name="rate_limit_notification_sms">
+        <item quantity="other">「%2$s」が 1 分間に %1$d 件を超える SMS を送信しようとしたため、超過分をスキップしました。</item>
+    </plurals>
+    <plurals name="rate_limit_notification_call">
+        <item quantity="other">「%2$s」が 1 分間に %1$d 件を超える発信をしようとしたため、超過分をスキップしました。</item>
+    </plurals>
+    <plurals name="rate_limit_notification_http">
+        <item quantity="other">「%2$s」が 1 分間に %1$d 件を超える Web リクエストを送信しようとしたため、超過分をスキップしました。</item>
+    </plurals>
+    <string name="channel_alerts_name">フローのお知らせ</string>
+    <string name="channel_alerts_description">同じ操作を繰り返しすぎるフローを NexFlow が止めたとき、または時刻指定のフローを実行できなかったときに表示</string>
+    <string name="time_skipped_service_off">スキップ：予定時刻に自動化サービスがオフでした</string>
+    <string name="time_blocked_background">実行されませんでした：Android が NexFlow のバックグラウンド起動を許可しませんでした。「アラームとリマインダー」を許可すると、時刻指定のフローが時間どおりに実行されます。</string>
+    <string name="time_missed_title">「%1$s」が %2$s に実行されませんでした</string>
+    <string name="time_missed_text">Android が NexFlow のバックグラウンド起動を許可しませんでした。タップして「アラームとリマインダー」を許可してください。</string>
     <string name="run_step_if_true">条件を満たしました</string>
     <string name="run_step_if_false">条件を満たしませんでした</string>
     <plurals name="run_step_repeat">
@@ -840,7 +896,14 @@
     </plurals>
     <string name="settings_detailed_log">詳細な実行ログ</string>
     <string name="settings_detailed_log_desc">各アクションの設定が変数を展開した後どうなったか——実際に呼び出したアドレス、実際に送った文——も記録します。この端末内にのみ保存され、フローが扱うあらゆる内容が含まれます。</string>
+    <string name="settings_detailed_log_summary">変数を代入した後の各アクションの設定も記録します</string>
     <string name="run_step_menu_cancelled">選ばずに閉じました</string>
+    <string name="run_stopped_midway">完了する前に停止されました</string>
+    <plurals name="run_step_menu_timed_out">
+        <item quantity="other">%d 分以内に選ばれませんでした</item>
+    </plurals>
+    <string name="menu_waiting_notification_title">フローが選択を待っています</string>
+    <string name="menu_waiting_notification_text">タップして選択</string>
     <string name="widget_preview_flow_a">おはようルーティン</string>
     <string name="widget_preview_flow_b">通勤モード</string>
     <string name="widget_preview_flow_c">集中モード</string>
@@ -849,4 +912,85 @@
     <plurals name="cfg_volume_device_steps">
         <item quantity="other">この端末では %2$d 段階中 %1$d</item>
     </plurals>
+    <!-- Run log messages, stored as codes and put into words when shown (see LogText / LogMessages). -->
+    <string name="logmsg_literal_only">ブロックしました：「%1$s」は一覧から選ぶ必要があり、変数では組み立てられません</string>
+    <string name="logmsg_set_var_no_name">変数を設定：変数名がありません</string>
+    <string name="logmsg_set_var_eval">変数「%1$s」を設定：「%2$s」を計算できません（%3$s）</string>
+    <string name="logmsg_set_var_too_long">変数「%1$s」を設定：値が %2$s 文字あり、上限の %3$s を超えています</string>
+    <string name="logmsg_no_executor">このバージョンでは「%1$s」アクションを実行できません</string>
+    <string name="logmsg_action_threw">「%1$s」の実行中にエラーが発生しました：%2$s</string>
+    <string name="logmsg_unknown_global">グローバル変数「%1$s」がありません。先に「設定 → グローバル変数」で作成してください</string>
+    <string name="logmsg_unexpected">予期しないエラー：%1$s</string>
+    <string name="logmsg_cond_failed">「%1$s」条件を確認できませんでした：%2$s</string>
+    <string name="logmsg_cond_not_met">条件を満たしていません：%1$s</string>
+    <string name="logmsg_cond_unknown_type">不明な条件タイプ「%1$s」のため確認できず、フローは実行されませんでした</string>
+    <string name="logmsg_cond_no_evaluator">このバージョンは「%1$s」条件に対応していないため、フローは実行されませんでした</string>
+    <string name="logmsg_speaker_none">通話音声に使える内蔵スピーカーがありません</string>
+    <string name="logmsg_speaker_rejected">システムがスピーカーへの切り替えを拒否しました</string>
+    <string name="logmsg_screenshot_os">スクリーンショットには Android 12 以上が必要です</string>
+    <string name="logmsg_needs_accessibility">「%1$s」には NexFlow のユーザー補助サービスが必要です。「設定 → ユーザー補助 → インストール済みアプリ → NexFlow」でオンにしてください</string>
+    <string name="logmsg_screenshot_failed">スクリーンショットを撮れませんでした</string>
+    <string name="logmsg_menu_no_options">メニューに選択肢がありません</string>
+    <string name="logmsg_tts_init">読み上げを開始できませんでした（ステータス %1$s）</string>
+    <string name="logmsg_tts_error">読み上げ中にエラーが発生しました</string>
+    <string name="logmsg_volume_no_level">音量が設定されていません</string>
+    <string name="logmsg_volume_dnd">音量の変更がブロックされました。設定でサイレントモードへのアクセスを許可してください（%1$s）</string>
+    <string name="logmsg_write_no_path">ファイルに書き込み：パスが設定されていません</string>
+    <string name="logmsg_write_dotdot">ファイルに書き込み：パスに「..」を含めることはできません</string>
+    <string name="logmsg_write_private">ファイルに書き込み：NexFlow 自身のストレージには書き込めません</string>
+    <string name="logmsg_write_mediastore">共有ストレージにファイルを作成できませんでした</string>
+    <string name="logmsg_write_failed">ファイルへの書き込みに失敗しました：%1$s</string>
+    <string name="logmsg_wallpaper_no_image">壁紙を設定：画像が選択されていません</string>
+    <string name="logmsg_wallpaper_gone">壁紙の画像が見つかりません。選び直してください</string>
+    <string name="logmsg_wallpaper_failed">壁紙の設定に失敗しました：%1$s</string>
+    <string name="logmsg_notif_permission">通知の権限がありません。「設定 → 権限」で許可してください</string>
+    <string name="logmsg_notif_tap_no_app">通知のタップ：アプリが選択されていません</string>
+    <string name="logmsg_notif_tap_app_missing">通知のタップ：アプリが見つかりません：%1$s</string>
+    <string name="logmsg_notif_tap_no_url">通知のタップ：URL が設定されていません</string>
+    <string name="logmsg_notif_tap_no_shortcut">通知のタップ：ショートカットが選択されていません</string>
+    <string name="logmsg_notif_tap_bad_shortcut">通知のタップ：ショートカットが無効です</string>
+    <string name="logmsg_notif_tap_blocked_shortcut">通知のタップ：このショートカットは他のアプリから開けません</string>
+    <string name="logmsg_share_no_text">共有：テキストが設定されていません</string>
+    <string name="logmsg_share_failed">共有に失敗しました：%1$s</string>
+    <string name="logmsg_dnd_access">サイレントモードへのアクセスが許可されていません。「設定 → 特別なアプリアクセス → サイレントモード」で許可してください</string>
+    <string name="logmsg_url_none">URL が設定されていません</string>
+    <string name="logmsg_url_open_failed">URL を開けませんでした：%1$s</string>
+    <string name="logmsg_write_settings">「システム設定の変更」が許可されていません。「設定 → 特別なアプリアクセス → システム設定の変更」で許可してください</string>
+    <string name="logmsg_brightness_no_level">明るさが設定されていません</string>
+    <string name="logmsg_tap_coords">タップのシミュレーションには数値の x・y 座標が必要です</string>
+    <string name="logmsg_tap_not_dispatched">タップを実行できませんでした</string>
+    <string name="logmsg_swipe_coords">スワイプのシミュレーションには数値の x1・y1・x2・y2 座標が必要です</string>
+    <string name="logmsg_swipe_same_point">スワイプの始点と終点は異なる必要があります</string>
+    <string name="logmsg_swipe_not_dispatched">スワイプを実行できませんでした</string>
+    <string name="logmsg_airplane_adb">WRITE_SECURE_SETTINGS が許可されていません。一度だけ実行してください：adb shell pm grant %1$s android.permission.WRITE_SECURE_SETTINGS</string>
+    <string name="logmsg_airplane_failed">機内モードの切り替えに失敗しました：%1$s</string>
+    <string name="logmsg_app_no_package">アプリが選択されていません</string>
+    <string name="logmsg_app_not_found">アプリが見つかりません：%1$s</string>
+    <string name="logmsg_app_launch_failed">%1$s を開けませんでした：%2$s</string>
+    <string name="logmsg_http_bad_method">不明な HTTP メソッド：%1$s</string>
+    <string name="logmsg_http_global_response">「%1$s」はグローバル変数のため、このアクションでは書き込めません。応答をフロー変数に保存してから、「変数を設定」でコピーしてください。</string>
+    <string name="logmsg_http_failed">HTTP %1$s %2$s に失敗しました：%3$s</string>
+    <string name="logmsg_http_too_large">応答が %1$s KB を超えているため、変数に保存できません。API から取得するデータを減らすか、JSON パスで絞り込んでください。</string>
+    <string name="logmsg_http_bad_header">ヘッダー行「%1$s」が「名前: 値」の形式ではありません</string>
+    <string name="logmsg_json_invalid">%1$s：応答が有効な JSON ではありません（%2$s）</string>
+    <string name="logmsg_json_empty_segment">%1$s：JSON パス「%2$s」に空の要素があります</string>
+    <string name="logmsg_json_missing_key">%1$s：%2$s に「%3$s」はありません（あるのは %4$s）</string>
+    <string name="logmsg_json_not_number">%1$s：%2$s は配列なので、「%3$s」は数値である必要があります</string>
+    <string name="logmsg_json_out_of_range">%1$s：%2$s の項目は %3$s 個なので、インデックス %4$s は範囲外です</string>
+    <string name="logmsg_json_scalar">%1$s：%2$s は単一の値なので、「.%3$s」は読み取れません</string>
+    <string name="logmsg_call_no_number">電話をかける：電話番号が設定されていません</string>
+    <string name="logmsg_call_failed">発信に失敗しました：%1$s</string>
+    <string name="logmsg_bt_no_adapter">このデバイスには Bluetooth がありません</string>
+    <string name="logmsg_bt_permission">「付近のデバイス」の権限がありません。「設定 → 権限」で許可してください</string>
+    <string name="logmsg_bt_failed">Bluetooth の切り替えに失敗しました</string>
+    <string name="logmsg_shortcut_none">ショートカットが選択されていません</string>
+    <string name="logmsg_shortcut_invalid">ショートカットが無効です：%1$s</string>
+    <string name="logmsg_shortcut_blocked">ショートカット「%1$s」は他のアプリから開けません</string>
+    <string name="logmsg_shortcut_missing">ショートカットの開き先が見つかりません：%1$s</string>
+    <string name="logmsg_shortcut_failed">ショートカット「%1$s」を開けませんでした：%2$s</string>
+    <string name="logmsg_sms_no_number">SMS を送信：電話番号が設定されていません</string>
+    <string name="logmsg_sms_no_message">SMS を送信：メッセージが設定されていません</string>
+    <string name="logmsg_sms_failed">SMS の送信に失敗しました：%1$s</string>
+    <string name="logmsg_json_root">応答</string>
+    <string name="logmsg_json_where">「%1$s」</string>
 </resources>

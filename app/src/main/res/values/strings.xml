@@ -1,10 +1,10 @@
 <resources>
     <!-- Product name: the same in every language, so translators never see it. -->
     <string name="app_name" translatable="false">NexFlow</string>
-    <string name="accessibility_service_description">NexFlow uses the Accessibility Service for three automation features: capturing a screenshot when a flow\'s screenshot action runs, performing a tap gesture at coordinates you specify when a flow runs a simulated-tap action, and detecting which app is brought to the foreground so your \"App Launched\" triggers can fire. It only reads the package name of the app in front; it does not read screen content, text, or passwords, and it does not send any data to a server. It runs only after you manually enable it.</string>
+    <string name="accessibility_service_description">NexFlow uses the Accessibility Service for three automation features: capturing the screen when a flow\'s screenshot action runs, saving the image to your device\'s Pictures/Screenshots folder; performing a tap or swipe gesture at the coordinates you specify when a flow runs a simulate-tap or simulate-swipe action; and detecting which app is brought to the foreground so your \"App Launched\" triggers can fire. Apart from the screenshots your flows take, it only reads the package name of the app in front: it does not read the text, buttons or passwords on screen, and it does not send any data to a server. It runs only after you manually enable it.</string>
 
     <!-- Widgets -->
-    <string name="widget_overview_description">Show recent flows for quick launch</string>
+    <string name="widget_overview_description">Show recent or hand-picked flows for quick launch</string>
     <string name="widget_single_description">Single-flow quick launch shortcut</string>
     <string name="widget_wide_description">Wide single-flow quick launch shortcut</string>
     <string name="widget_not_configured">Tap to choose a flow</string>
@@ -12,6 +12,15 @@
     <string name="widget_no_flows">No flows yet — create one in the app first</string>
     <string name="widget_no_runs">No runs yet</string>
     <string name="widget_enabled_count">%1$d of %2$d on</string>
+    <string name="widget_overview_configure_title">Widget flows</string>
+    <string name="widget_overview_mode_auto">Automatic</string>
+    <string name="widget_overview_mode_manual">Pick flows</string>
+    <string name="widget_overview_mode_auto_hint">Shows the flows you ran most recently, then fills any space left with your other flows.</string>
+    <string name="widget_overview_mode_manual_hint">Shows only the flows you tick, in the order you tick them (%1$d/%2$d).</string>
+    <string name="widget_overview_position">Position %1$d</string>
+    <string name="widget_overview_save">Save</string>
+    <string name="widget_overview_edit">Choose flows</string>
+    <string name="widget_overview_none_picked">No flows picked — tap to choose</string>
 
     <!-- Foreground service / tile -->
     <string name="service_notification_text">Automation is active</string>
@@ -63,7 +72,7 @@
     <string name="fd_flow_skipped">Skipped — a condition is not met</string>
     <string name="fd_export_flow">Export flow</string>
     <string name="fd_export">Export</string>
-    <string name="fd_edit_with_ai">Edit with Gemini</string>
+    <string name="fd_edit_with_ai">Edit with AI</string>
     <string name="fd_section_when">WHEN</string>
     <string name="fd_section_only_if">ONLY IF</string>
     <string name="fd_section_then">THEN</string>
@@ -143,9 +152,24 @@
     <string name="settings_ai_model">AI model</string>
     <string name="settings_ai_model_need_key">Set your API key first</string>
     <string name="settings_ai_model_load_failed">Couldn\'t load the model list</string>
+    <string name="settings_ai_provider">AI service</string>
+    <string name="settings_ai_section_service">Service</string>
+    <string name="settings_ai_value_unset">Not set</string>
+    <string name="settings_ai_not_configured">Not set up — the AI assistant needs this</string>
+    <!-- "Google Gemini · gemini-3.5-flash": the service in use and its model -->
+    <string name="settings_ai_summary">%1$s · %2$s</string>
+    <string name="settings_ai_provider_gemini">Google Gemini</string>
+    <string name="settings_ai_provider_custom">Other service (OpenAI-compatible)</string>
+    <string name="settings_ai_custom_desc">Experimental. Works with OpenAI, OpenRouter, Ollama and similar services; how well depends on the model. Your messages, any images you attach, and the full settings of flows you edit with AI, including tokens or passwords in them, go to this address.</string>
+    <string name="settings_ai_custom_url">Base URL</string>
+    <string name="settings_ai_custom_url_error">Enter an https:// address. http:// only works for localhost.</string>
+    <string name="settings_ai_custom_key">API key (optional)</string>
+    <string name="settings_ai_custom_model">Model name</string>
+    <string name="settings_ai_custom_model_error">Enter the model name.</string>
+    <string name="settings_ai_custom_url_hint" translatable="false">https://api.openai.com/v1</string>
     <string name="action_retry">Retry</string>
     <string name="ai_chat_title">AI assistant</string>
-    <string name="ai_greeting" formatted="false">Describe the automation you want — for example: \"When I plug in headphones, set media volume to 80% and open Spotify.\"</string>
+    <string name="ai_greeting">What should your phone do for you?</string>
     <string name="ai_input_hint">Describe your automation…</string>
     <string name="ai_send">Send</string>
     <string name="ai_stop">Stop</string>
@@ -162,19 +186,18 @@
         <item quantity="one">%1$d token used</item>
         <item quantity="other">%1$d tokens used</item>
     </plurals>
-    <string name="ai_suggestions_dismiss">Hide suggestions</string>
     <string name="ai_retry">Retry</string>
     <string name="ai_key_get">Get a free API key</string>
     <string name="ai_thinking">Thinking…</string>
-    <string name="ai_step_contacting">Contacting Gemini…</string>
+    <string name="ai_step_contacting">Contacting the AI service…</string>
     <string name="ai_step_searching_apps">Searching installed apps…</string>
     <string name="ai_step_searching_shortcuts">Searching app shortcuts…</string>
     <string name="ai_step_building_flow">Building and validating the flow…</string>
     <string name="ai_step_repairing">Fixing validation errors (attempt %1$d)…</string>
-    <string name="ai_new_chat">New chat</string>
-    <string name="ai_editing_flow_subtitle">Editing this flow with Gemini</string>
-    <string name="ai_flow_header_expand">Show flow details</string>
-    <string name="ai_flow_header_collapse">Hide flow details</string>
+    <string name="ai_step_retrying">The AI service is busy, retrying (%1$d/%2$d)…</string>
+    <string name="ai_start_over">Start over</string>
+    <string name="ai_start_over_desc">Clear this conversation</string>
+    <string name="ai_start_over_desc_flow">Clear this conversation and start editing this flow afresh</string>
     <string name="ai_editing_flow_intro">I\'ve loaded \"%1$s\". Tell me what you\'d like to change — for example add a step, change a time, or swap the app it opens.</string>
     <string name="ai_update_flow">Update flow</string>
     <string name="ai_save_flow">Save flow</string>
@@ -183,8 +206,19 @@
     <string name="ai_key_missing_title">Gemini API key required</string>
     <string name="ai_key_missing_body">Add your Gemini API key in Settings to use the AI assistant. You can get a free key at aistudio.google.com.</string>
     <string name="ai_key_missing_button">Open Settings</string>
-    <string name="ai_error_invalid_key">The API key was rejected. Check the Gemini API key in Settings.</string>
-    <string name="ai_error_rate_limited">Rate limit reached. Wait a moment and try again.</string>
+    <string name="ai_error_invalid_key">The API key was rejected. Check it in Settings.</string>
+    <string name="ai_error_rate_limited">The service\'s per-minute request limit was still reached after waiting. Try again in a minute, or pick another model in Settings — each model has its own quota.</string>
+    <string name="ai_error_quota_daily">Today\'s quota for this model is used up. It resets at %1$s. Meanwhile you can pick another model in Settings — each model has its own quota.</string>
+    <string name="ai_error_quota_not_in_tier">Your API key\'s plan doesn\'t include this model (its quota is 0). Pick another model in Settings, or enable billing for the project in Google AI Studio.</string>
+    <string name="ai_step_waiting_quota">Per-minute limit reached, continuing in %1$ds…</string>
+    <string name="ai_attach_image">Attach image</string>
+    <string name="ai_remove_image">Remove image</string>
+    <string name="ai_attached_image">Attached image</string>
+    <plurals name="ai_image_limit">
+        <item quantity="one">Up to %1$d image per message</item>
+        <item quantity="other">Up to %1$d images per message</item>
+    </plurals>
+    <string name="ai_error_unavailable">The AI service is overloaded and didn\'t respond after several retries. This is on the service\'s side and usually clears up within minutes. Try again shortly, or pick another model in Settings.</string>
     <string name="ai_error_model_not_found">Model not found. Pick another model in Settings.</string>
     <string name="ai_error_network">Network error. Check your connection and try again.</string>
     <string name="ai_error_generic">Something went wrong: %1$s</string>
@@ -236,9 +270,10 @@
     <string name="settings_write_settings_required">Required for Brightness actions</string>
     <string name="settings_dnd">Do Not Disturb access</string>
     <string name="settings_dnd_required">Required for DND toggle actions</string>
-    <string name="settings_adb">Wi-Fi &amp; Airplane mode (ADB)</string>
+    <string name="settings_adb">Airplane mode (ADB)</string>
     <string name="settings_adb_granted">WRITE_SECURE_SETTINGS granted — silent toggling active</string>
-    <string name="settings_adb_required">Run once via ADB to enable silent Wi-Fi / Airplane mode toggling:</string>
+    <string name="settings_adb_required">Run once via ADB to enable silent Airplane mode toggling:</string>
+    <string name="settings_adb_summary">Grant once over ADB to toggle Airplane mode silently</string>
     <string name="settings_command_copied">Command copied to clipboard</string>
     <string name="settings_copy_command">Copy command</string>
     <string name="settings_import_flow">Import flow</string>
@@ -397,6 +432,8 @@
     <string name="logs_clear_all">Clear all logs</string>
     <string name="logs_empty_title">No logs yet</string>
     <string name="logs_empty_subtitle">Flow executions will appear here</string>
+    <string name="logs_today">Today</string>
+    <string name="logs_yesterday">Yesterday</string>
 
     <!-- ===================== Trigger / Action catalog ===================== -->
 
@@ -731,6 +768,7 @@
     <string name="opt_weekends">Weekends only</string>
     <string name="opt_custom_days">Custom days…</string>
     <string name="opt_once">Once</string>
+    <string name="sum_once_passed">already passed</string>
     <string name="opt_falls_below">Falls below</string>
     <string name="opt_rises_above">Rises above</string>
     <string name="opt_any">Any</string>
@@ -845,8 +883,32 @@
     <!-- Per-run build log: the steps of one execution, reached by tapping a log entry -->
     <string name="run_detail_title">Run detail</string>
     <string name="run_detail_gone">This run is no longer stored.</string>
+    <string name="run_detail_steps">Steps</string>
     <string name="run_no_steps">This run was recorded before step logging existed, so only its result was saved.</string>
     <string name="run_step_disabled">Turned off — skipped</string>
+    <plurals name="run_step_rate_limited">
+        <item quantity="one">Skipped — over the limit of %1$d per minute</item>
+        <item quantity="other">Skipped — over the limit of %1$d per minute</item>
+    </plurals>
+    <string name="rate_limit_notification_title">Action limit reached</string>
+    <plurals name="rate_limit_notification_sms">
+        <item quantity="one">“%2$s” tried to send more than %1$d SMS in a minute. The extra messages were skipped.</item>
+        <item quantity="other">“%2$s” tried to send more than %1$d SMS in a minute. The extra messages were skipped.</item>
+    </plurals>
+    <plurals name="rate_limit_notification_call">
+        <item quantity="one">“%2$s” tried to place more than %1$d call in a minute. The extra calls were skipped.</item>
+        <item quantity="other">“%2$s” tried to place more than %1$d calls in a minute. The extra calls were skipped.</item>
+    </plurals>
+    <plurals name="rate_limit_notification_http">
+        <item quantity="one">“%2$s” tried to make more than %1$d web request in a minute. The extra requests were skipped.</item>
+        <item quantity="other">“%2$s” tried to make more than %1$d web requests in a minute. The extra requests were skipped.</item>
+    </plurals>
+    <string name="channel_alerts_name">Flow alerts</string>
+    <string name="channel_alerts_description">Shown when NexFlow stops a flow repeating an action too often, or a scheduled flow couldn’t run</string>
+    <string name="time_skipped_service_off">Skipped: automation was off at the scheduled time</string>
+    <string name="time_blocked_background">Didn’t run: Android didn’t let NexFlow start in the background. Allow “Alarms &amp; reminders” for NexFlow and scheduled flows run on time.</string>
+    <string name="time_missed_title">“%1$s” didn’t run at %2$s</string>
+    <string name="time_missed_text">Android didn’t let NexFlow start in the background. Tap to allow Alarms &amp; reminders.</string>
     <string name="run_step_if_true">Condition met</string>
     <string name="run_step_if_false">Condition not met</string>
     <plurals name="run_step_repeat">
@@ -860,7 +922,15 @@
     </plurals>
     <string name="settings_detailed_log">Detailed execution log</string>
     <string name="settings_detailed_log_desc">Also record what each action’s settings came out as — the address actually called, the text actually sent. Stored on this device, and it will include whatever your flows handle.</string>
+    <string name="settings_detailed_log_summary">Also records each action\'s settings after variables are filled in</string>
     <string name="run_step_menu_cancelled">Closed without choosing</string>
+    <string name="run_stopped_midway">Stopped before it finished</string>
+    <plurals name="run_step_menu_timed_out">
+        <item quantity="one">No answer within %d minute</item>
+        <item quantity="other">No answer within %d minutes</item>
+    </plurals>
+    <string name="menu_waiting_notification_title">A flow is waiting for your choice</string>
+    <string name="menu_waiting_notification_text">Tap to choose</string>
     <string name="widget_preview_count">4 of 6 on</string>
     <string name="widget_preview_flow_a">Morning routine</string>
     <string name="widget_preview_flow_b">Commute mode</string>
@@ -871,4 +941,85 @@
         <item quantity="one">%1$d of %2$d step on this device</item>
         <item quantity="other">%1$d of %2$d steps on this device</item>
     </plurals>
+    <!-- Run log messages, stored as codes and put into words when shown (see LogText / LogMessages). -->
+    <string name="logmsg_literal_only">Blocked: \"%1$s\" must be picked from the list, not built from a variable</string>
+    <string name="logmsg_set_var_no_name">Set variable: no variable name</string>
+    <string name="logmsg_set_var_eval">Set variable \"%1$s\": cannot calculate \"%2$s\" (%3$s)</string>
+    <string name="logmsg_set_var_too_long">Set variable \"%1$s\": the value is %2$s characters, more than the %3$s a variable can hold</string>
+    <string name="logmsg_no_executor">This version cannot run the \"%1$s\" action</string>
+    <string name="logmsg_action_threw">\"%1$s\" stopped with an error: %2$s</string>
+    <string name="logmsg_unknown_global">Unknown global variable \"%1$s\" — create it in Settings → Global variables first</string>
+    <string name="logmsg_unexpected">Unexpected error: %1$s</string>
+    <string name="logmsg_cond_failed">The \"%1$s\" condition could not be checked: %2$s</string>
+    <string name="logmsg_cond_not_met">Condition not met: %1$s</string>
+    <string name="logmsg_cond_unknown_type">Unknown condition type \"%1$s\" — it can\'t be checked, so the flow didn\'t run</string>
+    <string name="logmsg_cond_no_evaluator">This version doesn\'t support the \"%1$s\" condition, so the flow didn\'t run</string>
+    <string name="logmsg_speaker_none">No built-in speaker is available for call audio</string>
+    <string name="logmsg_speaker_rejected">The system rejected switching to the speaker</string>
+    <string name="logmsg_screenshot_os">Screenshots need Android 12 or later</string>
+    <string name="logmsg_needs_accessibility">\"%1$s\" needs NexFlow\'s accessibility service — turn it on in Settings → Accessibility → Installed apps → NexFlow</string>
+    <string name="logmsg_screenshot_failed">The screenshot could not be taken</string>
+    <string name="logmsg_menu_no_options">The menu has no options</string>
+    <string name="logmsg_tts_init">Text-to-speech could not start (status %1$s)</string>
+    <string name="logmsg_tts_error">Text-to-speech failed while speaking</string>
+    <string name="logmsg_volume_no_level">No volume level set</string>
+    <string name="logmsg_volume_dnd">Changing the volume was blocked — grant Do Not Disturb access in Settings (%1$s)</string>
+    <string name="logmsg_write_no_path">Write file: no path set</string>
+    <string name="logmsg_write_dotdot">Write file: the path must not contain \"..\"</string>
+    <string name="logmsg_write_private">Write file: can\'t write into NexFlow\'s own storage</string>
+    <string name="logmsg_write_mediastore">Could not create the file in shared storage</string>
+    <string name="logmsg_write_failed">Write file failed: %1$s</string>
+    <string name="logmsg_wallpaper_no_image">Set wallpaper: no image selected</string>
+    <string name="logmsg_wallpaper_gone">The wallpaper image no longer exists — pick it again</string>
+    <string name="logmsg_wallpaper_failed">Set wallpaper failed: %1$s</string>
+    <string name="logmsg_notif_permission">Notification permission not granted — enable it in Settings → Permissions</string>
+    <string name="logmsg_notif_tap_no_app">Notification tap: no app selected</string>
+    <string name="logmsg_notif_tap_app_missing">Notification tap: app not found: %1$s</string>
+    <string name="logmsg_notif_tap_no_url">Notification tap: no URL set</string>
+    <string name="logmsg_notif_tap_no_shortcut">Notification tap: no shortcut selected</string>
+    <string name="logmsg_notif_tap_bad_shortcut">Notification tap: invalid shortcut</string>
+    <string name="logmsg_notif_tap_blocked_shortcut">Notification tap: the shortcut can\'t be opened from outside its app</string>
+    <string name="logmsg_share_no_text">Share: no text set</string>
+    <string name="logmsg_share_failed">Share failed: %1$s</string>
+    <string name="logmsg_dnd_access">Do Not Disturb access not granted — enable it in Settings → Special app access → Do Not Disturb</string>
+    <string name="logmsg_url_none">No URL set</string>
+    <string name="logmsg_url_open_failed">Could not open the URL: %1$s</string>
+    <string name="logmsg_write_settings">Modify system settings not granted — enable it in Settings → Special app access → Modify system settings</string>
+    <string name="logmsg_brightness_no_level">No brightness level set</string>
+    <string name="logmsg_tap_coords">Simulate tap needs numeric x and y screen coordinates</string>
+    <string name="logmsg_tap_not_dispatched">The tap could not be performed</string>
+    <string name="logmsg_swipe_coords">Simulate swipe needs numeric x1, y1, x2 and y2 screen coordinates</string>
+    <string name="logmsg_swipe_same_point">Simulate swipe needs a start and end point that differ</string>
+    <string name="logmsg_swipe_not_dispatched">The swipe could not be performed</string>
+    <string name="logmsg_airplane_adb">WRITE_SECURE_SETTINGS not granted — run once: adb shell pm grant %1$s android.permission.WRITE_SECURE_SETTINGS</string>
+    <string name="logmsg_airplane_failed">Airplane mode toggle failed: %1$s</string>
+    <string name="logmsg_app_no_package">No app selected</string>
+    <string name="logmsg_app_not_found">App not found: %1$s</string>
+    <string name="logmsg_app_launch_failed">Could not open %1$s: %2$s</string>
+    <string name="logmsg_http_bad_method">Unknown HTTP method: %1$s</string>
+    <string name="logmsg_http_global_response">\"%1$s\" is a global variable, which this action can\'t write. Store the response in a flow variable, then copy it over with a Set variable action.</string>
+    <string name="logmsg_http_failed">HTTP %1$s %2$s failed: %3$s</string>
+    <string name="logmsg_http_too_large">The response is larger than %1$s KB, too large to store in a variable. Ask the API for less data, or narrow it with a JSON path.</string>
+    <string name="logmsg_http_bad_header">Header line \"%1$s\" is not in \"Name: Value\" form</string>
+    <string name="logmsg_json_invalid">%1$s: the response is not valid JSON (%2$s)</string>
+    <string name="logmsg_json_empty_segment">%1$s: the JSON path \"%2$s\" has an empty segment</string>
+    <string name="logmsg_json_missing_key">%1$s: there is no \"%3$s\" in %2$s; it has %4$s</string>
+    <string name="logmsg_json_not_number">%1$s: %2$s is an array, so \"%3$s\" must be a number</string>
+    <string name="logmsg_json_out_of_range">%1$s: %2$s has %3$s item(s), so index %4$s is out of range</string>
+    <string name="logmsg_json_scalar">%1$s: %2$s is a single value, so \".%3$s\" can\'t be read from it</string>
+    <string name="logmsg_call_no_number">Call: no phone number set</string>
+    <string name="logmsg_call_failed">Call failed: %1$s</string>
+    <string name="logmsg_bt_no_adapter">This device has no Bluetooth</string>
+    <string name="logmsg_bt_permission">Nearby devices permission not granted — enable it in Settings → Permissions</string>
+    <string name="logmsg_bt_failed">Bluetooth toggle failed</string>
+    <string name="logmsg_shortcut_none">No shortcut selected</string>
+    <string name="logmsg_shortcut_invalid">Invalid shortcut: %1$s</string>
+    <string name="logmsg_shortcut_blocked">The shortcut \"%1$s\" can\'t be opened from outside its app</string>
+    <string name="logmsg_shortcut_missing">Shortcut target not found: %1$s</string>
+    <string name="logmsg_shortcut_failed">Could not open the shortcut \"%1$s\": %2$s</string>
+    <string name="logmsg_sms_no_number">SMS: no phone number set</string>
+    <string name="logmsg_sms_no_message">SMS: no message set</string>
+    <string name="logmsg_sms_failed">SMS failed: %1$s</string>
+    <string name="logmsg_json_root">the response</string>
+    <string name="logmsg_json_where">\"%1$s\"</string>
 </resources>

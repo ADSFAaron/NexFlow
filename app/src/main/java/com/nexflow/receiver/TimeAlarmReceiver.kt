@@ -18,11 +18,12 @@ package com.nexflow.receiver
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.automation.repository.FlowRepository
-import com.nexflow.core.automation.trigger.TriggerVariables
 import com.nexflow.prefs.ServiceEnabledPrefs
+import com.nexflow.R
 import com.nexflow.service.FlowExecutionService
+import com.nexflow.service.MissedRunNotifier
+import com.nexflow.trigger.TimeAlarmHandler
 import com.nexflow.trigger.TimeTriggerScheduler
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -55,37 +56,27 @@ class TimeAlarmReceiver : BroadcastReceiver() {
         val entry = EntryPointAccessors.fromApplication(
             context.applicationContext, TimeAlarmEntryPoint::class.java,
         )
+        val handler = TimeAlarmHandler(
+            repository = entry.repository(),
+            scheduleNext = entry.scheduler()::scheduleNext,
+            serviceEnabled = { ServiceEnabledPrefs.get(context) },
+            startRun = { id, variables, trigger ->
+                // Carries the trigger id so a TIME trigger counts towards a flow's ALL
+                // combination like any in-process trigger.
+                FlowExecutionService.runFlow(context, id, variables, trigger)
+            },
+            notifyBlocked = { flow, time ->
+                MissedRunNotifier(context).notifyBlocked(flow, time, entry.scheduler().canScheduleExact())
+            },
+            messages = TimeAlarmHandler.Messages(
+                skippedServiceOff = context.getString(R.string.time_skipped_service_off),
+                blockedInBackground = context.getString(R.string.time_blocked_background),
+            ),
+        )
         val pending = goAsync()
         CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
             try {
-                val flow = entry.repository().getById(flowId)
-                val trigger = flow?.triggers?.firstOrNull {
-                    it.id == triggerId && it.type == TriggerType.TIME
-                }
-                // Flow deleted/disabled or trigger removed since the alarm was set: drop it.
-                if (flow == null || !flow.enabled || trigger == null) return@launch
-
-                // Master switch off: skip this occurrence (an alarm-driven run is automation,
-                // not a manual action) but keep chaining below, so turning the service back
-                // on resumes the schedule without re-editing the flow.
-                if (ServiceEnabledPrefs.get(context)) {
-                    FlowExecutionService.runFlow(
-                        context = context,
-                        flowId = flowId,
-                        triggerVariables = mapOf(
-                            TriggerVariables.TYPE to TriggerType.TIME.name,
-                            TriggerVariables.TIME to (trigger.config["time"] ?: ""),
-                        ),
-                        // Carried so a TIME trigger counts towards a flow's ALL combination
-                        // like any in-process trigger.
-                        triggerId = triggerId,
-                    )
-                }
-
-                // Chain the next occurrence for repeating triggers (ONCE does not repeat).
-                if (trigger.config["repeat"] != "ONCE") {
-                    entry.scheduler().scheduleNext(flowId, triggerId, trigger.config)
-                }
+                handler.onAlarm(flowId, triggerId)
             } finally {
                 pending.finish()
             }

@@ -47,8 +47,13 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
+import android.database.sqlite.SQLiteConstraintException
+import android.util.Log
+import androidx.room.withTransaction
+import com.nexflow.data.local.NexFlowDatabase
 
 class FlowRepositoryImpl @Inject constructor(
+    private val db: NexFlowDatabase,
     private val flowDao: FlowDao,
     private val logDao: ExecutionLogDao,
     private val stepDao: ExecutionStepDao,
@@ -73,14 +78,29 @@ class FlowRepositoryImpl @Inject constructor(
         flowDao.deleteById(id)
     }
 
+    override suspend fun updateTriggers(id: String, triggers: List<Trigger>) {
+        flowDao.setTriggers(id, json.encodeToString(triggers.map { it.toJson() }))
+    }
+
     override suspend fun setEnabled(id: String, enabled: Boolean) {
         flowDao.setEnabled(id, enabled)
     }
 
     override suspend fun saveExecutionLog(log: ExecutionLog, steps: List<ExecutionStep>) {
-        // Parent first: the steps carry a foreign key to it, so the reverse order fails the insert.
-        logDao.insert(log.toEntity())
-        if (steps.isNotEmpty()) stepDao.insertAll(steps.map { it.toEntity() })
+        try {
+            // One transaction, so deleting the flow cannot land between the two inserts: the
+            // delete cascades to this log, and the steps that follow then point at nothing.
+            db.withTransaction {
+                // Parent first: the steps carry a foreign key to it, so the reverse order fails.
+                logDao.insert(log.toEntity())
+                if (steps.isNotEmpty()) stepDao.insertAll(steps.map { it.toEntity() })
+            }
+        } catch (e: SQLiteConstraintException) {
+            // The flow was deleted while this run was finishing — the user deleting a flow the
+            // moment it ran. There is nothing left to attach the log to, and the exception,
+            // uncaught in the engine's coroutine, used to take the whole app down with it.
+            Log.w(TAG, "Dropped the log of a run whose flow was deleted", e)
+        }
     }
 
     override fun observeLogsForFlow(flowId: String): Flow<List<ExecutionLog>> =
@@ -261,4 +281,8 @@ class FlowRepositoryImpl @Inject constructor(
         errorMessage = errorMessage,
         executionDurationMs = executionDurationMs,
     )
+
+    private companion object {
+        const val TAG = "FlowRepository"
+    }
 }

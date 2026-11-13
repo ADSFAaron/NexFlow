@@ -21,9 +21,7 @@ import android.nfc.Tag
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.core.content.IntentCompat
-import com.nexflow.event.NfcEventSource
 import com.nexflow.prefs.ServiceEnabledPrefs
-import com.nexflow.service.FlowExecutionService
 
 /**
  * What a tag opens when NexFlow is closed. It shows nothing and finishes immediately — the user
@@ -58,12 +56,11 @@ class NfcTagRunActivity : ComponentActivity() {
             ?: return
         val tagId = tag.id.joinToString("") { "%02X".format(it) }
 
-        // The tag may have woken a dead process, so the engine that listens for it might not be
-        // running yet. Start it first; NfcEventSource holds the id until the engine subscribes.
         // Respect the master switch: if the user turned automation off, a tag must not turn it
         // back on, and there is then nothing to hand the id to.
         if (!ServiceEnabledPrefs.get(this)) return
-        NfcEventSource.emit(tagId)
-        FlowExecutionService.start(this)
+        // The tag may have woken a dead process, with no engine listening yet; the dispatcher
+        // then has the service run the matching flows (and bring the engine up) itself.
+        NfcTagDispatcher.dispatch(this, tagId)
     }
 }

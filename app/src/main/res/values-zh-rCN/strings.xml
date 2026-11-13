@@ -1,8 +1,8 @@
 <resources>
-    <string name="accessibility_service_description">NexFlow 使用无障碍服务提供三项自动化功能：在流程的截图动作执行时截取屏幕画面、在流程执行模拟点击动作时于您指定的座标执行点击手势，以及检测当前切换到前台的 App，以便触发您的“App 启动”条件。本服务仅读取前台 App 的包名，不会读取屏幕内容、文字或密码，也不会将任何数据传送到服务器。本服务仅在您手动开启后才会运行。</string>
+    <string name="accessibility_service_description">NexFlow 使用无障碍服务提供三项自动化功能：在流程的截图动作执行时截取屏幕画面，并保存到您设备上的“Pictures/Screenshots”文件夹；在流程执行模拟点击或模拟滑动动作时，于您指定的坐标执行点击或滑动手势；以及检测当前切换到前台的 App，以便触发您的“App 启动”条件。除了您的流程所截取的截图之外，本服务仅读取前台 App 的包名，不会读取屏幕上的文字、按钮或密码，也不会将任何数据传送到服务器。本服务仅在您手动开启后才会运行。</string>
 
     <!-- Widgets -->
-    <string name="widget_overview_description">显示近期流程以便快速启动</string>
+    <string name="widget_overview_description">显示近期或自选的流程以便快速启动</string>
     <string name="widget_single_description">单一流程快速启动快捷方式</string>
     <string name="widget_wide_description">宽版单一流程快速启动快捷方式</string>
     <string name="widget_not_configured">点此选择流程</string>
@@ -10,6 +10,15 @@
     <string name="widget_no_flows">尚无流程 — 请先在 App 内创建</string>
     <string name="widget_no_runs">尚无执行记录</string>
     <string name="widget_enabled_count">%1$d/%2$d 已启用</string>
+    <string name="widget_overview_configure_title">小组件显示的流程</string>
+    <string name="widget_overview_mode_auto">自动</string>
+    <string name="widget_overview_mode_manual">自选</string>
+    <string name="widget_overview_mode_auto_hint">显示最近运行过的流程，空位再用其他流程补满。</string>
+    <string name="widget_overview_mode_manual_hint">只显示你勾选的流程，按勾选顺序排列（%1$d/%2$d）。</string>
+    <string name="widget_overview_position">第 %1$d 个</string>
+    <string name="widget_overview_save">保存</string>
+    <string name="widget_overview_edit">选择流程</string>
+    <string name="widget_overview_none_picked">尚未选择流程，轻触以选择</string>
     <string name="widget_preview_count">4/6 已启用</string>
 
     <!-- Foreground service / tile -->
@@ -61,7 +70,7 @@
     <string name="fd_flow_skipped">已跳过 — 限制条件不成立</string>
     <string name="fd_export_flow">导出流程</string>
     <string name="fd_export">导出</string>
-    <string name="fd_edit_with_ai">用 Gemini 修改</string>
+    <string name="fd_edit_with_ai">用 AI 修改</string>
     <string name="fd_section_when">当…的时候</string>
     <string name="fd_section_only_if">而且只有在</string>
     <string name="fd_section_then">就执行</string>
@@ -140,9 +149,23 @@
     <string name="settings_ai_model">AI 模型</string>
     <string name="settings_ai_model_need_key">请先设置 API 密钥</string>
     <string name="settings_ai_model_load_failed">无法加载模型列表</string>
+    <string name="settings_ai_provider">AI 服务</string>
+    <string name="settings_ai_section_service">服务</string>
+    <string name="settings_ai_value_unset">未设置</string>
+    <string name="settings_ai_not_configured">尚未设置 — AI 助手需要先设置</string>
+    <!-- "Google Gemini · gemini-3.5-flash": the service in use and its model -->
+    <string name="settings_ai_summary">%1$s · %2$s</string>
+    <string name="settings_ai_provider_gemini">Google Gemini</string>
+    <string name="settings_ai_provider_custom">其他服务（OpenAI 兼容）</string>
+    <string name="settings_ai_custom_desc">实验功能。适用于 OpenAI、OpenRouter、Ollama 等服务，效果取决于模型。您的消息、附加的图片，以及用 AI 修改的流程的完整设置（包括其中的令牌或密码）都会发送到这个地址。</string>
+    <string name="settings_ai_custom_url">服务地址</string>
+    <string name="settings_ai_custom_url_error">请输入以 https:// 开头的地址。http:// 只能用于 localhost。</string>
+    <string name="settings_ai_custom_key">API 密钥（选填）</string>
+    <string name="settings_ai_custom_model">模型名称</string>
+    <string name="settings_ai_custom_model_error">请输入模型名称。</string>
     <string name="action_retry">重试</string>
     <string name="ai_chat_title">AI 助手</string>
-    <string name="ai_greeting" formatted="false">描述您想要的自动化 — 例如:"插上耳机时,把媒体音量调到 80% 并打开 Spotify。"</string>
+    <string name="ai_greeting">想让手机帮您做什么？</string>
     <string name="ai_input_hint">描述您的自动化…</string>
     <string name="ai_send">发送</string>
     <string name="ai_stop">停止</string>
@@ -158,19 +181,18 @@
     <plurals name="ai_tokens_used">
         <item quantity="other">已用 %1$d tokens</item>
     </plurals>
-    <string name="ai_suggestions_dismiss">隐藏建议</string>
     <string name="ai_retry">重试</string>
     <string name="ai_key_get">免费获取 API 密钥</string>
     <string name="ai_thinking">思考中…</string>
-    <string name="ai_step_contacting">正在与 Gemini 通信…</string>
+    <string name="ai_step_contacting">正在与 AI 服务通信…</string>
     <string name="ai_step_searching_apps">正在搜索已安装的应用…</string>
     <string name="ai_step_searching_shortcuts">正在搜索应用快捷方式…</string>
     <string name="ai_step_building_flow">正在生成并验证流程…</string>
     <string name="ai_step_repairing">正在修正验证错误(第 %1$d 次)…</string>
-    <string name="ai_new_chat">新对话</string>
-    <string name="ai_editing_flow_subtitle">用 Gemini 修改这个流程</string>
-    <string name="ai_flow_header_expand">显示流程信息</string>
-    <string name="ai_flow_header_collapse">收起流程信息</string>
+    <string name="ai_step_retrying">AI 服务繁忙，正在重试（%1$d/%2$d）…</string>
+    <string name="ai_start_over">重新开始</string>
+    <string name="ai_start_over_desc">清除这段对话</string>
+    <string name="ai_start_over_desc_flow">清除这段对话，重新开始编辑这个流程</string>
     <string name="ai_editing_flow_intro">我已载入“%1$s”。告诉我你想怎么调整 — 例如新增一个步骤、改时间,或换成打开另一个 App。</string>
     <string name="ai_update_flow">更新流程</string>
     <string name="ai_save_flow">保存流程</string>
@@ -179,8 +201,18 @@
     <string name="ai_key_missing_title">需要 Gemini API 密钥</string>
     <string name="ai_key_missing_body">请先在设置中添加您的 Gemini API 密钥。可在 aistudio.google.com 免费获取。</string>
     <string name="ai_key_missing_button">打开设置</string>
-    <string name="ai_error_invalid_key">API 密钥被拒绝。请到设置检查 Gemini API 密钥。</string>
-    <string name="ai_error_rate_limited">已达速率限制。请稍候再试。</string>
+    <string name="ai_error_invalid_key">API 密钥被拒绝。请到设置检查。</string>
+    <string name="ai_error_rate_limited">等待后仍超过服务每分钟的请求上限。请过一分钟再试，或到设置换一个模型——每个模型的额度是分开计算的。</string>
+    <string name="ai_error_quota_daily">这个模型今天的额度已用完，将于 %1$s 重置。在那之前可以到设置换另一个模型——每个模型的额度是分开计算的。</string>
+    <string name="ai_error_quota_not_in_tier">您的 API 密钥方案不包含这个模型（额度为 0）。请到设置换一个模型，或在 Google AI Studio 为项目启用结算。</string>
+    <string name="ai_step_waiting_quota">已达每分钟上限，%1$d 秒后自动继续…</string>
+    <string name="ai_attach_image">添加图片</string>
+    <string name="ai_remove_image">移除图片</string>
+    <string name="ai_attached_image">附加的图片</string>
+    <plurals name="ai_image_limit">
+        <item quantity="other">每条消息最多添加 %1$d 张图片</item>
+    </plurals>
+    <string name="ai_error_unavailable">AI 服务当前负载过高，自动重试后仍无法处理。这是服务端的情况，通常几分钟内就会恢复。请稍后再试，或到设置中改用其他模型。</string>
     <string name="ai_error_model_not_found">找不到模型。请到设置选择其他模型。</string>
     <string name="ai_error_network">网络错误。请检查连接后再试。</string>
     <string name="ai_error_generic">发生错误:%1$s</string>
@@ -232,9 +264,10 @@
     <string name="settings_write_settings_required">亮度动作所需</string>
     <string name="settings_dnd">勿扰访问权限</string>
     <string name="settings_dnd_required">勿扰切换动作所需</string>
-    <string name="settings_adb">Wi-Fi 与飞行模式（ADB）</string>
+    <string name="settings_adb">飞行模式（ADB）</string>
     <string name="settings_adb_granted">已授予 WRITE_SECURE_SETTINGS — 可静默切换</string>
-    <string name="settings_adb_required">通过 ADB 运行一次以启用静默切换 Wi-Fi／飞行模式：</string>
+    <string name="settings_adb_required">通过 ADB 运行一次以启用静默切换飞行模式：</string>
+    <string name="settings_adb_summary">通过 ADB 授权一次，即可静默切换飞行模式</string>
     <string name="settings_command_copied">命令已复制到剪贴板</string>
     <string name="settings_copy_command">复制命令</string>
     <string name="settings_import_flow">导入流程</string>
@@ -391,6 +424,8 @@
     <string name="logs_clear_all">清除所有日志</string>
     <string name="logs_empty_title">尚无日志</string>
     <string name="logs_empty_subtitle">流程执行记录会显示在这里</string>
+    <string name="logs_today">今天</string>
+    <string name="logs_yesterday">昨天</string>
 
     <!-- ===================== Trigger / Action catalog ===================== -->
     <string name="cat_control_flow">控制流程</string>
@@ -716,6 +751,7 @@
     <string name="opt_weekends">仅周末</string>
     <string name="opt_custom_days">自定义日期…</string>
     <string name="opt_once">一次</string>
+    <string name="sum_once_passed">已过</string>
     <string name="opt_falls_below">掉到…以下</string>
     <string name="opt_rises_above">升到…以上</string>
     <string name="opt_any">任意</string>
@@ -827,8 +863,28 @@
     <!-- 单次执行的完整步骤记录，从记录列表点入 -->
     <string name="run_detail_title">执行明细</string>
     <string name="run_detail_gone">这次执行已经不在记录里了。</string>
+    <string name="run_detail_steps">步骤</string>
     <string name="run_no_steps">这次执行早于逐步骤记录功能，因此只留下结果。</string>
     <string name="run_step_disabled">已关闭，跳过</string>
+    <plurals name="run_step_rate_limited">
+        <item quantity="other">超过每分钟 %1$d 次的上限，已跳过</item>
+    </plurals>
+    <string name="rate_limit_notification_title">已达操作上限</string>
+    <plurals name="rate_limit_notification_sms">
+        <item quantity="other">“%2$s”一分钟内要发送超过 %1$d 条短信，多出的已跳过。</item>
+    </plurals>
+    <plurals name="rate_limit_notification_call">
+        <item quantity="other">“%2$s”一分钟内要拨打超过 %1$d 个电话，多出的已跳过。</item>
+    </plurals>
+    <plurals name="rate_limit_notification_http">
+        <item quantity="other">“%2$s”一分钟内要发出超过 %1$d 个网络请求，多出的已跳过。</item>
+    </plurals>
+    <string name="channel_alerts_name">流程提醒</string>
+    <string name="channel_alerts_description">NexFlow 阻止流程过度频繁地重复某个动作，或定时流程没能执行时显示</string>
+    <string name="time_skipped_service_off">已略过：预定时间时自动化服务是关闭的</string>
+    <string name="time_blocked_background">没有执行：Android 不允许 NexFlow 在后台启动。允许 NexFlow 使用“闹钟和提醒”后，定时流程就能准时执行。</string>
+    <string name="time_missed_title">“%1$s”没有在 %2$s 执行</string>
+    <string name="time_missed_text">Android 不允许 NexFlow 在后台启动。点此允许“闹钟和提醒”。</string>
     <string name="run_step_if_true">条件成立</string>
     <string name="run_step_if_false">条件不成立</string>
     <plurals name="run_step_repeat">
@@ -840,7 +896,14 @@
     </plurals>
     <string name="settings_detailed_log">详细执行记录</string>
     <string name="settings_detailed_log_desc">连每个动作的设置代入变量后的结果一起记下来——实际调用的网址、实际发出的文字。只存在这台设备上，内容会包含你的流程处理到的任何数据。</string>
+    <string name="settings_detailed_log_summary">连同每个动作代入变量后的设置一起记录</string>
     <string name="run_step_menu_cancelled">没有选择就关闭</string>
+    <string name="run_stopped_midway">执行到一半被停止</string>
+    <plurals name="run_step_menu_timed_out">
+        <item quantity="other">%d 分钟内没有选择</item>
+    </plurals>
+    <string name="menu_waiting_notification_title">流程正在等你选择</string>
+    <string name="menu_waiting_notification_text">点一下来选择</string>
     <string name="widget_preview_flow_a">早安日常</string>
     <string name="widget_preview_flow_b">通勤模式</string>
     <string name="widget_preview_flow_c">专注时段</string>
@@ -849,4 +912,85 @@
     <plurals name="cfg_volume_device_steps">
         <item quantity="other">这台设备上为 %2$d 段中的第 %1$d 段</item>
     </plurals>
+    <!-- Run log messages, stored as codes and put into words when shown (see LogText / LogMessages). -->
+    <string name="logmsg_literal_only">已阻止：「%1$s」必须从列表挑选，不能用变量组成</string>
+    <string name="logmsg_set_var_no_name">设置变量：没有填写变量名称</string>
+    <string name="logmsg_set_var_eval">设置变量「%1$s」：无法计算「%2$s」（%3$s）</string>
+    <string name="logmsg_set_var_too_long">设置变量「%1$s」：值有 %2$s 个字符，超过变量上限 %3$s</string>
+    <string name="logmsg_no_executor">这个版本无法执行「%1$s」动作</string>
+    <string name="logmsg_action_threw">「%1$s」执行时发生错误：%2$s</string>
+    <string name="logmsg_unknown_global">找不到全局变量「%1$s」，请先到「设置 → 全局变量」创建</string>
+    <string name="logmsg_unexpected">发生意外错误：%1$s</string>
+    <string name="logmsg_cond_failed">无法检查「%1$s」条件：%2$s</string>
+    <string name="logmsg_cond_not_met">条件不成立：%1$s</string>
+    <string name="logmsg_cond_unknown_type">未知的条件类型「%1$s」，无法检查，因此流程没有执行</string>
+    <string name="logmsg_cond_no_evaluator">这个版本不支持「%1$s」条件，因此流程没有执行</string>
+    <string name="logmsg_speaker_none">找不到可用于通话音频的内置扬声器</string>
+    <string name="logmsg_speaker_rejected">系统拒绝切换到扬声器</string>
+    <string name="logmsg_screenshot_os">截图需要 Android 12 以上</string>
+    <string name="logmsg_needs_accessibility">「%1$s」需要 NexFlow 的无障碍服务，请到「设置 → 无障碍 → 已安装的应用 → NexFlow」开启</string>
+    <string name="logmsg_screenshot_failed">无法截取屏幕</string>
+    <string name="logmsg_menu_no_options">菜单没有任何选项</string>
+    <string name="logmsg_tts_init">无法启动文字转语音（状态 %1$s）</string>
+    <string name="logmsg_tts_error">文字转语音朗读时发生错误</string>
+    <string name="logmsg_volume_no_level">没有设置音量</string>
+    <string name="logmsg_volume_dnd">调整音量被系统阻止，请到「设置」授予勿扰权限（%1$s）</string>
+    <string name="logmsg_write_no_path">写入文件：没有设置路径</string>
+    <string name="logmsg_write_dotdot">写入文件：路径不能包含「..」</string>
+    <string name="logmsg_write_private">写入文件：不能写进 NexFlow 自己的存储空间</string>
+    <string name="logmsg_write_mediastore">无法在共享存储空间创建文件</string>
+    <string name="logmsg_write_failed">写入文件失败：%1$s</string>
+    <string name="logmsg_wallpaper_no_image">设置壁纸：没有选择图片</string>
+    <string name="logmsg_wallpaper_gone">壁纸图片已不存在，请重新选择</string>
+    <string name="logmsg_wallpaper_failed">设置壁纸失败：%1$s</string>
+    <string name="logmsg_notif_permission">没有通知权限，请到「设置 → 权限」开启</string>
+    <string name="logmsg_notif_tap_no_app">通知点击动作：没有选择应用</string>
+    <string name="logmsg_notif_tap_app_missing">通知点击动作：找不到应用：%1$s</string>
+    <string name="logmsg_notif_tap_no_url">通知点击动作：没有设置网址</string>
+    <string name="logmsg_notif_tap_no_shortcut">通知点击动作：没有选择快捷方式</string>
+    <string name="logmsg_notif_tap_bad_shortcut">通知点击动作：快捷方式无效</string>
+    <string name="logmsg_notif_tap_blocked_shortcut">通知点击动作：这个快捷方式无法从其他应用打开</string>
+    <string name="logmsg_share_no_text">分享：没有设置文字</string>
+    <string name="logmsg_share_failed">分享失败：%1$s</string>
+    <string name="logmsg_dnd_access">没有勿扰权限，请到「设置 → 特殊应用权限 → 勿扰」开启</string>
+    <string name="logmsg_url_none">没有设置网址</string>
+    <string name="logmsg_url_open_failed">无法打开网址：%1$s</string>
+    <string name="logmsg_write_settings">没有「修改系统设置」权限，请到「设置 → 特殊应用权限 → 修改系统设置」开启</string>
+    <string name="logmsg_brightness_no_level">没有设置亮度</string>
+    <string name="logmsg_tap_coords">模拟点击需要数字形式的 x、y 屏幕坐标</string>
+    <string name="logmsg_tap_not_dispatched">无法执行点击</string>
+    <string name="logmsg_swipe_coords">模拟滑动需要数字形式的 x1、y1、x2、y2 屏幕坐标</string>
+    <string name="logmsg_swipe_same_point">模拟滑动的起点和终点不能相同</string>
+    <string name="logmsg_swipe_not_dispatched">无法执行滑动</string>
+    <string name="logmsg_airplane_adb">没有 WRITE_SECURE_SETTINGS 权限，请运行一次：adb shell pm grant %1$s android.permission.WRITE_SECURE_SETTINGS</string>
+    <string name="logmsg_airplane_failed">切换飞行模式失败：%1$s</string>
+    <string name="logmsg_app_no_package">没有选择应用</string>
+    <string name="logmsg_app_not_found">找不到应用：%1$s</string>
+    <string name="logmsg_app_launch_failed">无法打开 %1$s：%2$s</string>
+    <string name="logmsg_http_bad_method">不支持的 HTTP 方法：%1$s</string>
+    <string name="logmsg_http_global_response">「%1$s」是全局变量，这个动作无法写入。请先把响应存进流程变量，再用「设置变量」复制过去。</string>
+    <string name="logmsg_http_failed">HTTP %1$s %2$s 失败：%3$s</string>
+    <string name="logmsg_http_too_large">响应超过 %1$s KB，太大而无法存进变量。请向 API 请求较少的数据，或用 JSON path 缩小范围。</string>
+    <string name="logmsg_http_bad_header">标头「%1$s」不是「名称: 值」的格式</string>
+    <string name="logmsg_json_invalid">%1$s：响应不是有效的 JSON（%2$s）</string>
+    <string name="logmsg_json_empty_segment">%1$s：JSON path「%2$s」有空白的段落</string>
+    <string name="logmsg_json_missing_key">%1$s：%2$s 里没有「%3$s」，只有：%4$s</string>
+    <string name="logmsg_json_not_number">%1$s：%2$s 是数组，「%3$s」必须是数字</string>
+    <string name="logmsg_json_out_of_range">%1$s：%2$s 只有 %3$s 个项目，索引 %4$s 超出范围</string>
+    <string name="logmsg_json_scalar">%1$s：%2$s 是单一值，无法再读取「.%3$s」</string>
+    <string name="logmsg_call_no_number">拨打电话：没有设置电话号码</string>
+    <string name="logmsg_call_failed">拨号失败：%1$s</string>
+    <string name="logmsg_bt_no_adapter">这台设备没有蓝牙</string>
+    <string name="logmsg_bt_permission">没有「附近的设备」权限，请到「设置 → 权限」开启</string>
+    <string name="logmsg_bt_failed">切换蓝牙失败</string>
+    <string name="logmsg_shortcut_none">没有选择快捷方式</string>
+    <string name="logmsg_shortcut_invalid">快捷方式无效：%1$s</string>
+    <string name="logmsg_shortcut_blocked">快捷方式「%1$s」无法从其他应用打开</string>
+    <string name="logmsg_shortcut_missing">找不到快捷方式的目标：%1$s</string>
+    <string name="logmsg_shortcut_failed">无法打开快捷方式「%1$s」：%2$s</string>
+    <string name="logmsg_sms_no_number">发送短信：没有设置电话号码</string>
+    <string name="logmsg_sms_no_message">发送短信：没有设置内容</string>
+    <string name="logmsg_sms_failed">发送短信失败：%1$s</string>
+    <string name="logmsg_json_root">响应</string>
+    <string name="logmsg_json_where">「%1$s」</string>
 </resources>

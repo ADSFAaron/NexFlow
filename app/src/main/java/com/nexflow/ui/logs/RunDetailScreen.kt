@@ -38,7 +38,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -51,13 +51,13 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItemShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -79,14 +79,22 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import com.nexflow.R
 import com.nexflow.core.automation.interpreter.FlowInterpreter
 import com.nexflow.core.automation.model.ActionType
 import com.nexflow.core.automation.model.ExecutionStatus
 import com.nexflow.core.automation.model.ExecutionStep
+import com.nexflow.ui.common.SettingsDefaults
+import com.nexflow.ui.common.SettingsGroupTitle
+import com.nexflow.ui.common.SettingsTopAppBar
+import com.nexflow.ui.common.settingsItemPadding
+import com.nexflow.ui.common.settingsItemShapes
 import com.nexflow.ui.flows.detail.config.info
+import com.nexflow.ui.menu.MenuPickerBridge
 import java.text.SimpleDateFormat
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Date
 import kotlinx.coroutines.launch
 
@@ -105,7 +113,21 @@ fun RunDetailScreen(
     vm: RunDetailViewModel = hiltViewModel(),
 ) {
     val detail by vm.detail.collectAsState()
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    RunDetailContent(detail = detail, onBack = onBack)
+}
+
+/**
+ * The page without the view model — internal so app/src/screenshotTest can render a run, with a
+ * fixed [zone] so the summary's time does not follow the machine rendering it.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun RunDetailContent(
+    detail: RunDetail,
+    onBack: () -> Unit,
+    zone: ZoneId = remember { ZoneId.systemDefault() },
+) {
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     // Which REPEAT rows have had their later rounds opened, keyed by action id. Survives
     // recomposition but not the screen: a fresh visit starts collapsed, which is the reading order.
     val expandedRepeats = remember { mutableStateMapOf<String, Boolean>() }
@@ -123,24 +145,13 @@ fun RunDetailScreen(
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        containerColor = SettingsDefaults.pageColor,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        detail.flowName.ifEmpty { stringResource(R.string.run_detail_title) },
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.action_back),
-                        )
-                    }
-                },
+            SettingsTopAppBar(
+                title = detail.flowName.ifEmpty { stringResource(R.string.run_detail_title) },
+                scrollBehavior = scrollBehavior,
+                onBack = onBack,
                 actions = {
                     // The whole run as text, which is what gets pasted into a bug report or a
                     // message — copying rows one at a time loses the order that explains it.
@@ -154,7 +165,6 @@ fun RunDetailScreen(
                         }
                     }
                 },
-                scrollBehavior = scrollBehavior,
             )
         },
     ) { innerPadding ->
@@ -186,24 +196,37 @@ fun RunDetailScreen(
                         top = innerPadding.calculateTopPadding(),
                         bottom = innerPadding.calculateBottomPadding() + 24.dp,
                     ),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    item { RunSummary(detail) }
+                    item { RunSummary(detail, zone) }
 
-                    if (detail.steps.isEmpty()) {
+                    item {
+                        SettingsGroupTitle(
+                            stringResource(R.string.run_detail_steps),
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                        )
+                    }
+
+                    // A run that never started — skipped, or refused by Android — has no steps
+                    // either, but its reason is already in the summary above; "recorded before
+                    // step logging existed" would be wrong about it.
+                    if (detail.steps.isEmpty() && log.errorMessage == null) {
                         item {
                             Text(
                                 stringResource(R.string.run_no_steps),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
                             )
                         }
                     }
 
-                    items(rows, key = { it.step.seq }) { row ->
+                    // One group of tiles, item by item: a long run (a REPEAT opened up) keeps its
+                    // rows lazy, and a REPEAT opening or closing reshapes the group's ends.
+                    itemsIndexed(rows, key = { _, row -> row.step.seq }) { index, row ->
                         StepRow(
+                            shapes = settingsItemShapes(index, rows.size),
+                            modifier = Modifier.settingsItemPadding(index),
                             row = row,
                             expanded = expandedSteps[row.step.seq] == true,
                             repeatExpanded = expandedRepeats[row.step.actionId] == true,
@@ -229,7 +252,7 @@ fun RunDetailScreen(
                                 ),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 8.dp),
                             )
                         }
                     }
@@ -291,18 +314,19 @@ internal fun visibleRows(
 }
 
 @Composable
-private fun RunSummary(detail: RunDetail) {
+private fun RunSummary(detail: RunDetail, zone: ZoneId) {
     val log = detail.log ?: return
     val (icon, tint) = statusVisual(log.status)
     val locale = LocalLocale.current.platformLocale
-    val format = remember(locale) {
-        SimpleDateFormat(DateFormat.getBestDateTimePattern(locale, "MMMdHHmmss"), locale)
+    val format = remember(locale, zone) {
+        DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, "MMMdHHmmss"), locale).withZone(zone)
     }
 
+    // A group of one tile: the run's result, standing apart from the steps that explain it.
     Surface(
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        shape = RoundedCornerShape(18.dp),
-        modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
+        color = SettingsDefaults.tileColor,
+        shape = settingsItemShapes(0, 1).shape,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth(),
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -323,11 +347,11 @@ private fun RunSummary(detail: RunDetail) {
                 )
             }
             Text(
-                "${format.format(Date(log.triggeredAt))} · ${formatDuration(log.executionDurationMs)}",
+                "${format.format(Instant.ofEpochMilli(log.triggeredAt))} · ${formatDuration(log.executionDurationMs)}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            val error = log.errorMessage
+            val error = LogMessages.render(LocalContext.current, log.errorMessage)
             if (error != null) {
                 Text(
                     error,
@@ -342,6 +366,8 @@ private fun RunSummary(detail: RunDetail) {
 
 @Composable
 private fun StepRow(
+    shapes: ListItemShapes,
+    modifier: Modifier,
     row: StepRow,
     expanded: Boolean,
     repeatExpanded: Boolean,
@@ -351,116 +377,120 @@ private fun StepRow(
     val context = LocalContext.current
     val step = row.step
     val (icon, tint) = statusVisual(step.status)
-    val detailText = step.errorMessage ?: step.resolvedConfig
+    val detailText = LogMessages.render(context, step.errorMessage) ?: step.resolvedConfig
     val canExpand = row.isRepeatHeader || detailText != null
     // Indent caps at three levels: past that the text column is narrower than the words in it,
     // and the guide lines already carry the nesting.
     val indent = (step.depth.coerceAtMost(MAX_INDENT_LEVELS) * INDENT_STEP.value).dp
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .then(if (canExpand) Modifier.clickable(onClick = onToggle) else Modifier),
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            // A log row is a tap target, not a line of a table: below this the rows read as one
-            // grey block and the chevron is hard to hit.
-            modifier = Modifier.heightIn(min = ROW_MIN_HEIGHT),
+    Surface(color = SettingsDefaults.tileColor, shape = shapes.shape, modifier = modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(if (canExpand) Modifier.clickable(onClick = onToggle) else Modifier)
+                .padding(horizontal = 16.dp, vertical = 4.dp),
         ) {
-            // Guide lines instead of blank space: at three levels of nesting, counting indents by
-            // eye is guesswork, and a run's log is read when something is already wrong.
-            repeat(step.depth.coerceAtMost(MAX_INDENT_LEVELS)) {
-                Box(
-                    modifier = Modifier
-                        .width(INDENT_STEP)
-                        .height(ROW_MIN_HEIGHT),
-                    contentAlignment = Alignment.Center,
-                ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                // A log row is a tap target, not a line of a table: below this the rows read as one
+                // grey block and the chevron is hard to hit.
+                modifier = Modifier.heightIn(min = ROW_MIN_HEIGHT),
+            ) {
+                // Guide lines instead of blank space: at three levels of nesting, counting indents by
+                // eye is guesswork, and a run's log is read when something is already wrong.
+                repeat(step.depth.coerceAtMost(MAX_INDENT_LEVELS)) {
                     Box(
                         modifier = Modifier
-                            .width(1.dp)
-                            .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.outlineVariant),
-                    )
+                            .width(INDENT_STEP)
+                            .height(ROW_MIN_HEIGHT),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.outlineVariant),
+                        )
+                    }
                 }
-            }
-            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(14.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    step.actionType.info(context).label,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                val note = noteText(context, step, row.repeatRounds)
-                if (note != null) {
+                Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        note,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        step.actionType.info(context).label,
+                        style = MaterialTheme.typography.bodyMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
+                    val note = noteText(context, step, row.repeatRounds)
+                    if (note != null) {
+                        Text(
+                            note,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+                if (step.durationMs > 0) {
+                    Text(
+                        formatDuration(step.durationMs),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 12.dp),
+                    )
+                }
+                if (canExpand) {
+                    val open = if (row.isRepeatHeader) repeatExpanded else expanded
+                    val angle by animateFloatAsState(if (open) 90f else 0f, label = "step_chevron")
+                    Icon(
+                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 4.dp).size(20.dp).rotate(angle),
+                    )
                 }
             }
-            if (step.durationMs > 0) {
-                Text(
-                    formatDuration(step.durationMs),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 12.dp),
-                )
-            }
-            if (canExpand) {
-                val open = if (row.isRepeatHeader) repeatExpanded else expanded
-                val angle by animateFloatAsState(if (open) 90f else 0f, label = "step_chevron")
-                Icon(
-                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 4.dp).size(20.dp).rotate(angle),
-                )
-            }
-        }
 
-        AnimatedVisibility(visible = expanded && detailText != null) {
-            Surface(
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                    .padding(start = indent + 34.dp, top = 2.dp, bottom = 10.dp)
-                    .fillMaxWidth(),
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        detailText.orEmpty(),
-                        style = MaterialTheme.typography.bodySmall,
-                        fontFamily = FontFamily.Monospace,
-                        color = if (step.errorMessage != null) {
-                            MaterialTheme.colorScheme.error
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                        // A resolved URL or a stack-shaped error must not be re-wrapped into
-                        // unreadability, so the block scrolls sideways rather than the page.
-                        modifier = Modifier
-                            .weight(1f)
-                            .horizontalScroll(rememberScrollState())
-                            .padding(14.dp),
-                    )
-                    // The value itself is the thing worth copying — a resolved URL to open, an
-                    // error to search for — and it is the one part of the row that cannot be
-                    // retyped reliably.
-                    IconButton(onClick = { onCopy(detailText.orEmpty()) }) {
-                        Icon(
-                            Icons.Filled.ContentCopy,
-                            contentDescription = stringResource(R.string.action_copy),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp),
+            AnimatedVisibility(visible = expanded && detailText != null) {
+                // Sunk into the tile in the page's colour: the old surfaceContainerHigh is the dark
+                // tile's own colour and would vanish.
+                Surface(
+                    color = SettingsDefaults.pageColor,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .padding(start = indent + 34.dp, top = 2.dp, bottom = 10.dp)
+                        .fillMaxWidth(),
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            detailText.orEmpty(),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontFamily = FontFamily.Monospace,
+                            color = if (step.errorMessage != null) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            // A resolved URL or a stack-shaped error must not be re-wrapped into
+                            // unreadability, so the block scrolls sideways rather than the page.
+                            modifier = Modifier
+                                .weight(1f)
+                                .horizontalScroll(rememberScrollState())
+                                .padding(14.dp),
                         )
+                        // The value itself is the thing worth copying — a resolved URL to open, an
+                        // error to search for — and it is the one part of the row that cannot be
+                        // retyped reliably.
+                        IconButton(onClick = { onCopy(detailText.orEmpty()) }) {
+                            Icon(
+                                Icons.Filled.ContentCopy,
+                                contentDescription = stringResource(R.string.action_copy),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
                     }
                 }
             }
@@ -483,7 +513,7 @@ internal fun transcriptOf(context: Context, detail: RunDetail): String = buildSt
             SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).format(Date(log.triggeredAt)) +
             " · ${formatDuration(log.executionDurationMs)}",
     )
-    log.errorMessage?.let { appendLine(it) }
+    LogMessages.render(context, log.errorMessage)?.let { appendLine(it) }
     appendLine()
     detail.steps.forEach { step ->
         val indent = "  ".repeat(step.depth.coerceAtMost(MAX_INDENT_LEVELS))
@@ -496,7 +526,7 @@ internal fun transcriptOf(context: Context, detail: RunDetail): String = buildSt
         // noteText needs the row's round count, which only the repeat header has; the raw token
         // is honest here and keeps the transcript free of a second flattening pass.
         step.note?.let { appendLine("$indent    [$it]") }
-        step.errorMessage?.let { appendLine("$indent    $it") }
+        LogMessages.render(context, step.errorMessage)?.let { appendLine("$indent    $it") }
         step.resolvedConfig?.lineSequence()?.forEach { appendLine("$indent    $it") }
     }
     if (detail.droppedSteps > 0) {
@@ -535,10 +565,18 @@ private fun noteText(context: Context, step: ExecutionStep, repeatRounds: Int): 
         note == FlowInterpreter.NOTE_IF_FALSE -> context.getString(R.string.run_step_if_false)
         note == FlowInterpreter.NOTE_MENU_CANCELLED ->
             context.getString(R.string.run_step_menu_cancelled)
+        note == FlowInterpreter.NOTE_MENU_TIMED_OUT -> {
+            val minutes = (MenuPickerBridge.TIMEOUT_MS / 60_000).toInt()
+            context.resources.getQuantityString(R.plurals.run_step_menu_timed_out, minutes, minutes)
+        }
         note.startsWith(FlowInterpreter.NOTE_REPEAT) ->
             context.resources.getQuantityString(R.plurals.run_step_repeat, repeatRounds, repeatRounds)
         note.startsWith(FlowInterpreter.NOTE_MENU) ->
             context.getString(R.string.run_step_menu, note.removePrefix(FlowInterpreter.NOTE_MENU))
+        note.startsWith(FlowInterpreter.NOTE_RATE_LIMITED) ->
+            note.removePrefix(FlowInterpreter.NOTE_RATE_LIMITED).toIntOrNull()
+                ?.let { context.resources.getQuantityString(R.plurals.run_step_rate_limited, it, it) }
+                ?: note
         // A token this build does not recognize is still better shown than swallowed.
         else -> note
     }

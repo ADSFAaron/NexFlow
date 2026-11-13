@@ -25,9 +25,11 @@ import com.nexflow.core.automation.condition.ConditionResult
 import com.nexflow.core.automation.executor.ActionExecutor
 import com.nexflow.core.automation.interpreter.FlowInterpreter
 import com.nexflow.core.automation.interpreter.InterpreterResult
+import com.nexflow.core.automation.interpreter.SlidingWindowRateLimiter
 import com.nexflow.core.automation.model.ExecutionLog
 import com.nexflow.core.automation.model.ExecutionStatus
 import com.nexflow.core.automation.model.Flow as AutomationFlow
+import com.nexflow.core.automation.model.Trigger
 import com.nexflow.core.automation.model.TriggerLogic
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.automation.repository.FlowRepository
@@ -38,6 +40,8 @@ import com.nexflow.core.automation.trigger.TriggerVariables
 import com.nexflow.nfc.NfcBackgroundDispatch
 import com.nexflow.prefs.DetailedLogPrefs
 import com.nexflow.prefs.ExecutionFeedbackPrefs
+import com.nexflow.trigger.NfcTagTriggerHandler
+import com.nexflow.trigger.OnceTrigger
 import com.nexflow.trigger.TimeTriggerScheduler
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -46,19 +50,18 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.asFlow
-import kotlinx.coroutines.flow.distinctUntilChangedBy
-import kotlinx.coroutines.flow.flattenMerge
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.nexflow.core.automation.LogText
 
 @Singleton
 class FlowEngine @Inject constructor(
@@ -70,13 +73,20 @@ class FlowEngine @Inject constructor(
     private val timeTriggerScheduler: TimeTriggerScheduler,
     private val nfcBackgroundDispatch: NfcBackgroundDispatch,
     @param:ApplicationContext private val context: Context,
+    // Nullable with a default so engine tests that build FlowEngine by hand need not supply it.
+    private val rateLimitNotifier: RateLimitNotifier? = null,
 ) {
     private companion object {
         const val TAG = "FlowEngine"
     }
 
     private val triggerHandlers = triggerHandlerSet.associateBy { it.supportedType }
-    private val interpreter by lazy { FlowInterpreter(actionExecutorSet.associateBy { it.supportedType }) }
+    private val interpreter by lazy {
+        FlowInterpreter(
+            actionExecutorSet.associateBy { it.supportedType },
+            SlidingWindowRateLimiter(onLimited = { flow, category -> rateLimitNotifier?.onLimited(flow, category) }),
+        )
+    }
     private val conditionGate by lazy { ConditionGate(conditionEvaluatorSet.associateBy { it.supportedType }) }
     private val allTriggersGate = AllTriggersGate()
 
@@ -99,74 +109,70 @@ class FlowEngine @Inject constructor(
             // in-process streams below, so they survive Doze and service death. Keep alarms in
             // sync with the current enabled set on every change.
             launch {
-                repository.observeEnabled().collect {
-                    timeTriggerScheduler.sync(it)
+                repository.observeEnabled().collect { enabled ->
+                    // A "once" trigger without its moment (older version, import, AI) gets one now,
+                    // the first time its flow is seen enabled; see OnceTrigger. Scheduled from the
+                    // stamped copy, and saved so the next reschedule finds the same moment.
+                    val now = System.currentTimeMillis()
+                    val stamped = enabled.map { OnceTrigger.stampMissing(it, now) }
+                    stamped.forEachIndexed { i, flow -> if (flow !== enabled[i]) repository.updateTriggers(flow.id, flow.triggers) }
+                    timeTriggerScheduler.sync(stamped)
                     // Same idea, different mechanism: claim NFC tag dispatch only while a flow
                     // could use a tag, so a user with no NFC flow never intercepts one.
-                    nfcBackgroundDispatch.sync(it)
+                    nfcBackgroundDispatch.sync(enabled)
                 }
             }
 
-            // Rebuild the in-process trigger streams ONLY when the trigger structure changes.
-            // Editing a flow's actions/name re-emits the whole list; without this guard every
-            // such edit would tear down and re-subscribe all observers, dropping any event that
-            // arrived during the gap. TIME is excluded — handled by AlarmManager above.
+            // One subscription per trigger, added and removed individually as the enabled flows
+            // change. Rebuilding them all on every change used to have three costs: every run in
+            // progress was cancelled with them (they were children of the rebuilt scope); every
+            // sticky trigger fired again, because re-registering a receiver redelivers the
+            // current Wi-Fi/headset/battery state and re-adding a geofence reports being inside
+            // it; and an event arriving during the rebuild was lost. Editing only a flow's actions
+            // also counted as a change, because the list is ordered by updated_at.
+            // TIME is excluded — handled by AlarmManager above.
+            val engineScope = this
             launch {
-                repository.observeEnabled()
-                    .map { flows -> flows.filter { f -> f.triggers.any { it.type != TriggerType.TIME } } }
-                    .distinctUntilChangedBy { flows -> flows.map { it.id to it.triggers } }
-                    .collectLatest { flows ->
-                        if (flows.isEmpty()) return@collectLatest
-                        coroutineScope {
-                            val streams = flows.flatMap { flow ->
-                                flow.triggers
-                                    .filter { it.type != TriggerType.TIME }
-                                    .mapNotNull { trigger ->
-                                        // Carry the id plus what the trigger reported about the
-                                        // event; the freshest flow is re-fetched when the trigger
-                                        // fires, so action edits take effect without needing to
-                                        // re-subscribe.
-                                        triggerHandlers[trigger.type]
-                                            ?.observe(trigger)
-                                            ?.map { event ->
-                                                TriggeredRun(
-                                                    flowId = flow.id,
-                                                    triggerId = trigger.id,
-                                                    triggerVariables = triggerVariables(trigger.type, event),
-                                                )
-                                            }
-                                            // Isolate per-trigger failures: a handler that errors
-                                            // (e.g. geofence registration failing) must not crash
-                                            // the merged collector and tear down EVERY other
-                                            // trigger. Swallow + log; that one stream just ends.
-                                            ?.catch { e ->
-                                                if (e is CancellationException) throw e
-                                                Log.w(
-                                                    TAG,
-                                                    "Trigger ${trigger.type} for flow ${flow.id} " +
-                                                        "failed; stream stopped",
-                                                    e,
-                                                )
-                                            }
-                                    }
-                            }
-                            if (streams.isNotEmpty()) {
-                                streams.asFlow()
-                                    .flattenMerge(concurrency = streams.size)
-                                    .collect { run ->
-                                        launch {
-                                            runFlowById(
-                                                flowId = run.flowId,
-                                                triggerVariables = run.triggerVariables,
-                                                triggerId = run.triggerId,
-                                            )
-                                        }
-                                    }
-                            }
-                        }
+                val subscriptions = HashMap<TriggerKey, Job>()
+                repository.observeEnabled().collect { flows ->
+                    val wanted = flows.flatMapTo(HashSet()) { flow ->
+                        flow.triggers.filter { it.type != TriggerType.TIME }.map { TriggerKey(flow.id, it) }
                     }
+                    (subscriptions.keys - wanted).forEach { subscriptions.remove(it)?.cancel() }
+                    (wanted - subscriptions.keys).forEach { key ->
+                        subscriptions[key] = launch { subscribe(key, runScope = engineScope) }
+                    }
+                }
             }
         }
+    }
+
+    /**
+     * Listens to one trigger for as long as it is wanted. Runs are started in [runScope], the
+     * engine's own scope, so they outlive this subscription: a run belongs to the engine, not to
+     * the trigger that happened to start it.
+     */
+    private suspend fun subscribe(key: TriggerKey, runScope: CoroutineScope) {
+        val handler = triggerHandlers[key.trigger.type] ?: return
+        handler.observe(key.trigger)
+            // Isolate per-trigger failures: a handler that errors (e.g. geofence registration
+            // failing) must not take the engine — and every other trigger — down with it.
+            // Swallow + log; that one stream just ends.
+            .catch { e ->
+                if (e is CancellationException) throw e
+                Log.w(TAG, "Trigger ${key.trigger.type} for flow ${key.flowId} failed; stream stopped", e)
+            }
+            .collect { event ->
+                // The freshest flow is re-fetched when the trigger fires, so action edits take
+                // effect without needing to re-subscribe.
+                runScope.launch {
+                    runFlowById(
+                        flowId = key.flowId,
+                        triggerVariables = triggerVariables(key.trigger.type, event),
+                        triggerId = key.trigger.id,
+                    )
+                }
+            }
     }
 
     fun stop() {
@@ -198,6 +204,32 @@ class FlowEngine @Inject constructor(
         triggerId: String? = null,
         onActionStart: (suspend (actionId: String) -> Unit)? = null,
     ): ExecutionStatus? = runFlowById(flowId, triggerVariables, triggerId, onActionStart)
+
+    /**
+     * Runs every enabled flow whose NFC trigger matches [tagId] — for a tag that arrived while no
+     * trigger was subscribed to hear it (see [com.nexflow.nfc.NfcTagDispatcher]). Each match is
+     * attributed to its trigger, so it counts towards an ALL combination like a live event.
+     */
+    suspend fun runForNfcTag(tagId: String) = coroutineScope {
+        repository.observeEnabled().first()
+            .flatMap { flow ->
+                flow.triggers
+                    .filter { it.type == TriggerType.NFC_TAG && NfcTagTriggerHandler.matches(it, tagId) }
+                    .map { flow.id to it }
+            }
+            .forEach { (flowId, trigger) ->
+                launch {
+                    runFlowById(
+                        flowId = flowId,
+                        triggerVariables = triggerVariables(
+                            TriggerType.NFC_TAG,
+                            NfcTagTriggerHandler.eventFor(trigger, tagId),
+                        ),
+                        triggerId = trigger.id,
+                    )
+                }
+            }
+    }
 
     private suspend fun runFlowById(
         flowId: String,
@@ -253,7 +285,7 @@ class FlowEngine @Inject constructor(
                 variables = conditionVariables(flow, globals, triggerValues),
             )
             if (gate is ConditionResult.Unsatisfied) {
-                Log.d(TAG, "Flow '${flow.name}' skipped: ${gate.reason}")
+                Log.d(TAG, "Flow '${flow.name}' skipped: ${LogText.debug(gate.reason)}")
                 repository.saveExecutionLog(
                     ExecutionLog(
                         id = UUID.randomUUID().toString(),
@@ -295,9 +327,27 @@ class FlowEngine @Inject constructor(
                     recordResolvedConfig = DetailedLogPrefs.isEnabled(context),
                 )
             } catch (e: CancellationException) {
+                // Stopped part-way: the Stop button, leaving the screen that started it, or the
+                // engine shutting down. Without a record the run would simply be missing from the
+                // log, indistinguishable from a trigger that never fired. NonCancellable, because
+                // the coroutine doing the writing is the one being cancelled.
+                withContext(NonCancellable) {
+                    val logId = UUID.randomUUID().toString()
+                    repository.saveExecutionLog(
+                        ExecutionLog(
+                            id = logId,
+                            flowId = flow.id,
+                            triggeredAt = startMs,
+                            status = ExecutionStatus.SKIPPED,
+                            errorMessage = context.getString(R.string.run_stopped_midway),
+                            executionDurationMs = System.currentTimeMillis() - startMs,
+                        ),
+                        steps = steps.toSteps(logId),
+                    )
+                }
                 throw e
             } catch (e: Exception) {
-                InterpreterResult.Failure("Unexpected error in flow '${flow.name}': ${e.message}", e)
+                InterpreterResult.Failure(LogText.of("unexpected", e.message), e)
             }
             val durationMs = System.currentTimeMillis() - startMs
             val status = when (result) {
@@ -376,12 +426,11 @@ class FlowEngine @Inject constructor(
             TriggerVariables.TIMESTAMP to event.timestampMs.toString(),
         )
 
-    /** One trigger firing: which flow, which trigger, and what the trigger knew about the event. */
-    private data class TriggeredRun(
-        val flowId: String,
-        val triggerId: String,
-        val triggerVariables: Map<String, String>,
-    )
+    /**
+     * One subscription: a trigger of a flow, as configured. A trigger whose config changes is a
+     * different key, so editing it re-subscribes that trigger alone.
+     */
+    private data class TriggerKey(val flowId: String, val trigger: Trigger)
 }
 
 /**

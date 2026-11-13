@@ -16,6 +16,7 @@
 package com.nexflow.ui.ai
 
 import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -26,6 +27,7 @@ import com.nexflow.data.toDomain
 import com.nexflow.prefs.AiPrefs
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.File
 import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -50,6 +52,8 @@ sealed interface ChatMessage {
     @SerialName("user")
     data class UserText(
         val text: String,
+        /** Attached images, as [com.nexflow.ai.AiImageStore] file names. */
+        val images: List<String> = emptyList(),
         override val id: String = UUID.randomUUID().toString(),
         override val timestamp: Long = System.currentTimeMillis(),
     ) : ChatMessage
@@ -70,6 +74,7 @@ sealed interface ChatMessage {
         val text: String,
         /** The user message this turn was carrying, so the bubble can offer a one-tap retry. */
         val retryText: String = "",
+        val retryImages: List<String> = emptyList(),
         override val id: String = UUID.randomUUID().toString(),
         override val timestamp: Long = System.currentTimeMillis(),
     ) : ChatMessage
@@ -110,7 +115,7 @@ class AiChatViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
 
-    private val apiKeyMissing = MutableStateFlow(AiPrefs.getApiKey(context) == null)
+    private val apiKeyMissing = MutableStateFlow(!AiPrefs.isConfigured(context))
 
     init {
         // Entered from a flow's "edit with Gemini" button: scope the conversation to that flow.
@@ -161,6 +166,9 @@ class AiChatViewModel @Inject constructor(
     /** Unsent input, preserved across navigation. */
     val draft: StateFlow<String> = session.draft
 
+    /** Images picked for the next message, not sent yet. */
+    val pendingImages: StateFlow<List<String>> = session.pendingImages
+
     private val _navigateToFlow = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val navigateToFlow: SharedFlow<String> = _navigateToFlow.asSharedFlow()
 
@@ -170,7 +178,7 @@ class AiChatViewModel @Inject constructor(
 
     /** Called on resume — the user may have just added the key in Settings. */
     fun refreshApiKeyState() {
-        apiKeyMissing.value = AiPrefs.getApiKey(context) == null
+        apiKeyMissing.value = !AiPrefs.isConfigured(context)
     }
 
     fun updateDraft(text: String) {
@@ -179,12 +187,21 @@ class AiChatViewModel @Inject constructor(
 
     fun sendMessage(text: String) = session.send(text)
 
+    fun attachImages(uris: List<Uri>) = session.attachImages(uris)
+
+    fun removePendingImage(name: String) = session.removePendingImage(name)
+
+    fun imageFile(name: String): File = session.imageFile(name)
+
     /** Stop the running turn. Nothing half-generated is kept in the model's history. */
     fun stop() = session.stop()
 
     fun retry(errorMessageId: String) = session.retry(errorMessageId)
 
     fun newChat() = session.newChat()
+
+    /** Changes whenever a different conversation replaces the one on screen. */
+    val conversationId: StateFlow<Int> = session.conversationId
 
     fun saveFlow(message: ChatMessage.FlowPreview) {
         if (message.saved) return

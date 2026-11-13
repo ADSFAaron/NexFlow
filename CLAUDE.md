@@ -53,6 +53,16 @@ core/macrodroid-compat/     # MacroDroid .mdr 格式解析
 | NFC `tech-list` 匹配語意 | **反直覺**：官方定義是「tech-list 是標籤所報技術的 subset 才算匹配」，所以**列愈少技術匹配愈廣**。同一個 `<tech-list>` 內是 AND，多個 `<tech-list>` 之間是 OR。很多人以為列一個就是「只收這種」，其實是「所有帶這種的都收」 | 想收窄就多列幾個技術；想分開涵蓋就開多個 `<tech-list>` |
 | `android.nfc.tech.Mifare*` 放進 tech-list | `MifareClassic`／`MifareUltralight` 的實作在 Android 上是**選配**的（javadoc：「If it is not implemented, then MifareClassic will never be enumerated in `getTechList`」），非 NXP 晶片的手機上永遠不會出現 → tech-list 安靜地永不匹配，不報錯也沒 log | tech-list 只用 `Ndef`／`NdefFormatable`／`NfcA`~`NfcV`。`Ndef` 是唯一「所有支援 NFC 的裝置都必須正確列舉」的，跨機一致 |
 | `SCHEDULE_EXACT_ALARM` | targetSdk 33+ 的 App **全新安裝時預設拒絕**（備份還原到新機也是拒絕），但從舊版升級的裝置會保留已授予的 → 同一版有人正常有人遲到。沒授權時退回不精確鬧鐘，官方保證只有「一小時內」，排 9:00 的流程 9:10 才跑 | 宣告不等於拿到：一定要 `canScheduleExactAlarms()` 檢查 + 用 `ACTION_REQUEST_SCHEDULE_EXACT_ALARM` 引導。並且要收 `ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED` 重排——鬧鐘的精度是排定當下決定的，授權後既有鬧鐘不會自己升級 |
+| 流程 config 的威脅模型 | 流程可以用 `.flow` 檔分享，**作者不一定是執行的人**。而 `FlowInterpreter.interpolateAction` 會內插**所有** config 值，`{{trigger.body}}`、`{{trigger.text}}` 是傳簡訊、發通知的陌生人決定的 | 新增「完整描述要啟動什麼」的 key（intent URI 這類，能指定確切畫面、ACTION_CALL、extras）時，加進 `ActionPolicy.LITERAL_ONLY_KEYS`：只能是選擇器選出的固定值，不能含任何 `{{變數}}`。只開 App 首頁的 `package_name` 不在此列 |
+| `Intent.parseUri()` + `startActivity` / `PendingIntent` | NexFlow 用自己的身分啟動 → 可以開到自己**非 exported** 的 activity；`FLAG_GRANT_*_URI_PERMISSION` 會把我們 FileProvider 的存取權交出去；selector 會取代外層 intent 被解析 | 一律走 `SafeIntents.parse()`。別人 App 的非 exported activity 系統本來就會擋，缺口只在自己的 |
+| 寫檔路徑來自流程 | 擋 `..` 不夠：絕對路徑就能寫進 `dataDir`（`shared_prefs/nexflow_ai.xml` 存著 AI key 與 endpoint），影響在流程刪除後仍存在 | `WriteFileActionExecutor.isAppPrivate()` 用 canonicalPath 比對 `dataDir` 與 device-protected `dataDir` |
+| `Regex(使用者的 pattern)` 比對外部文字 | java.util.regex 會回溯，`(a+)+$` 加一則特製通知就能卡住觸發器串流 | 用 `TextMatcher.matches`：pattern 長度上限、比對有字元讀取預算，用完就當不符合 |
+| SMS／撥號／HTTP 的次數 | REPEAT 上限 10 000，疊在 SEND_SMS 上就是帳單 | `SlidingWindowRateLimiter`（每流程每分鐘：SMS 5、撥號 5、HTTP 60），超過就略過那一步、不中止流程；`LAUNCH_SHORTCUT` 的 ACTION_CALL 也算撥號 |
+| Room `@Insert(onConflict = REPLACE)` 用在有子表的 entity | SQLite 的 REPLACE 是**先刪再插**，刪除會觸發子表的 `ON DELETE CASCADE`：`flows` 用它的時候，每存一次流程，該流程的執行紀錄就全被清空 | 父表一律用 `@Upsert`（撞主鍵改走 UPDATE）。只有沒有子表、或主鍵每次都是新 UUID 的表才可用 REPLACE |
+| `registerReceiver` 註冊 sticky broadcast（Wi-Fi 狀態、`ACTION_HEADSET_PLUG`、`ACTION_BATTERY_CHANGED`） | 註冊當下系統會把目前的值「as if it had just been broadcast」送進 `onReceive`。引擎每次啟動都會重新註冊，所以不處理就會把「目前狀態」當成新事件觸發 | `isInitialStickyBroadcast` 為 true 時只記錄狀態、不觸發；Wi-Fi 還要比對前一次狀態，一次斷線會連發好幾個中間狀態 |
+| `GeofencingRequest` 的 initial trigger | 預設是 `INITIAL_TRIGGER_ENTER \| INITIAL_TRIGGER_DWELL`：註冊時人在圍欄內就立刻報 ENTER，每次重新註冊都會再報一次 | `setInitialTrigger(0)`：只報真正的進出 |
+| 外部文字送進 `BigDecimal` | `"1e999999999"` 能被解析，`toPlainString()` 直接 OOM（Error，`catch (Exception)` 接不到），加法也會跑上好幾秒 | 只接受純十進位、限制長度；算式的結構只取作者寫的模板，變數值永遠不當算式解析（`ExpressionEvaluator.arithmeticOrNull`） |
+| `Service.stopSelf()` | 不帶參數就是**無條件**停止，`onDestroy` 會取消 scope 裡所有還在跑的工作。「跑完就走」寫成每個請求結束都 `stopSelf()`，第二個請求一結束就把第一個殺掉 | 計數正在跑的請求，歸零時才用 `stopSelfResult(最新的 startId)`（見 `StopWhenIdle`） |
 
 ### 3. 測試
 
@@ -78,6 +88,7 @@ core/macrodroid-compat/     # MacroDroid .mdr 格式解析
 - 參考圖在 `app/src/screenshotTestGithubDebug/reference/`，**要進 repo**。UI 改動是有意的就重跑 `./gradlew :app:updateGithubDebugScreenshotTest` 並一起 commit
 - 只維護 github flavor 的參考圖；被截圖的 composable 都與 flavor 無關，`validatePlayDebugScreenshotTest` 沒有參考圖可比
 - 預覽用 `NexFlowTheme(dynamicColor = false)`——動態色會讓不同機器算出不同顏色，圖就永遠對不起來
+- **CI 是 Linux、參考圖是 Mac 產的**：layoutlib 兩邊算半透明與漸層的取整差 1/255，會讓 AI 聊天那幾張在 CI 上「差 0.5% 像素」。plugin 的 `threshold` 只算「多少像素不同」，分不出這種雜訊與真的改字（改一行字也才 0.64%），所以**不要設 threshold**。CI 在精確比對失敗時改跑 `tools/ScreenshotTolerance.java`：每個通道差 ≤1 才放行，缺圖、尺寸不符、超過 1 都算失敗。本機照舊精確比對
 - **`AlertDialog` 截不到**：layoutlib 下 dialog 是獨立 window，畫面會是空的。對話框要驗就用 Robolectric 斷言，別用截圖
 
 #### Instrumented（實體／模擬器）
@@ -223,6 +234,8 @@ ActionExecutor (interface)
 ```
 
 新增 ActionExecutor 後必須在 `ExecutionModule.kt` 加 `@Binds @IntoSet`。
+
+**失敗與略過的原因一律用 `LogText.of("代碼", 參數…)`，不要寫英文句子**：紀錄存代碼，`ui/logs/LogMessages` 在顯示時依 App 語言組字。新代碼要在四個 `strings.xml` 加 `logmsg_<代碼>` 並登記到 `LogMessages.SPECS`——`LogMessagesTest` 會掃原始碼，漏了就失敗。包住例外用 `failureFrom(代碼, e)`（已經是代碼的訊息會原樣傳出，不會被包第二層）；要補前置資訊（例如 URL）用 `LogText.prefixed`，不要把一則訊息當成另一則的參數。
 
 ### 特殊權限需求
 

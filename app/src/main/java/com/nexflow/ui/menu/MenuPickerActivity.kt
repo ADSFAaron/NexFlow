@@ -33,6 +33,9 @@ import com.nexflow.ui.theme.NexFlowTheme
  */
 class MenuPickerActivity : ComponentActivity() {
 
+    /** The menu this activity put on screen; the only one it may answer. */
+    private var displayed: MenuPickerBridge.Request? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -44,14 +47,18 @@ class MenuPickerActivity : ComponentActivity() {
                     // Answered elsewhere (or already gone) — nothing left to show.
                     LaunchedEffect(Unit) { finish() }
                 } else {
+                    LaunchedEffect(menu) {
+                        displayed = menu
+                        MenuPickerBridge.markShown(menu)
+                    }
                     MenuPickerSheet(
                         request = menu,
                         onSelect = { choice ->
-                            MenuPickerBridge.deliver(choice)
+                            MenuPickerBridge.deliver(menu, choice)
                             finish()
                         },
                         onDismiss = {
-                            MenuPickerBridge.deliver(null)
+                            MenuPickerBridge.deliver(menu, null)
                             finish()
                         },
                     )
@@ -64,6 +71,7 @@ class MenuPickerActivity : ComponentActivity() {
         super.onDestroy()
         // Back (gesture or button) dismisses the sheet, which already answers the bridge; this
         // only covers the activity being torn down some other way with a menu still pending.
-        if (isFinishing && MenuPickerBridge.request.value != null) MenuPickerBridge.deliver(null)
+        // deliver() ignores it unless that menu is still the pending one.
+        if (isFinishing) displayed?.let { MenuPickerBridge.deliver(it, null) }
     }
 }

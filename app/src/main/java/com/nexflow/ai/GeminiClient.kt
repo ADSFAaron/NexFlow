@@ -40,12 +40,34 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
 sealed class GeminiException(message: String) : Exception(message) {
     class InvalidKey(message: String) : GeminiException(message)
-    class RateLimited(message: String) : GeminiException(message)
+    /**
+     * 429. Three different situations share the status code, and only the first is worth
+     * waiting out — the body's `QuotaFailure` says which one it is:
+     * - a per-minute limit: [retryAfterMillis] (from `RetryInfo`) says when it frees up;
+     * - a per-day limit ([daily]): resets at midnight Pacific time, not within a conversation;
+     * - a quota of zero ([noQuota]): the key's tier does not include this model at all.
+     */
+    class RateLimited(
+        message: String,
+        val retryAfterMillis: Long? = null,
+        val daily: Boolean = false,
+        val noQuota: Boolean = false,
+    ) : GeminiException(message)
+
+    /**
+     * The server side could not take the request right now — 503 "This model is currently
+     * experiencing high demand", or a 500/502. Google's error reference says to wait and retry
+     * with exponential backoff; it has nothing to do with the request, so the same request is
+     * worth sending again (see [AiChatOrchestrator]).
+     */
+    class Unavailable(message: String) : GeminiException(message)
     class ModelNotFound(message: String) : GeminiException(message)
     class Network(message: String) : GeminiException(message)
     class Unknown(message: String) : GeminiException(message)
@@ -213,9 +235,37 @@ class GeminiClient @Inject constructor(
                 ("API_KEY_INVALID" in reasons || message.contains("api key", ignoreCase = true)) ->
                 GeminiException.InvalidKey(message)
             statusCode == 404 -> GeminiException.ModelNotFound(message)
-            statusCode == 429 -> GeminiException.RateLimited(message)
+            statusCode == 429 -> rateLimited(message, error?.details.orEmpty())
+            // Not 504: that is the request running past its deadline, and sending the same
+            // request again runs past it again.
+            statusCode in RETRYABLE_SERVER_CODES -> GeminiException.Unavailable(message)
             else -> GeminiException.Unknown(message)
         }
+    }
+
+    /**
+     * Reads the google.rpc details of a 429. `QuotaFailure.violations[].quotaId` names the
+     * limit that ran out (e.g. `GenerateRequestsPerMinutePerProjectPerModel-FreeTier` vs
+     * `...PerDayPerProjectPerModel-FreeTier`), `quotaValue` its size, and `RetryInfo.retryDelay`
+     * (a protobuf Duration such as "37s" or "4.2s") how long to wait. `RetryInfo` alone cannot
+     * be trusted: daily limits have been seen to carry a delay of seconds too.
+     */
+    private fun rateLimited(message: String, details: List<JsonObject>): GeminiException.RateLimited {
+        fun JsonObject.type() = (this["@type"] as? JsonPrimitive)?.contentOrNull.orEmpty()
+        val violations = details
+            .filter { it.type().endsWith("QuotaFailure") }
+            .flatMap { (it["violations"] as? JsonArray).orEmpty() }
+            .filterIsInstance<JsonObject>()
+        val quotaIds = violations.mapNotNull { (it["quotaId"] as? JsonPrimitive)?.contentOrNull }
+        val retryDelay = details
+            .firstOrNull { it.type().endsWith("RetryInfo") }
+            ?.let { (it["retryDelay"] as? JsonPrimitive)?.contentOrNull }
+        return GeminiException.RateLimited(
+            message = message,
+            retryAfterMillis = retryDelay?.removeSuffix("s")?.toDoubleOrNull()?.let { (it * 1000).toLong() },
+            daily = quotaIds.any { it.contains("PerDay", ignoreCase = true) || it.contains("Daily", ignoreCase = true) },
+            noQuota = violations.any { (it["quotaValue"] as? JsonPrimitive)?.contentOrNull == "0" },
+        )
     }
 
     private fun Exception.asNetworkOrRethrow(): Exception = when (this) {
@@ -238,6 +288,7 @@ class GeminiClient @Inject constructor(
         private const val BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
         private const val API_KEY_HEADER = "x-goog-api-key"
         private const val SSE_DATA_PREFIX = "data: "
+        private val RETRYABLE_SERVER_CODES = setOf(500, 502, 503)
 
         // Special-purpose variants that also report generateContent but can't drive the chat
         // (image generation, TTS, native audio, Live API, embeddings).

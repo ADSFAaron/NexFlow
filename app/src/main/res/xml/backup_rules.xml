@@ -11,4 +11,7 @@
     <!-- Gemini API key — must stay off cloud backups on API 30 too (mirrors
          data_extraction_rules.xml; the Settings UI promises this exclusion). -->
     <exclude domain="sharedpref" path="nexflow_ai.xml" />
+    <!-- Images attached in the AI chat: they belong to the conversations above,
+         which stay off cloud backup too. -->
+    <exclude domain="file" path="ai_images/" />
 </full-backup-content>

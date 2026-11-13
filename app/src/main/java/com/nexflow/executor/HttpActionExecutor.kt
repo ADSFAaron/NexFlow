@@ -34,6 +34,7 @@ import io.ktor.utils.io.readRemaining
 import kotlinx.coroutines.CancellationException
 import kotlinx.io.readByteArray
 import javax.inject.Inject
+import com.nexflow.core.automation.LogText
 
 /**
  * Calls an HTTP endpoint and hands the result back to the flow as variables, which is what lets a
@@ -52,10 +53,10 @@ class HttpActionExecutor @Inject constructor(
 
     override suspend fun execute(action: Action, variables: MutableMap<String, String>): ActionResult {
         val url = action.config["url"]?.takeIf { it.isNotBlank() }
-            ?: return ActionResult.Failure("No URL specified")
+            ?: return ActionResult.Failure(LogText.of("url_none"))
         val methodName = action.config["method"]?.takeIf { it.isNotBlank() }?.uppercase() ?: "GET"
         val method = METHODS[methodName]
-            ?: return ActionResult.Failure("Unknown HTTP method: $methodName")
+            ?: return ActionResult.Failure(LogText.of("http_bad_method", methodName))
         val headers = parseHeaders(action.config["headers"].orEmpty())
             .getOrElse { return ActionResult.Failure(it.message.orEmpty()) }
         val body = action.config["body"]?.takeIf { it.isNotBlank() }
@@ -66,10 +67,7 @@ class HttpActionExecutor @Inject constructor(
             // Only the interpreter's SET_VARIABLE path reports a global write back for persisting,
             // so writing one straight into the map here would look like it worked and then vanish
             // at the end of the run. Refuse instead of losing the value silently.
-            return ActionResult.Failure(
-                "\"$responseVar\" is a global variable, which this action cannot write. Store the " +
-                    "response in a flow variable, then copy it over with a Set variable action.",
-            )
+            return ActionResult.Failure(LogText.of("http_global_response", responseVar))
         }
 
         return try {
@@ -94,7 +92,7 @@ class HttpActionExecutor @Inject constructor(
                 val text = readCapped(response)
                     .getOrElse { return@execute ActionResult.Failure(it.message.orEmpty()) }
                 val value = JsonPath.extract(text, jsonPath)
-                    .getOrElse { return@execute ActionResult.Failure("$url: ${it.message}") }
+                    .getOrElse { return@execute ActionResult.Failure(LogText.prefixed(it.message, url)) }
                 variables[responseVar] = value
                 ActionResult.Success
             }
@@ -103,7 +101,7 @@ class HttpActionExecutor @Inject constructor(
             // would let the interpreter carry on to the next action.
             throw e
         } catch (e: Exception) {
-            ActionResult.Failure("HTTP $methodName $url failed: ${e.message}", e)
+            ActionResult.Failure(LogText.of("http_failed", methodName, url, e.message), e)
         }
     }
 
@@ -116,10 +114,7 @@ class HttpActionExecutor @Inject constructor(
         val bytes = response.bodyAsChannel().readRemaining(RESPONSE_LIMIT_BYTES + 1L).readByteArray()
         return when {
             bytes.size > RESPONSE_LIMIT_BYTES -> Result.failure(
-                IllegalArgumentException(
-                    "The response is larger than ${RESPONSE_LIMIT_BYTES / 1024} KB, too large to " +
-                        "store in a variable. Ask the API for less data, or narrow it with a JSON path.",
-                ),
+                IllegalArgumentException(LogText.of("http_too_large", RESPONSE_LIMIT_BYTES / 1024)),
             )
 
             else -> Result.success(bytes.decodeToString())
@@ -139,7 +134,7 @@ class HttpActionExecutor @Inject constructor(
             val colon = trimmed.indexOf(':')
             if (colon <= 0) {
                 return Result.failure(
-                    IllegalArgumentException("Header line \"$trimmed\" is not in \"Name: Value\" form"),
+                    IllegalArgumentException(LogText.of("http_bad_header", trimmed)),
                 )
             }
             headers += trimmed.take(colon).trim() to trimmed.substring(colon + 1).trim()

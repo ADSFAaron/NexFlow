@@ -22,6 +22,8 @@ import com.nexflow.core.automation.executor.ActionResult
 import com.nexflow.core.automation.model.Action
 import com.nexflow.service.GestureCoordinator
 import kotlinx.coroutines.CompletableDeferred
+import com.nexflow.core.automation.LogText
+import com.nexflow.core.automation.model.ActionType
 
 /**
  * Shared plumbing for the gesture actions (SIMULATE_TAP / SIMULATE_SWIPE): they all end up
@@ -42,10 +44,8 @@ internal object GestureActionSupport {
         return flat.split(':').any { it.equals(target, ignoreCase = true) }
     }
 
-    fun accessibilityFailure(what: String) = ActionResult.Failure(
-        "$what requires NexFlow Accessibility Service — " +
-            "enable it in Settings > Accessibility > Installed apps > NexFlow",
-    )
+    fun accessibilityFailure(action: ActionType) =
+        ActionResult.Failure(LogText.of("needs_accessibility", action))
 
     /** Reads a non-negative pixel coordinate, or null when missing/invalid. */
     fun Action.coordinate(key: String): Float? =

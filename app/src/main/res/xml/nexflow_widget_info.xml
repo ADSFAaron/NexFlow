@@ -12,5 +12,6 @@
     android:resizeMode="horizontal|vertical"
     android:updatePeriodMillis="0"
     android:widgetCategory="home_screen"
-    android:widgetFeatures="reconfigurable"
-    android:previewLayout="@layout/widget_preview_overview" />
+    android:widgetFeatures="reconfigurable|configuration_optional"
+    android:previewLayout="@layout/widget_preview_overview"
+    android:configure="com.nexflow.widget.OverviewWidgetConfigureActivity" />

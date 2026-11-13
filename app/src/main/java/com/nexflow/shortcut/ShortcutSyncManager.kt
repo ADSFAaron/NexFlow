@@ -52,15 +52,12 @@ class ShortcutSyncManager @Inject constructor(
                 val recent = logs.map { it.flowId }
                     .distinct()
                     .mapNotNull { flowMap[it] }
-                // The launcher's long-press menu holds a handful; the widget is however big the
-                // user made it, and recent runs alone left a large one half empty. Top it up with
-                // the rest of the flows so the grid has something to fill itself with.
-                val widgetFlows = (recent + flows).distinctBy { it.id }.take(NexFlowWidget.MAX_FLOWS)
-                Triple(recent.take(SHORTCUT_LIMIT), flows, widgetFlows)
-            }.collect { (recentFlows, allFlows, widgetFlows) ->
-                syncShortcuts(recentFlows)
+                recent to flows
+            }.collect { (recentFlows, allFlows) ->
+                syncShortcuts(recentFlows.take(SHORTCUT_LIMIT))
                 refreshPinnedShortcuts(allFlows)
-                NexFlowWidget.updateRecentFlows(context, widgetFlows)
+                // Each widget decides from these whether it shows recent runs or its own pick.
+                NexFlowWidget.updateFlows(context, recentFlows, allFlows)
             }
         }
     }

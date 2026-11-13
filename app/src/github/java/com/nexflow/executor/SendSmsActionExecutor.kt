@@ -23,6 +23,7 @@ import com.nexflow.core.automation.model.Action
 import com.nexflow.core.automation.model.ActionType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import com.nexflow.core.automation.LogText
 
 class SendSmsActionExecutor @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -32,9 +33,9 @@ class SendSmsActionExecutor @Inject constructor(
 
     override suspend fun execute(action: Action, variables: MutableMap<String, String>): ActionResult {
         val number = action.config["number"]?.trim()?.takeIf { it.isNotBlank() }
-            ?: return ActionResult.Failure("SMS: no phone number configured")
+            ?: return ActionResult.Failure(LogText.of("sms_no_number"))
         val message = action.config["message"]?.trim()?.takeIf { it.isNotBlank() }
-            ?: return ActionResult.Failure("SMS: no message configured")
+            ?: return ActionResult.Failure(LogText.of("sms_no_message"))
 
         return runCatching {
             @Suppress("DEPRECATION")
@@ -47,6 +48,6 @@ class SendSmsActionExecutor @Inject constructor(
             val parts = smsManager.divideMessage(message)
             smsManager.sendMultipartTextMessage(number, null, parts, null, null)
             ActionResult.Success
-        }.getOrElse { ActionResult.Failure("SMS failed: ${it.message}") }
+        }.getOrElse { failureFrom("sms_failed", it) }
     }
 }

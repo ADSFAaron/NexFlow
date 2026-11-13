@@ -20,9 +20,13 @@ import android.util.Log
 import com.nexflow.core.automation.repository.GlobalVariableRepository
 import com.nexflow.core.flowschema.FlowJson
 import com.nexflow.prefs.AiPrefs
+import com.nexflow.prefs.AiProvider
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import kotlin.random.Random
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
@@ -37,21 +41,23 @@ import kotlinx.serialization.json.putJsonArray
  *
  * Per user turn: call generateContent; answer `search_installed_apps` / `search_app_shortcuts`
  * locally and continue; validate `create_flow` via [FlowDraftMapper], feeding errors back as a
- * functionResponse so Gemini can repair (bounded), and surface the validated flow with the
- * model's summary text.
+ * functionResponse so Gemini can repair (bounded). A validated flow ends the turn with the
+ * summary the model put in its `create_flow` call.
  */
 class AiChatOrchestrator @Inject constructor(
     private val client: GeminiClient,
+    private val compatibleClient: OpenAiCompatibleClient,
     private val installedApps: InstalledAppsSource,
     private val appShortcuts: AppShortcutsSource,
     private val globalVariableRepository: GlobalVariableRepository,
+    private val images: AiImageStore,
     @param:ApplicationContext private val context: Context,
 ) {
     sealed interface TurnResult {
         /** Plain assistant reply (question, confirmation, etc.). */
         data class Assistant(val text: String) : TurnResult
 
-        /** A flow passed validation; [summaryText] is the model's follow-up message. */
+        /** A flow passed validation; [summaryText] is what the model wrote for the user. */
         data class FlowReady(val flow: FlowJson, val summaryText: String) : TurnResult
 
         data class Failure(val error: GeminiException) : TurnResult
@@ -64,6 +70,12 @@ class AiChatOrchestrator @Inject constructor(
         data object SearchingShortcuts : Progress
         data object BuildingFlow : Progress
         data class Repairing(val attempt: Int) : Progress
+
+        /** Gemini answered "busy"; waiting before sending the same request again. */
+        data class Retrying(val attempt: Int, val maxAttempts: Int) : Progress
+
+        /** The per-minute quota ran out; counting down to when Google said it frees up. */
+        data class WaitingForQuota(val secondsLeft: Int) : Progress
     }
 
     private val history = mutableListOf<GeminiContent>()
@@ -120,20 +132,25 @@ class AiChatOrchestrator @Inject constructor(
      */
     suspend fun sendUserMessage(
         text: String,
+        /** Names of images in [AiImageStore] attached to this message. */
+        imageNames: List<String> = emptyList(),
         onProgress: (Progress) -> Unit = {},
         onDelta: (String) -> Unit = {},
     ): TurnResult {
         // A snapshot, not an index: the turn also trims old entries off the front, which would
         // leave any position we remembered pointing at the wrong element.
         val before = history.toList()
+        val usage = TurnUsage()
         return try {
-            runTurn(text, onProgress, onDelta).also { result ->
+            runTurn(text, imageNames, usage, onProgress, onDelta).also { result ->
                 if (result is TurnResult.Failure) history.restore(before)
             }
         } catch (e: CancellationException) {
             // The user hit stop. Same rule: nothing half-written survives.
             history.restore(before)
             throw e
+        } finally {
+            if (usage.requests > 0) Log.d(USAGE_TAG, usage.summaryLine())
         }
     }
 
@@ -144,35 +161,60 @@ class AiChatOrchestrator @Inject constructor(
 
     private suspend fun runTurn(
         text: String,
-        onProgress: (Progress) -> Unit,
+        imageNames: List<String>,
+        turnUsage: TurnUsage,
+        reportProgress: (Progress) -> Unit,
         onDelta: (String) -> Unit,
     ): TurnResult {
-        val apiKey = AiPrefs.getApiKey(context)
+        // Remembered so a retry's "server busy" line can be replaced by whatever the loop was
+        // doing before it, once the retried request gets through.
+        var shownProgress: Progress = Progress.Contacting
+        val onProgress: (Progress) -> Unit = {
+            shownProgress = it
+            reportProgress(it)
+        }
+        val send = modelStream()
             ?: return TurnResult.Failure(GeminiException.InvalidKey("API key not set"))
-        val model = AiPrefs.getModel(context)
 
-        history += GeminiContent(role = "user", parts = listOf(GeminiPart(text = text)))
+        // Text first, then the images: the order Google's image-understanding guide uses. The
+        // images go in as file references — see [resolveImages].
+        history += GeminiContent(
+            role = "user",
+            parts = buildList {
+                if (text.isNotBlank()) add(GeminiPart(text = text))
+                imageNames.forEach {
+                    add(GeminiPart(inlineData = GeminiBlob(mimeType = AiImageStore.MIME_TYPE, data = it)))
+                }
+            },
+        )
         trimHistory()
 
         var repairAttempts = 0
         var pendingFlow: FlowJson? = null
+        var pendingSummary: String? = null
 
         repeat(MAX_STEPS) { step ->
             if (step == 0) onProgress(Progress.Contacting)
             val request = GenerateContentRequest(
-                contents = history.toList(),
+                contents = resolveImages(history.toList()),
                 systemInstruction = GeminiContent(
                     parts = listOf(GeminiPart(text = AiCatalog.systemInstruction(context))),
                 ),
                 tools = AiTools.tools(),
             )
-            val response = runCatching { streamStep(apiKey, model, request, onDelta) }.getOrElse { e ->
+            val response = runCatching {
+                streamStepWithRetry(send, request, onDelta) { waiting ->
+                    reportProgress(waiting ?: shownProgress)
+                }
+            }.getOrElse { e ->
                 if (e is CancellationException) throw e
                 Log.e(TAG, "turn failed: ${e.javaClass.simpleName}: ${e.message}")
                 return TurnResult.Failure(
                     e as? GeminiException ?: GeminiException.Unknown(e.message ?: "unexpected error"),
                 )
             }
+
+            logStepUsage(step, request, response, turnUsage)
 
             val parts = response.parts
             if (parts.isEmpty()) {
@@ -202,6 +244,7 @@ class AiChatOrchestrator @Inject constructor(
                 return if (flow != null) TurnResult.FlowReady(flow, reply) else TurnResult.Assistant(reply)
             }
 
+            var rejected = false
             val responseParts = functionCalls.map { call ->
                 when (call.name) {
                     AiTools.SEARCH_INSTALLED_APPS -> {
@@ -216,16 +259,23 @@ class AiChatOrchestrator @Inject constructor(
 
                     AiTools.CREATE_FLOW -> {
                         onProgress(Progress.BuildingFlow)
+                        val installed = installedApps.launchablePackages()
+                        val preamble = history.first().parts.mapNotNull { it.text }.joinToString("\n")
                         val draft = FlowDraftMapper.fromArgs(
                             call.args,
                             context,
                             knownGlobals = globalVariableRepository.currentValues().keys,
+                            // A flow being edited may point at an app since uninstalled. That's
+                            // the user's to fix; rejecting it would fail every edit of that flow.
+                            isInstalled = { it in installed || it in preamble },
                         )
                         if (draft.isValid) {
                             Log.d(TAG, "create_flow validated: \"${draft.flow?.name}\"")
                             pendingFlow = draft.flow
+                            pendingSummary = (call.args["summary"] as? JsonPrimitive)?.contentOrNull
                             functionResponse(call.name, buildJsonObject { put("status", "ok") })
                         } else {
+                            rejected = true
                             repairAttempts++
                             onProgress(Progress.Repairing(repairAttempts))
                             Log.w(
@@ -260,9 +310,61 @@ class AiChatOrchestrator @Inject constructor(
                 }
             }
             history += GeminiContent(role = "user", parts = responseParts)
+
+            // The model already wrote its summary into the call. Asking for it again would
+            // replay the whole prompt for one sentence: measured on a real conversation, that
+            // last step alone was 42% of the tokens. A step that also searched is left to run
+            // on, because the model asked for an answer it hasn't seen yet.
+            val flow = pendingFlow
+            if (flow != null && !rejected && functionCalls.all { it.name == AiTools.CREATE_FLOW }) {
+                val summary = pendingSummary?.trim().orEmpty().ifEmpty { flow.description }.ifEmpty { flow.name }
+                // Closes the exchange, or the next user message would follow a functionResponse.
+                history += GeminiContent(role = "model", parts = listOf(GeminiPart(text = summary)))
+                return TurnResult.FlowReady(flow, summary)
+            }
         }
 
         return TurnResult.Failure(GeminiException.Unknown("conversation step limit reached"))
+    }
+
+    /** How to reach the service the user selected, or null when it isn't set up. */
+    private fun modelStream(): ModelStream? = when (AiPrefs.getProvider(context)) {
+        AiProvider.GEMINI -> AiPrefs.getApiKey(context)?.let { key ->
+            val model = AiPrefs.getModel(context)
+            ModelStream { client.streamGenerateContent(key, model, it) }
+        }
+        AiProvider.CUSTOM -> AiPrefs.getCustomEndpoint(context)?.let { endpoint ->
+            ModelStream { compatibleClient.streamGenerateContent(endpoint, it) }
+        }
+    }
+
+    /** Numbers and tool names only: this runs in release builds, so no user text goes in it. */
+    private fun logStepUsage(
+        step: Int,
+        request: GenerateContentRequest,
+        response: GenerateContentResponse,
+        turnUsage: TurnUsage,
+    ) {
+        val usage = response.usageMetadata
+        if (usage == null) {
+            Log.d(USAGE_TAG, "step=${step + 1} no usage reported")
+            return
+        }
+        turnUsage.add(usage)
+        Log.d(
+            USAGE_TAG,
+            usage.stepLine(
+                step = step + 1,
+                contents = request.contents.size,
+                images = request.contents.sumOf { c -> c.parts.count { it.inlineData != null } },
+                signatureChars = request.contents.sumOf { c ->
+                    c.parts.sumOf { it.thoughtSignature?.length ?: 0 }
+                },
+                outcome = response.parts.mapNotNull { it.functionCall?.name }
+                    .ifEmpty { listOf("text") }
+                    .joinToString(","),
+            ),
+        )
     }
 
     /**
@@ -300,6 +402,116 @@ class AiChatOrchestrator @Inject constructor(
         role == "user" && parts.all { it.functionResponse == null }
 
     /**
+     * The history as the API wants it: every image reference swapped for the image's bytes.
+     *
+     * The history itself only holds [AiImageStore] file names, so it can be persisted like any
+     * other text. Images are filled in newest first against [MAX_INLINE_IMAGE_BYTES] — Gemini
+     * caps a request at 20 MB and every turn replays every image — and an image that is over
+     * budget, or whose file is gone, becomes a note saying so instead of a dangling reference.
+     */
+    private suspend fun resolveImages(contents: List<GeminiContent>): List<GeminiContent> {
+        if (contents.none { c -> c.parts.any { it.inlineData != null } }) return contents
+        var budget = MAX_INLINE_IMAGE_BYTES
+        return contents.asReversed().map { content ->
+            if (content.parts.none { it.inlineData != null }) return@map content
+            content.copy(
+                parts = content.parts.map { part ->
+                    val blob = part.inlineData ?: return@map part
+                    val data = images.base64(blob.data)?.takeIf { it.length <= budget }
+                    if (data == null) {
+                        GeminiPart(text = IMAGE_UNAVAILABLE_NOTE)
+                    } else {
+                        budget -= data.length
+                        part.copy(inlineData = blob.copy(data = data))
+                    }
+                },
+            )
+        }.asReversed()
+    }
+
+    /**
+     * [streamStep], sent again when the failure is one that waiting fixes:
+     *
+     * - Gemini is overloaded (503 "high demand", or a 500 / 502). Google's error reference says
+     *   to retry these with exponential backoff, and the official SDKs do it by default.
+     * - A per-minute quota ran out (429). On the free tier that is a handful of requests a
+     *   minute, and one turn that searches apps and then builds a flow is already two — so
+     *   a brisk conversation used to fail outright within a few messages. Google says in the
+     *   error how long to wait; the turn now waits that long and carries on. A daily quota, or
+     *   a model the key's tier does not include, is reported straight away: no wait inside a
+     *   conversation fixes those.
+     *
+     * Only a request that failed before any text reached the screen is retried. Retrying after
+     * that would show the user the start of an answer twice; both errors are status codes, so
+     * in practice they always arrive before any chunk. The retry sits below the tool-calling
+     * loop, so a tool the model already called is never run twice.
+     *
+     * [onWait] gets what to show while waiting, then null once a retried request is through.
+     */
+    private suspend fun streamStepWithRetry(
+        send: ModelStream,
+        request: GenerateContentRequest,
+        onDelta: (String) -> Unit,
+        onWait: (Progress?) -> Unit,
+    ): GenerateContentResponse {
+        var busyRetries = 0
+        var quotaRetries = 0
+        while (true) {
+            val waited = busyRetries + quotaRetries > 0
+            var shownText = false
+            try {
+                return streamStep(send, request) { text ->
+                    if (!shownText && text.isNotEmpty()) {
+                        shownText = true
+                        if (waited) onWait(null)
+                    }
+                    onDelta(text)
+                }.also { if (waited && !shownText) onWait(null) }
+            } catch (e: GeminiException.Unavailable) {
+                if (shownText || busyRetries >= MAX_UNAVAILABLE_RETRIES) throw e
+                busyRetries++
+                val wait = backoffMillis(busyRetries)
+                Log.w(TAG, "Gemini unavailable (${e.message}); retry $busyRetries/$MAX_UNAVAILABLE_RETRIES in ${wait}ms")
+                onWait(Progress.Retrying(busyRetries, MAX_UNAVAILABLE_RETRIES))
+                delay(wait)
+            } catch (e: GeminiException.RateLimited) {
+                val wait = quotaWaitMillis(e, quotaRetries + 1)
+                if (shownText || wait == null || quotaRetries >= MAX_RATE_LIMIT_RETRIES) throw e
+                quotaRetries++
+                Log.w(TAG, "per-minute quota spent; retry $quotaRetries/$MAX_RATE_LIMIT_RETRIES in ${wait}ms")
+                countDown(wait) { onWait(Progress.WaitingForQuota(it)) }
+            }
+        }
+    }
+
+    /** 2 s, 4 s, 8 s, each plus up to a second of jitter so clients that failed together don't retry together. */
+    private fun backoffMillis(attempt: Int): Long =
+        INITIAL_BACKOFF_MS * (1L shl (attempt - 1)) + Random.nextLong(MAX_JITTER_MS)
+
+    /**
+     * How long to wait out a 429, or null when waiting won't help. Google's own `retryDelay`
+     * wins when there is one; past a minute it isn't a per-minute limit, whatever the quota id
+     * says, and a user won't sit through it anyway.
+     */
+    private fun quotaWaitMillis(e: GeminiException.RateLimited, attempt: Int): Long? {
+        if (e.daily || e.noQuota) return null
+        val wait = e.retryAfterMillis?.plus(QUOTA_SLACK_MS)
+            ?: (RATE_LIMIT_FALLBACK_MS * (1L shl (attempt - 1)))
+        return wait.takeIf { it <= MAX_QUOTA_WAIT_MS }
+    }
+
+    /** Waits [millis], telling [onSecond] the whole seconds left as they tick down. */
+    private suspend fun countDown(millis: Long, onSecond: (Int) -> Unit) {
+        var left = millis
+        while (left > 0) {
+            onSecond(((left + 999) / 1000).toInt())
+            val step = minOf(left, 1000L)
+            delay(step)
+            left -= step
+        }
+    }
+
+    /**
      * Runs one model call as a stream and folds the chunks back into the single response the
      * rest of the loop already knows how to handle — the tool-calling logic never learns that
      * streaming happened.
@@ -309,8 +521,7 @@ class AiChatOrchestrator @Inject constructor(
      * token usage) is merged verbatim, because history replay depends on it round-tripping.
      */
     private suspend fun streamStep(
-        apiKey: String,
-        model: String,
+        send: ModelStream,
         request: GenerateContentRequest,
         onDelta: (String) -> Unit,
     ): GenerateContentResponse {
@@ -322,7 +533,7 @@ class AiChatOrchestrator @Inject constructor(
         // Each step starts from a blank placeholder: a previous step's narration must not
         // linger under the next one's output.
         onDelta("")
-        client.streamGenerateContent(apiKey, model, request).collect { chunk ->
+        send(request).collect { chunk ->
             chunk.promptFeedback?.let { feedback = it }
             chunk.usageMetadata?.let { usage = it }
             chunk.parts.forEach { parts.appendMerging(it) }
@@ -449,12 +660,44 @@ class AiChatOrchestrator @Inject constructor(
     private fun functionResponse(name: String, response: kotlinx.serialization.json.JsonObject) =
         GeminiPart(functionResponse = GeminiFunctionResponse(name = name, response = response))
 
+    private fun interface ModelStream {
+        operator fun invoke(request: GenerateContentRequest): Flow<GenerateContentResponse>
+    }
+
     private companion object {
         const val TAG = "AiChatOrchestrator"
 
+        /** Its own tag, so `adb logcat -s AiUsage` shows the token breakdown and nothing else. */
+        const val USAGE_TAG = "AiUsage"
+
         /** Upper bound on model round-trips per user turn (tool answers + repairs). */
         const val MAX_STEPS = 8
+
+        /** Three retries at 2 / 4 / 8 s: about 15 s of waiting before a busy model is reported. */
+        const val MAX_UNAVAILABLE_RETRIES = 3
+        const val INITIAL_BACKOFF_MS = 2_000L
+        const val MAX_JITTER_MS = 1_000L
         const val MAX_REPAIR_ATTEMPTS = 3
+
+        /**
+         * 429 on a per-minute quota: up to three waits. Without a `retryDelay` from Google,
+         * 10 / 20 / 40 s — a per-minute window is over within that.
+         */
+        const val MAX_RATE_LIMIT_RETRIES = 3
+        const val RATE_LIMIT_FALLBACK_MS = 10_000L
+        const val MAX_QUOTA_WAIT_MS = 65_000L
+
+        /** Google's delay is to the edge of the window; arriving exactly on it can still bounce. */
+        const val QUOTA_SLACK_MS = 1_000L
+
+        /**
+         * Base64 characters of image data one request may carry. The API's limit is 20 MB for
+         * the whole request; this leaves room for the text, the tools and the system prompt.
+         */
+        const val MAX_INLINE_IMAGE_BYTES = 12 * 1024 * 1024
+
+        const val IMAGE_UNAVAILABLE_NOTE =
+            "[The user attached an image here earlier; it is no longer included in the conversation.]"
 
         /**
          * How many `contents` a request may replay. Roughly twenty exchanges — long enough that

@@ -15,6 +15,15 @@
  */
 package com.nexflow.ui.flows.detail
 
+import androidx.compose.foundation.layout.wrapContentHeight
+import com.nexflow.ui.common.SettingsBackButton
+import com.nexflow.ui.common.SettingsDefaults
+import com.nexflow.ui.common.settingsItemPadding
+import com.nexflow.ui.common.settingsItemShapes
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.layout.heightIn
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
@@ -71,7 +80,6 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.AddToHomeScreen
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bolt
@@ -87,7 +95,6 @@ import androidx.compose.material.icons.outlined.ArrowDropDown
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.DataObject
-import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Image
@@ -133,6 +140,7 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
+import androidx.compose.material3.rememberSliderState
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -154,6 +162,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -228,6 +237,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.util.UUID
+import com.nexflow.ui.common.inContainerColors
 
 // ---------------------------------------------------------------------------
 // Public entry point
@@ -428,8 +438,12 @@ private fun FlowDetailContent(
     }
 
     Scaffold(
+        // The settings pages' page colour; the bar stays small (the editor needs the rows more
+        // than a large title) but takes the same colour and back button.
+        containerColor = SettingsDefaults.pageColor,
         topBar = {
             TopAppBar(
+                colors = SettingsDefaults.topAppBarColors(),
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         // The visible circle stays 34dp, but the clickable node is expanded to
@@ -463,11 +477,7 @@ private fun FlowDetailContent(
                         Text(f.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
-                    }
-                },
+                navigationIcon = { SettingsBackButton(onBack) },
                 // One overflow, not a row of icons. Every icon here is a whole flow name's
                 // worth of title taken away, and the name is the only thing on this screen that
                 // says which flow is being edited — with three of them, a duplicate could not be
@@ -543,7 +553,7 @@ private fun FlowDetailContent(
                         f.description,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
                     )
                 }
             }
@@ -563,47 +573,21 @@ private fun FlowDetailContent(
                 )
             }
 
-            if (f.triggers.isEmpty()) {
-                item {
-                    Text(
-                        stringResource(R.string.fd_no_triggers),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                    )
-                }
-            }
-
-            // ALL is a combination over time, not a state — say how long it waits, otherwise the
-            // toggle reads as "and" and a flow that never fires looks broken.
-            if (f.triggerLogic == TriggerLogic.ALL && f.triggers.size > 1) {
-                item {
-                    Text(
-                        pluralStringResource(
-                            R.plurals.fd_logic_all_hint,
-                            (AllTriggersGate.DEFAULT_WINDOW_MS / 60_000).toInt(),
-                            (AllTriggersGate.DEFAULT_WINDOW_MS / 60_000).toInt(),
-                        ),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                    )
-                }
-            }
 
             itemsIndexed(f.triggers, key = { _, t -> t.id }) { index, trigger ->
                 val ti = trigger.type.info(context)
                 // animateItem: added/removed/undone rows slide into place instead of popping.
-                GroupedItem(index = index, count = f.triggers.size + 1, modifier = Modifier.animateItem()) {
+                // The row is the way in; deleting is in the dialog it opens.
+                GroupedItem(
+                    index = index,
+                    count = f.triggers.size + 1,
+                    modifier = Modifier.animateItem(),
+                    onClick = { pendingConfig = PendingConfig.EditTrigger(trigger.id) },
+                ) {
                     TriggerOrActionRow(
                         icon = { Icon(ti.icon, contentDescription = null, modifier = Modifier.size(24.dp)) },
                         headline = ti.label,
                         supporting = trigger.type.configSummary(context, trigger.config),
-                        onEdit = { pendingConfig = PendingConfig.EditTrigger(trigger.id) },
-                        onDelete = {
-                            vm.removeTrigger(trigger.id)
-                            showDeletedSnackbar(ti.label) { vm.addTrigger(trigger) }
-                        },
                     )
                 }
             }
@@ -619,21 +603,29 @@ private fun FlowDetailContent(
                 }
             }
 
-            item { Spacer(Modifier.height(20.dp)) }
+            // Below the group, as the settings pages put a group's footer: between the title
+            // and the tiles it pushed this section's tiles further down than the others'.
+            if (f.triggers.isEmpty()) {
+                item(key = "add_trigger_hint") { SectionFooter(stringResource(R.string.fd_no_triggers)) }
+            }
+            // ALL is a combination over time, not a state — say how long it waits, otherwise the
+            // toggle reads as "and" and a flow that never fires looks broken.
+            if (f.triggerLogic == TriggerLogic.ALL && f.triggers.size > 1) {
+                item(key = "logic_hint") {
+                    SectionFooter(
+                        pluralStringResource(
+                            R.plurals.fd_logic_all_hint,
+                            (AllTriggersGate.DEFAULT_WINDOW_MS / 60_000).toInt(),
+                            (AllTriggersGate.DEFAULT_WINDOW_MS / 60_000).toInt(),
+                        ),
+                    )
+                }
+            }
+
 
             // ---- CONDITIONS (constraints) ----
             item { SectionHeader(stringResource(R.string.fd_section_only_if)) }
 
-            if (f.conditions.isEmpty()) {
-                item {
-                    Text(
-                        stringResource(R.string.fd_no_conditions),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                    )
-                }
-            }
 
             itemsIndexed(f.conditions, key = { _, c -> c.id }) { index, condition ->
                 // A type this build doesn't know (hand-edited file, MacroDroid import) is shown
@@ -641,7 +633,13 @@ private fun FlowDetailContent(
                 // constraint it can't check, so the row must say why.
                 val knownType = remember(condition.type) { ConditionType.fromId(condition.type) }
                 val ci = knownType?.info(context)
-                GroupedItem(index = index, count = f.conditions.size + 1, modifier = Modifier.animateItem()) {
+                GroupedItem(
+                    index = index,
+                    count = f.conditions.size + 1,
+                    modifier = Modifier.animateItem(),
+                    // An unknown type opens a dialog that says so and offers to delete it.
+                    onClick = { pendingConfig = PendingConfig.EditCondition(condition.id) },
+                ) {
                     TriggerOrActionRow(
                         icon = {
                             Icon(
@@ -653,13 +651,6 @@ private fun FlowDetailContent(
                         headline = ci?.label ?: condition.type,
                         supporting = knownType?.configSummary(context, condition.config, condition.negate)
                             ?: stringResource(R.string.cnd_unsupported),
-                        onEdit = if (knownType != null) {
-                            { pendingConfig = PendingConfig.EditCondition(condition.id) }
-                        } else null,
-                        onDelete = {
-                            vm.removeCondition(condition.id)
-                            showDeletedSnackbar(ci?.label ?: condition.type) { vm.addCondition(condition) }
-                        },
                     )
                 }
             }
@@ -675,21 +666,16 @@ private fun FlowDetailContent(
                 }
             }
 
-            item { Spacer(Modifier.height(20.dp)) }
+            // Below the group, as the settings pages put a group's footer: between the title
+            // and the tiles it pushed this section's tiles further down than the others'.
+            if (f.conditions.isEmpty()) {
+                item(key = "add_condition_hint") { SectionFooter(stringResource(R.string.fd_no_conditions)) }
+            }
+
 
             // ---- ACTIONS ----
             item { SectionHeader(stringResource(R.string.fd_section_then)) }
 
-            if (f.actions.isEmpty()) {
-                item {
-                    Text(
-                        stringResource(R.string.fd_no_actions),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                    )
-                }
-            }
 
             itemsIndexed(sortedActions, key = { _, a -> a.id }) { index, action ->
                 val haptic = LocalHapticFeedback.current
@@ -705,6 +691,8 @@ private fun FlowDetailContent(
                         dragModifier = if (isExecuting) Modifier else Modifier.longPressDraggableHandle(
                             onDragStarted = { haptic.performHapticFeedback(HapticFeedbackType.LongPress) },
                         ),
+                        // Tap edits, long-press drags: the two gestures do not overlap.
+                        onClick = { pendingConfig = PendingConfig.EditAction(action.id) },
                     ) {
                         TriggerOrActionRow(
                             icon = {
@@ -715,11 +703,6 @@ private fun FlowDetailContent(
                             headline = ai.label,
                             supporting = action.type.configSummary(context, action.config),
                             isExecuting = isExecuting,
-                            onEdit = { pendingConfig = PendingConfig.EditAction(action.id) },
-                            onDelete = {
-                                vm.removeAction(action.id)
-                                showDeletedSnackbar(ai.label) { vm.restoreAction(action) }
-                            },
                             // Branch markers get a "+" that inserts the new action INSIDE the
                             // branch — plain "Add Action" would land it after the End marker.
                             onAddBranchAction = if (action.type in branchStartTypes) {
@@ -744,33 +727,28 @@ private fun FlowDetailContent(
                 }
             }
 
-            item { Spacer(Modifier.height(20.dp)) }
+            // Below the group, as the settings pages put a group's footer: between the title
+            // and the tiles it pushed this section's tiles further down than the others'.
+            if (f.actions.isEmpty()) {
+                item(key = "add_action_hint") { SectionFooter(stringResource(R.string.fd_no_actions)) }
+            }
+
 
             // ---- VARIABLES ----
             item { SectionHeader(stringResource(R.string.fd_section_variables)) }
 
-            if (f.variables.isEmpty()) {
-                item {
-                    Text(
-                        stringResource(R.string.fd_no_variables),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                    )
-                }
-            }
 
             itemsIndexed(f.variables, key = { _, v -> "var_${v.name}" }) { index, variable ->
-                GroupedItem(index = index, count = f.variables.size + 1, modifier = Modifier.animateItem()) {
+                GroupedItem(
+                    index = index,
+                    count = f.variables.size + 1,
+                    modifier = Modifier.animateItem(),
+                    onClick = { editingVariable = variable },
+                ) {
                     TriggerOrActionRow(
                         icon = { Icon(Icons.Outlined.Code, contentDescription = null, modifier = Modifier.size(24.dp)) },
                         headline = variable.name,
                         supporting = variable.defaultValue.ifBlank { stringResource(R.string.fd_empty_value) },
-                        onEdit = { editingVariable = variable },
-                        onDelete = {
-                            vm.removeVariable(variable.name)
-                            showDeletedSnackbar(variable.name) { vm.saveVariable(null, variable) }
-                        },
                     )
                 }
             }
@@ -784,6 +762,12 @@ private fun FlowDetailContent(
                 ) {
                     AddRowContent(stringResource(R.string.fd_add_variable))
                 }
+            }
+
+            // Below the group, as the settings pages put a group's footer: between the title
+            // and the tiles it pushed this section's tiles further down than the others'.
+            if (f.variables.isEmpty()) {
+                item(key = "add_variable_hint") { SectionFooter(stringResource(R.string.fd_no_variables)) }
             }
 
             item { Spacer(Modifier.height(8.dp)) }
@@ -893,6 +877,11 @@ private fun FlowDetailContent(
                             pendingConfig = null
                         },
                         onDismiss = { pendingConfig = null },
+                        onDelete = {
+                            pendingConfig = null
+                            vm.removeTrigger(trigger.id)
+                            showDeletedSnackbar(trigger.type.info(context).label) { vm.addTrigger(trigger) }
+                        },
                     )
                 }
             }
@@ -919,6 +908,22 @@ private fun FlowDetailContent(
             is PendingConfig.EditCondition -> {
                 val condition = f.conditions.find { it.id == cfg.conditionId }
                 val type = condition?.let { ConditionType.fromId(it.type) }
+                val deleteCondition: () -> Unit = {
+                    pendingConfig = null
+                    if (condition != null) {
+                        vm.removeCondition(condition.id)
+                        showDeletedSnackbar(type?.info(context)?.label ?: condition.type) { vm.addCondition(condition) }
+                    }
+                }
+                if (condition != null && type == null) {
+                    // Nothing this build can configure — but it must still be deletable, and
+                    // the row no longer has a delete button of its own.
+                    UnsupportedConditionDialog(
+                        typeId = condition.type,
+                        onDelete = deleteCondition,
+                        onDismiss = { pendingConfig = null },
+                    )
+                }
                 if (condition != null && type != null) {
                     ConfigDialog(
                         title = type.info(context).label,
@@ -935,6 +940,7 @@ private fun FlowDetailContent(
                             pendingConfig = null
                         },
                         onDismiss = { pendingConfig = null },
+                        onDelete = deleteCondition,
                     )
                 }
             }
@@ -974,6 +980,13 @@ private fun FlowDetailContent(
             }
             is PendingConfig.EditAction -> {
                 val action = f.actions.find { it.id == cfg.actionId }
+                val deleteAction: () -> Unit = {
+                    pendingConfig = null
+                    if (action != null) {
+                        vm.removeAction(action.id)
+                        showDeletedSnackbar(action.type.info(context).label) { vm.restoreAction(action) }
+                    }
+                }
                 when {
                     action == null -> {}
                     action.type == ActionType.SHOW_MENU -> {
@@ -988,6 +1001,7 @@ private fun FlowDetailContent(
                                 pendingConfig = null
                             },
                             onDismiss = { pendingConfig = null },
+                            onDelete = deleteAction,
                         )
                     }
                     else -> ConfigDialog(
@@ -1000,6 +1014,7 @@ private fun FlowDetailContent(
                             pendingConfig = null
                         },
                         onDismiss = { pendingConfig = null },
+                        onDelete = deleteAction,
                     )
                 }
             }
@@ -1015,6 +1030,14 @@ private fun FlowDetailContent(
                 editingVariable = null
             },
             onDismiss = { editingVariable = null },
+            // A new variable has nothing to delete yet; cancelling is the way out.
+            onDelete = if (variable.name.isBlank()) null else {
+                {
+                    editingVariable = null
+                    vm.removeVariable(variable.name)
+                    showDeletedSnackbar(variable.name) { vm.saveVariable(null, variable) }
+                }
+            },
         )
     }
 
@@ -1064,8 +1087,10 @@ private fun FlowControlsBar(
     ) {
         Surface(
             shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surfaceContainer,
-            tonalElevation = 3.dp,
+            // Apart from both the page and the tiles it floats over: darker than the white tiles
+            // in light, lighter than the dark tiles in dark. surfaceContainer was the tiles' own
+            // colour, which left only the shadow to tell the bar from the row beneath it.
+            color = MaterialTheme.colorScheme.surfaceContainerHighest,
             shadowElevation = 8.dp,
             modifier = Modifier.fillMaxWidth(),
         ) {
@@ -1188,7 +1213,7 @@ private fun FlowEnabledCapsule(
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun TriggerLogicToggle(
+internal fun TriggerLogicToggle(
     logic: TriggerLogic,
     onSelect: (TriggerLogic) -> Unit,
 ) {
@@ -1297,14 +1322,8 @@ private fun GroupedItem(
     dragModifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    val large = 18.dp
-    val small = 5.dp
-    val shape = RoundedCornerShape(
-        topStart = if (index == 0) large else small,
-        topEnd = if (index == 0) large else small,
-        bottomStart = if (index == count - 1) large else small,
-        bottomEnd = if (index == count - 1) large else small,
-    )
+    // The settings tiles' shapes and gap, so a section reads as one group like theirs.
+    val shape = settingsItemShapes(index, count).shape
 
     val primary = MaterialTheme.colorScheme.primary
     // Highlight ON snaps so the "currently executing" marker tracks the engine with zero
@@ -1317,7 +1336,7 @@ private fun GroupedItem(
     // onSurface over a blue wash. M3 states are colour roles, not alpha and shadow.
     val surfaceColor by animateColorAsState(
         targetValue = if (highlighted) MaterialTheme.colorScheme.primaryContainer
-                      else MaterialTheme.colorScheme.surfaceContainer,
+                      else SettingsDefaults.tileColor,
         animationSpec = if (highlighted) snap() else colorEffects,
         label = "item_bg",
     )
@@ -1344,8 +1363,7 @@ private fun GroupedItem(
 
     val rowModifier = modifier
         .fillMaxWidth()
-        .padding(horizontal = 16.dp)
-        .padding(bottom = 2.dp)
+        .settingsItemPadding(index)
         .then(if (highlighted) Modifier.zIndex(1f) else Modifier)
         .then(dragModifier)
         .border(width = 2.dp, color = borderColor, shape = shape)
@@ -1400,14 +1418,16 @@ private fun AddRowContent(label: String) {
 // Reusable row for a single trigger or action
 // ---------------------------------------------------------------------------
 
+/**
+ * One trigger, condition, action or variable. The whole row opens its editor (the tile is the
+ * button, as on the settings pages), so the only thing at its end is the branch "+" — the one
+ * action a row has that is not "edit this".
+ */
 @Composable
 private fun TriggerOrActionRow(
     icon: @Composable () -> Unit,
     headline: String,
     supporting: String,
-    /** Null hides the edit button — for rows with nothing this build can configure. */
-    onEdit: (() -> Unit)?,
-    onDelete: () -> Unit,
     isExecuting: Boolean = false,
     onAddBranchAction: (() -> Unit)? = null,
 ) {
@@ -1431,31 +1451,69 @@ private fun TriggerOrActionRow(
         },
         headlineContent = { Text(headline) },
         supportingContent = { Text(supporting, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        trailingContent = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (onAddBranchAction != null) {
-                    IconButton(onClick = onAddBranchAction) {
-                        Icon(
-                            Icons.Default.Add,
-                            contentDescription = stringResource(R.string.fd_add_branch_action),
-                            modifier = Modifier.size(20.dp),
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                }
-                if (onEdit != null) {
-                    IconButton(onClick = onEdit) {
-                        Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.action_edit), modifier = Modifier.size(20.dp))
-                    }
-                }
-                IconButton(onClick = onDelete) {
+        trailingContent = onAddBranchAction?.let { onAdd ->
+            {
+                IconButton(onClick = onAdd) {
                     Icon(
-                        Icons.Outlined.Delete,
-                        contentDescription = stringResource(R.string.action_delete),
+                        Icons.Default.Add,
+                        contentDescription = stringResource(R.string.fd_add_branch_action),
                         modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.error,
+                        tint = MaterialTheme.colorScheme.primary,
                     )
                 }
+            }
+        },
+    )
+}
+
+/**
+ * The whole button row of an edit dialog, passed as AlertDialog's confirmButton with no
+ * dismissButton: Delete at the start, Cancel and Save at the end.
+ *
+ * AlertDialog lays its two slots out end-aligned with its own 8dp gap, so Delete squeezed into
+ * the dismiss slot sat flush against Cancel at a different spacing from Cancel–Save — one slip
+ * from the button that keeps the item. Here the row spans the dialog and Delete is pushed to the
+ * far side, out of reach of a reflex tap on Cancel. Without [onDelete] (adding something new)
+ * the row is just Cancel and Save, where AlertDialog would have put them.
+ */
+@Composable
+private fun EditDialogButtons(
+    onDismiss: () -> Unit,
+    onDelete: (() -> Unit)?,
+    confirm: @Composable () -> Unit,
+) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        if (onDelete != null) {
+            TextButton(
+                onClick = onDelete,
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+            ) { Text(stringResource(R.string.action_delete)) }
+        }
+        Spacer(Modifier.weight(1f))
+        TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        // AlertDialog's own gap between its two buttons.
+        Spacer(Modifier.width(8.dp))
+        confirm()
+    }
+}
+
+/** A condition of a type this build does not know: say so, and let it be deleted. */
+@Composable
+private fun UnsupportedConditionDialog(typeId: String, onDelete: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Outlined.ErrorOutline, contentDescription = null) },
+        title = { Text(typeId) },
+        text = { Text(stringResource(R.string.cnd_unsupported)) },
+        // Same layout as the edit dialogs: Delete at the start, apart from Close.
+        confirmButton = {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                TextButton(
+                    onClick = onDelete,
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                ) { Text(stringResource(R.string.action_delete)) }
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) }
             }
         },
     )
@@ -1465,22 +1523,46 @@ private fun TriggerOrActionRow(
 // Section header
 // ---------------------------------------------------------------------------
 
+// internal: app/src/test checks every header is the same height.
 @Composable
-private fun SectionHeader(title: String, trailing: (@Composable () -> Unit)? = null) {
+internal fun SectionHeader(title: String, trailing: (@Composable () -> Unit)? = null) {
+    // SettingsGroupTitle's type and colour, plus a slot for the trigger logic toggle. Every
+    // header is as tall as the one carrying the toggle (its 40dp buttons in a 48dp touch
+    // target), so the title-to-tiles distance is the same in all four sections; it used to
+    // grow wherever the toggle appeared.
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(start = 24.dp, end = 16.dp, top = 12.dp, bottom = 4.dp)
+            .heightIn(min = 48.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = title,
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).semantics { heading() },
         )
-        trailing?.invoke()
+        if (trailing != null) {
+            // The toggle's button group measures 52dp, taller than the header: left to size the
+            // row, it pushed this section's tiles 4dp below every other section's. It is
+            // centred in the header's own height instead, free to draw past it by those few dp.
+            Box(Modifier.height(48.dp), contentAlignment = Alignment.Center) {
+                Box(Modifier.wrapContentHeight(unbounded = true)) { trailing() }
+            }
+        }
     }
+}
+
+/** An explanation under a section's tiles, styled as a settings group's footer. */
+@Composable
+private fun SectionFooter(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 8.dp),
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -1595,6 +1677,7 @@ private fun <T> PickerRow(
     modifier: Modifier = Modifier,
 ) {
     ListItem(
+        colors = ListItemDefaults.inContainerColors(),
         leadingContent = {
             Box(
                 contentAlignment = Alignment.Center,
@@ -1631,6 +1714,8 @@ internal fun ConfigDialog(
     availableVariables: List<String>,
     onConfirm: (Map<String, String>) -> Unit,
     onDismiss: () -> Unit,
+    /** Shown when editing something that exists; null while adding a new one. */
+    onDelete: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     // Saveable: everything the user has typed must survive rotation. The map is
@@ -1797,11 +1882,10 @@ internal fun ConfigDialog(
                                             color = MaterialTheme.colorScheme.primary,
                                         )
                                     }
-                                    Slider(
+                                    ConfigSlider(
                                         value = current,
                                         onValueChange = { values[field.key] = it.toInt().toString() },
                                         valueRange = field.min.toFloat()..field.max.toFloat(),
-                                        steps = 0,
                                     )
                                     // What the number lands on here, for a value whose meaning
                                     // depends on the device rather than on the flow.
@@ -2400,7 +2484,7 @@ internal fun ConfigDialog(
                                             ) { Text(udef.displayLabel) }
                                         }
                                     }
-                                    Slider(
+                                    ConfigSlider(
                                         value = current,
                                         onValueChange = {
                                             val intVal = it.toInt().toString()
@@ -2408,7 +2492,6 @@ internal fun ConfigDialog(
                                             inputText = intVal
                                         },
                                         valueRange = unitDef.min.toFloat()..unitDef.max.toFloat(),
-                                        steps = 0,
                                     )
                                 }
                             }
@@ -2418,19 +2501,18 @@ internal fun ConfigDialog(
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = {
-                    timePickerStates.forEach { (key, state) ->
-                        values[key] = "${state.hour.toString().padStart(2, '0')}:${state.minute.toString().padStart(2, '0')}"
-                    }
-                    onConfirm(values.toMap())
-                },
-                // A typo'd variable name never does what the user meant, so don't let it be saved.
-                enabled = !hasVariableError,
-            ) { Text(stringResource(R.string.action_save)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            EditDialogButtons(onDismiss = onDismiss, onDelete = onDelete) {
+                TextButton(
+                    onClick = {
+                        timePickerStates.forEach { (key, state) ->
+                            values[key] = "${state.hour.toString().padStart(2, '0')}:${state.minute.toString().padStart(2, '0')}"
+                        }
+                        onConfirm(values.toMap())
+                    },
+                    // A typo'd variable name never does what the user meant, so don't let it be saved.
+                    enabled = !hasVariableError,
+                ) { Text(stringResource(R.string.action_save)) }
+            }
         },
     )
 }
@@ -2846,6 +2928,7 @@ private fun ShowMenuConfigDialog(
     initialOptions: List<String>,
     onConfirm: (title: String, options: List<String>) -> Unit,
     onDismiss: () -> Unit,
+    onDelete: (() -> Unit)? = null,
 ) {
     var title by rememberSaveable { mutableStateOf(initialTitle) }
     val options = rememberSaveable(
@@ -2933,13 +3016,12 @@ private fun ShowMenuConfigDialog(
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = { onConfirm(title.trim(), options.value.map { it.trim() }) },
-                enabled = isValid,
-            ) { Text(stringResource(R.string.action_save)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            EditDialogButtons(onDismiss = onDismiss, onDelete = onDelete) {
+                TextButton(
+                    onClick = { onConfirm(title.trim(), options.value.map { it.trim() }) },
+                    enabled = isValid,
+                ) { Text(stringResource(R.string.action_save)) }
+            }
         },
     )
 }
@@ -2954,6 +3036,7 @@ private fun VariableDialog(
     existingNames: List<String>,
     onConfirm: (Variable) -> Unit,
     onDismiss: () -> Unit,
+    onDelete: (() -> Unit)? = null,
 ) {
     val isNew = variable.name.isBlank()
     var name by rememberSaveable { mutableStateOf(variable.name) }
@@ -2999,13 +3082,12 @@ private fun VariableDialog(
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = { onConfirm(Variable(trimmedName, variable.type, value)) },
-                enabled = trimmedName.isNotBlank() && !nameTaken,
-            ) { Text(stringResource(R.string.action_save)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            EditDialogButtons(onDismiss = onDismiss, onDelete = onDelete) {
+                TextButton(
+                    onClick = { onConfirm(Variable(trimmedName, variable.type, value)) },
+                    enabled = trimmedName.isNotBlank() && !nameTaken,
+                ) { Text(stringResource(R.string.action_save)) }
+            }
         },
     )
 }
@@ -3108,4 +3190,35 @@ private fun EditFlowDialog(
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
         },
     )
+}
+
+/**
+ * A slider over a config value that lives in the field map rather than in the slider.
+ *
+ * Material3 1.5 deprecates the `Slider(value, onValueChange)` overload for one that takes a
+ * [androidx.compose.material3.SliderState], which holds its own value. Here the map is the source
+ * of truth and other controls write to it too — the number field beside the duration slider, a
+ * unit switch that resets it — so the state is brought in line with [value] on every
+ * composition, exactly as the deprecated overload did internally. A state's track range is fixed
+ * when it is created, so it is keyed on [valueRange]: switching seconds to minutes builds a new one.
+ */
+@Composable
+internal fun ConfigSlider(
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    valueRange: ClosedFloatingPointRange<Float>,
+    modifier: Modifier = Modifier,
+) {
+    key(valueRange) {
+        val state = rememberSliderState(value = value, trackRange = valueRange)
+        state.value = value
+        Slider(
+            state = state,
+            onValueChange = {
+                state.value = it
+                onValueChange(it)
+            },
+            modifier = modifier,
+        )
+    }
 }

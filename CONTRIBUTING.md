@@ -48,7 +48,7 @@ cd NexFlow
 ### 兩個 product flavor
 
 ```text
-github  → 功能完整，發佈 APK 給 sideload 使用者（含簡訊／撥號／模擬點擊滑動）
+github  → 功能完整，發佈 APK 給 sideload 使用者（含簡訊／來電／撥號、模擬點擊滑動、飛航模式切換）
 play    → 上架 Google Play，依平台政策移除上述功能與權限
 ```
 
@@ -78,6 +78,36 @@ play    → 上架 Google Play，依平台政策移除上述功能與權限
 > 新增 JVM 測試模組時，`testRuntimeOnly(libs.junit5.platform.launcher)` 不能漏，
 > 否則 Gradle 9 會報 `Failed to load JUnit Platform`。
 
+**寫新測試前先問：最低能在哪一層驗？** 越低層跑越快、回饋越早。
+
+### Robolectric（同一個任務，不需裝置）
+
+需要 Android runtime、字串資源、Room 或 Compose，但不需要實機的測試放在 `app/src/test`，標
+`@RunWith(AndroidJUnit4::class)`，跟 JVM 測試一起由 `testGithubDebugUnitTest` 執行。
+
+- Robolectric 與 Compose 測試是 JUnit 4，專案卻是 `useJUnitPlatform()`：靠
+  `testRuntimeOnly(libs.junit5.vintage.engine)` 才跑得起來，漏了會「測試不見了但 build 成功」
+- `app/src/test/resources/robolectric.properties` 釘了 `sdk=36` 與 `application=android.app.Application`；
+  需要注入的測試自己標 `@Config(application = HiltTestApplication::class)`
+
+### 截圖測試
+
+```bash
+./gradlew :app:validateGithubDebugScreenshotTest   # 比對
+./gradlew :app:updateGithubDebugScreenshotTest     # UI 是有意改的：重產參考圖並一起 commit
+```
+
+4 語系 × 深淺色共 8 種組合，參考圖在 `app/src/screenshotTestGithubDebug/reference/`。預覽一律用
+`NexFlowTheme(dynamicColor = false)`；`AlertDialog` 截不到（layoutlib 下是獨立 window），對話框請用 Robolectric 驗。
+
+### Lint
+
+```bash
+./gradlew :app:lintGithubDebug :app:lintPlayDebug
+```
+
+既有問題放在 `app/lint-baseline.xml`。**修好一項就從 baseline 刪一項，不要為了讓新問題消音而整份重生。**
+
 ### 裝置 instrumented 測試
 
 **執行前必須關閉系統動畫**，否則 Compose 文字輸入測試會因為 Espresso 等不到 main looper idle 而逾時：
@@ -95,7 +125,17 @@ adb shell settings put global transition_animation_scale 1.0
 adb shell settings put global animator_duration_scale 1.0
 ```
 
+沒有實機時用 Gradle Managed Device（CI 也是這樣跑），模擬器由 Gradle 自己下載開機：
+
+```bash
+./gradlew :app:api30GithubDebugAndroidTest     # minSdk 底線
+./gradlew :app:api36GithubDebugAndroidTest     # Android 12 以後的背景限制（精確鬧鐘、背景啟動服務）
+./gradlew :app:ciGroupGithubDebugAndroidTest   # 兩台都跑
+```
+
 instrumented 測試使用 `com.nexflow.HiltTestRunner`（HiltTestApplication），新的 Hilt 測試標上 `@HiltAndroidTest` 即可。
+**改了 Room schema 一定要跑 `NexFlowDatabaseMigrationTest`**：`DatabaseModule` 沒有 destructive fallback，
+migration 失敗等於既有使用者一開 App 就當掉。
 
 ---
 

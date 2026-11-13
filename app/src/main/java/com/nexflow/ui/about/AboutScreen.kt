@@ -19,7 +19,6 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,21 +32,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.Code
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeTopAppBar
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -60,7 +51,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -71,13 +61,24 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
+import androidx.core.net.toUri
 import coil3.compose.AsyncImagePainter
 import coil3.compose.SubcomposeAsyncImage
 import coil3.compose.SubcomposeAsyncImageContent
 import com.nexflow.R
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material3.ListItemShapes
+import com.nexflow.ui.common.SettingsDefaults
+import com.nexflow.ui.common.SettingsGroup
+import com.nexflow.ui.common.SettingsItem
+import com.nexflow.ui.common.SettingsTopAppBar
 
 /** Contributor avatars are keyed by GitHub user ID so they survive username changes. */
 private const val DEVELOPER_AVATAR_URL = "https://avatars.githubusercontent.com/u/48749140"
+
+// blob/master, not main: the default branch is master, and a main link 404s.
+private const val TERMS_URL = "https://github.com/ADSFAaron/NexFlow/blob/master/TERMS.md"
+private const val PRIVACY_URL = "https://github.com/ADSFAaron/NexFlow/blob/master/PRIVACY.md"
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -107,19 +108,15 @@ fun AboutScreen(onBack: () -> Unit) {
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        topBar = {
-            LargeTopAppBar(
-                title = { Text(stringResource(R.string.about_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
-                    }
-                },
-                scrollBehavior = scrollBehavior,
-            )
-        },
+        containerColor = SettingsDefaults.pageColor,
+        topBar = { SettingsTopAppBar(stringResource(R.string.about_title), scrollBehavior, onBack = onBack) },
     ) { innerPadding ->
-        LazyColumn(contentPadding = innerPadding) {
+        LazyColumn(
+            contentPadding = PaddingValues(
+                top = innerPadding.calculateTopPadding(),
+                bottom = innerPadding.calculateBottomPadding() + 24.dp,
+            ),
+        ) {
 
             // App icon + name + version
             item {
@@ -186,75 +183,49 @@ fun AboutScreen(onBack: () -> Unit) {
                 }
             }
 
-            // Developer section
-            item { AboutSectionHeader(stringResource(R.string.about_developer)) }
             item {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp),
-                ) {
-                    ListItem(
-                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                        headlineContent = { Text("ADSFAaron") },
-                        supportingContent = { Text(stringResource(R.string.about_dev_role)) },
-                        leadingContent = {
-                            ContributorAvatar(
-                                avatarUrl = DEVELOPER_AVATAR_URL,
-                                initials = "A",
-                                size = 40.dp,
-                            )
-                        },
-                    )
+                SettingsGroup(stringResource(R.string.about_developer)) {
+                    item { shapes ->
+                        SettingsItem(
+                            shapes = shapes,
+                            title = "ADSFAaron",
+                            summary = stringResource(R.string.about_dev_role),
+                            leading = {
+                                ContributorAvatar(
+                                    avatarUrl = DEVELOPER_AVATAR_URL,
+                                    initials = "A",
+                                    size = 40.dp,
+                                )
+                            },
+                        )
+                    }
                 }
             }
 
-            // Legal section
-            item { AboutSectionHeader(stringResource(R.string.about_legal)) }
             item {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp)
-                        .padding(bottom = 16.dp),
-                ) {
-                    ListItem(
-                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                        headlineContent = { Text(stringResource(R.string.about_terms)) },
-                        trailingContent = {
-                            Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = null)
-                        },
-                        modifier = Modifier.clickable {
-                            context.startActivity(
-                                Intent(
-                                    Intent.ACTION_VIEW,
-                                    Uri.parse("https://github.com/ADSFAaron/NexFlow/blob/master/TERMS.md"),
-                                ),
-                            )
-                        },
-                    )
-                    HorizontalDivider()
-                    ListItem(
-                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                        headlineContent = { Text(stringResource(R.string.about_privacy)) },
-                        trailingContent = {
-                            Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = null)
-                        },
-                        modifier = Modifier.clickable {
-                            context.startActivity(
-                                Intent(
-                                    Intent.ACTION_VIEW,
-                                    Uri.parse("https://github.com/ADSFAaron/NexFlow/blob/master/PRIVACY.md"),
-                                ),
-                            )
-                        },
-                    )
+                SettingsGroup(stringResource(R.string.about_legal)) {
+                    item { shapes ->
+                        LegalLinkItem(shapes, stringResource(R.string.about_terms), TERMS_URL)
+                    }
+                    item { shapes ->
+                        LegalLinkItem(shapes, stringResource(R.string.about_privacy), PRIVACY_URL)
+                    }
                 }
             }
         }
     }
+}
+
+/** A document on GitHub; the trailing mark says it opens outside the app. */
+@Composable
+private fun LegalLinkItem(shapes: ListItemShapes, title: String, url: String) {
+    val context = LocalContext.current
+    SettingsItem(
+        shapes = shapes,
+        title = title,
+        trailing = { Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = null) },
+        onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) },
+    )
 }
 
 @Composable
@@ -309,14 +280,4 @@ private fun InitialsAvatar(initials: String, size: Dp) {
             )
         }
     }
-}
-
-@Composable
-private fun AboutSectionHeader(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp),
-    )
 }

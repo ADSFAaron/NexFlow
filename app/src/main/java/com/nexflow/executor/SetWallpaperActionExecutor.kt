@@ -27,6 +27,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
+import com.nexflow.core.automation.LogText
 
 /**
  * Sets the home screen and/or lock screen wallpaper from a picked image.
@@ -45,7 +46,7 @@ class SetWallpaperActionExecutor @Inject constructor(
 
     override suspend fun execute(action: Action, variables: MutableMap<String, String>): ActionResult {
         val source = action.config["image"]?.trim()?.takeIf { it.isNotBlank() }
-            ?: return ActionResult.Failure("Set wallpaper: no image selected")
+            ?: return ActionResult.Failure(LogText.of("wallpaper_no_image"))
 
         val which = when (action.config["target"]) {
             "LOCK" -> WallpaperManager.FLAG_LOCK
@@ -62,7 +63,7 @@ class SetWallpaperActionExecutor @Inject constructor(
                     wm.setStream(input, /* visibleCropHint = */ null, /* allowBackup = */ true, which)
                 }
                 ActionResult.Success
-            }.getOrElse { ActionResult.Failure("Set wallpaper failed: ${it.message}") }
+            }.getOrElse { failureFrom("wallpaper_failed", it) }
         }
     }
 
@@ -71,11 +72,11 @@ class SetWallpaperActionExecutor @Inject constructor(
             // Legacy/imported flows may still hold a content URI whose source file the
             // user could have moved or deleted — surface that clearly instead of NPE-ing.
             context.contentResolver.openInputStream(Uri.parse(source))
-                ?: throw IllegalStateException("Wallpaper image is no longer available")
+                ?: throw IllegalStateException(LogText.of("wallpaper_gone"))
         } else {
             val file = File(source)
             if (!file.exists()) {
-                throw IllegalStateException("Wallpaper image no longer exists — please re-select it")
+                throw IllegalStateException(LogText.of("wallpaper_gone"))
             }
             file.inputStream()
         }

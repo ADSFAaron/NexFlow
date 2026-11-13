@@ -39,6 +39,7 @@ import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import com.nexflow.core.automation.LogText
 
 class HttpActionExecutorTest {
 
@@ -62,6 +63,11 @@ class HttpActionExecutorTest {
 
     private fun action(vararg config: Pair<String, String>) =
         Action(id = "a1", type = ActionType.HTTP_REQUEST, config = config.toMap(), order = 0, enabled = true)
+
+    private fun assertFailureCode(result: ActionResult, code: String) {
+        val failure = assertInstanceOf(ActionResult.Failure::class.java, result)
+        assertEquals(code, LogText.parse(failure.message)?.code, failure.message)
+    }
 
     private fun assertFailureContains(result: ActionResult, substring: String) {
         val failure = assertInstanceOf(ActionResult.Failure::class.java, result)
@@ -137,6 +143,8 @@ class HttpActionExecutorTest {
             variables,
         )
 
+        // The URL is put in front of the JSON path's own arguments, not wrapped around its message.
+        assertFailureCode(result, "json_missing_key")
         assertFailureContains(result, "https://api.test/weather")
         assertFailureContains(result, "pressure")
         assertNull(variables["temp"])
@@ -175,7 +183,8 @@ class HttpActionExecutorTest {
             mutableMapOf(),
         )
 
-        assertFailureContains(result, "Name: Value")
+        assertFailureCode(result, "http_bad_header")
+        assertFailureContains(result, "Authorization Bearer abc")
         assertTrue(requests.isEmpty(), "no request should have been sent")
     }
 
@@ -221,7 +230,7 @@ class HttpActionExecutorTest {
             variables,
         )
 
-        assertFailureContains(result, "larger than")
+        assertFailureCode(result, "http_too_large")
         assertNull(variables["blob"])
     }
 
@@ -251,7 +260,7 @@ class HttpActionExecutorTest {
             mutableMapOf(),
         )
 
-        assertFailureContains(result, "global")
+        assertFailureCode(result, "http_global_response")
         assertTrue(requests.isEmpty(), "no request should have been sent")
     }
 
@@ -267,7 +276,7 @@ class HttpActionExecutorTest {
 
     @Test
     fun `a missing url is rejected`() = runTest {
-        assertFailureContains(executor().execute(action(), mutableMapOf()), "No URL")
+        assertFailureCode(executor().execute(action(), mutableMapOf()), "url_none")
     }
 
     /**

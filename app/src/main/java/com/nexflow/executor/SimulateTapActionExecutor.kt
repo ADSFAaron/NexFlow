@@ -27,6 +27,7 @@ import com.nexflow.executor.GestureActionSupport.durationMs
 import com.nexflow.service.GestureCoordinator
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import com.nexflow.core.automation.LogText
 
 /**
  * Taps the screen at the configured pixel coordinates via the accessibility service's
@@ -44,10 +45,10 @@ class SimulateTapActionExecutor @Inject constructor(
         val x = action.coordinate("x")
         val y = action.coordinate("y")
         if (x == null || y == null) {
-            return ActionResult.Failure("Simulate tap needs numeric x and y screen coordinates")
+            return ActionResult.Failure(LogText.of("tap_coords"))
         }
         if (!GestureActionSupport.accessibilityEnabled(context)) {
-            return GestureActionSupport.accessibilityFailure("Simulate tap")
+            return GestureActionSupport.accessibilityFailure(ActionType.SIMULATE_TAP)
         }
         val dispatched = GestureActionSupport.dispatch(
             coordinator,
@@ -55,6 +56,6 @@ class SimulateTapActionExecutor @Inject constructor(
             action.durationMs("duration", DEFAULT_TAP_DURATION_MS),
         )
         return if (dispatched) ActionResult.Success
-        else ActionResult.Failure("Tap gesture was not dispatched")
+        else ActionResult.Failure(LogText.of("tap_not_dispatched"))
     }
 }

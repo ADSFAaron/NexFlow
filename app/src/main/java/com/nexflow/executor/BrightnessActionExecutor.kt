@@ -23,6 +23,7 @@ import com.nexflow.core.automation.model.Action
 import com.nexflow.core.automation.model.ActionType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import com.nexflow.core.automation.LogText
 
 class BrightnessActionExecutor @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -32,9 +33,7 @@ class BrightnessActionExecutor @Inject constructor(
 
     override suspend fun execute(action: Action, variables: MutableMap<String, String>): ActionResult {
         if (!Settings.System.canWrite(context)) {
-            return ActionResult.Failure(
-                "WRITE_SETTINGS not granted — enable in Settings > Special app access > Modify system settings",
-            )
+            return ActionResult.Failure(LogText.of("write_settings"))
         }
 
         val extraDim = action.config["extra_dim"] == "true"
@@ -42,7 +41,7 @@ class BrightnessActionExecutor @Inject constructor(
             1 // minimum backlight
         } else {
             val rawLevel = resolveVariables(action.config["level"] ?: "", variables)
-                .toIntOrNull() ?: return ActionResult.Failure("No brightness level specified")
+                .toIntOrNull() ?: return ActionResult.Failure(LogText.of("brightness_no_level"))
             when (action.config["brightness_unit"]) {
                 "PCT" -> (rawLevel.coerceIn(0, 100) * 255 / 100)
                 else -> rawLevel.coerceIn(0, 255)

@@ -25,6 +25,7 @@ import com.nexflow.core.automation.model.ExecutionStatus
 import com.nexflow.core.automation.model.Flow
 import com.nexflow.core.automation.model.GlobalVariable
 import com.nexflow.core.automation.model.Trigger
+import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.automation.model.TriggerLogic
 import com.nexflow.core.automation.model.Variable
 import com.nexflow.core.automation.interpreter.FlowInterpreter
@@ -39,6 +40,7 @@ import com.nexflow.data.toFlowJson
 import com.nexflow.core.flowschema.GlobalVariableJson
 import com.nexflow.service.FlowEngine
 import com.nexflow.shortcut.ShortcutSyncManager
+import com.nexflow.trigger.OnceTrigger
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -116,11 +118,16 @@ class FlowDetailViewModel @Inject constructor(
 
     fun cancelPermissionSetup() = setupManager.cancel()
 
-    fun addTrigger(trigger: Trigger) = edit { copy(triggers = triggers + trigger) }
+    fun addTrigger(trigger: Trigger) = edit { copy(triggers = triggers + trigger.armed()) }
 
     fun updateTrigger(trigger: Trigger) = edit {
-        copy(triggers = triggers.map { if (it.id == trigger.id) trigger else it })
+        val armed = trigger.armed()
+        copy(triggers = triggers.map { if (it.id == armed.id) armed else it })
     }
+
+    /** Confirming a TIME trigger (re-)arms a "once" for its next occurrence; see [OnceTrigger]. */
+    private fun Trigger.armed(): Trigger =
+        if (type == TriggerType.TIME) copy(config = OnceTrigger.stamp(config, System.currentTimeMillis())) else this
 
     fun removeTrigger(id: String) = edit { copy(triggers = triggers.filter { it.id != id }) }
 

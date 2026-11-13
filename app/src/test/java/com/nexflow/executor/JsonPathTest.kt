@@ -18,6 +18,7 @@ package com.nexflow.executor
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import com.nexflow.core.automation.LogText
 
 class JsonPathTest {
 
@@ -35,8 +36,9 @@ class JsonPathTest {
 
     private fun value(path: String, json: String = weather) = extract(path, json).getOrThrow()
 
-    private fun error(path: String, json: String = weather) =
-        extract(path, json).exceptionOrNull()!!.message!!
+    /** The failure as code + arguments; the words are LogMessages' business. */
+    private fun error(path: String, json: String = weather): LogText.Parsed =
+        LogText.parse(extract(path, json).exceptionOrNull()!!.message)!!
 
     @Test
     fun `reads a nested field`() {
@@ -84,32 +86,35 @@ class JsonPathTest {
 
     @Test
     fun `a missing key names the keys that are there`() {
-        val message = error("main.pressure")
-        assertTrue("pressure" in message, message)
-        assertTrue("temp" in message && "humidity" in message, message)
+        val failure = error("main.pressure")
+        assertEquals("json_missing_key", failure.code)
+        assertEquals(listOf("main", "pressure"), failure.args.take(2))
+        assertTrue("temp" in failure.args[2] && "humidity" in failure.args[2], failure.toString())
     }
 
     @Test
     fun `an out-of-range index says how many items there were`() {
-        val message = error("weather.5.main")
-        assertTrue("2 item" in message, message)
+        val failure = error("weather.5.main")
+        assertEquals("json_out_of_range", failure.code)
+        assertEquals(listOf("weather", "2", "5"), failure.args)
     }
 
     @Test
     fun `a non-numeric segment on an array is rejected`() {
-        val message = error("weather.first")
-        assertTrue("must be a number" in message, message)
+        val failure = error("weather.first")
+        assertEquals("json_not_number", failure.code)
+        assertEquals(listOf("weather", "first"), failure.args)
     }
 
     @Test
     fun `reading through a primitive is rejected`() {
-        val message = error("name.length")
-        assertTrue("single value" in message, message)
+        val failure = error("name.length")
+        assertEquals("json_scalar", failure.code)
+        assertEquals(listOf("name", "length"), failure.args)
     }
 
     @Test
     fun `a non-json response is reported as such`() {
-        val message = error("main.temp", json = "<html>Gateway Timeout</html>")
-        assertTrue("not valid JSON" in message, message)
+        assertEquals("json_invalid", error("main.temp", json = "<html>Gateway Timeout</html>").code)
     }
 }

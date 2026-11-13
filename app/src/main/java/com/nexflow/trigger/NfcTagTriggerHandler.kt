@@ -29,10 +29,9 @@ import javax.inject.Singleton
 
 /**
  * Fires when an NFC tag is scanned by the user.
- * Android only routes NFC to the foreground activity — this trigger works when the NexFlow app
- * is open. MainActivity owns reader mode and feeds NfcEventSource; it only claims the NFC
- * controller while a flow like this one is enabled, because reader mode blocks every other app
- * on the device from seeing a tag at all.
+ * Tags arrive two ways: MainActivity's reader mode while the app is in front, and
+ * [com.nexflow.nfc.NfcTagRunActivity] when a tag is tapped with the app closed. Both go through
+ * [com.nexflow.nfc.NfcTagDispatcher].
  *
  * Reports the scanned UID as `{{trigger.tag_id}}`, so one flow can branch on several tags.
  */
@@ -41,18 +40,25 @@ class NfcTagTriggerHandler @Inject constructor() : TriggerHandler {
 
     override val supportedType = TriggerType.NFC_TAG
 
-    override fun observe(trigger: Trigger): Flow<TriggerEvent> {
-        val targetTagId = trigger.config["tag_id"]?.trim()?.uppercase() ?: ""
-        return NfcEventSource.events
-            .filter { tagId ->
-                targetTagId.isBlank() || tagId.equals(targetTagId, ignoreCase = true)
-            }
-            .map { tagId ->
-                TriggerEvent(
-                    triggerId = trigger.id,
-                    flowId = "",
-                    metadata = mapOf(TriggerVariables.TAG_ID to tagId),
-                )
-            }
+    override fun observe(trigger: Trigger): Flow<TriggerEvent> =
+        NfcEventSource.events
+            .filter { tagId -> matches(trigger, tagId) }
+            .map { tagId -> eventFor(trigger, tagId) }
+
+    companion object {
+        /**
+         * Whether [tagId] is one [trigger] fires on. Shared with [com.nexflow.service.FlowEngine.runForNfcTag],
+         * the path for a tag that arrives while nothing is subscribed, so the two cannot disagree.
+         */
+        fun matches(trigger: Trigger, tagId: String): Boolean {
+            val target = trigger.config["tag_id"]?.trim().orEmpty()
+            return target.isBlank() || tagId.equals(target, ignoreCase = true)
+        }
+
+        fun eventFor(trigger: Trigger, tagId: String) = TriggerEvent(
+            triggerId = trigger.id,
+            flowId = "",
+            metadata = mapOf(TriggerVariables.TAG_ID to tagId),
+        )
     }
 }
