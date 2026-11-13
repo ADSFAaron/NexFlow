@@ -20,10 +20,10 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import com.nexflow.R
 import com.nexflow.core.automation.executor.ActionExecutor
 import com.nexflow.core.automation.executor.ActionResult
@@ -117,7 +117,7 @@ class NotificationActionExecutor @Inject constructor(
             TAP_OPEN_URL -> {
                 val url = action.config["tap_url"]?.trim()?.takeIf { it.isNotEmpty() }
                     ?: return TapTarget.Broken(LogText.of("notif_tap_no_url"))
-                Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                Intent(Intent.ACTION_VIEW, url.toUri())
             }
             TAP_OPEN_SHORTCUT -> {
                 val uri = action.config["tap_shortcut_uri"]?.takeIf { it.isNotBlank() }

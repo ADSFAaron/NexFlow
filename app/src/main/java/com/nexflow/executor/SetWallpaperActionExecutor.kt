@@ -17,7 +17,7 @@ package com.nexflow.executor
 
 import android.app.WallpaperManager
 import android.content.Context
-import android.net.Uri
+import androidx.core.net.toUri
 import com.nexflow.core.automation.executor.ActionExecutor
 import com.nexflow.core.automation.executor.ActionResult
 import com.nexflow.core.automation.model.Action
@@ -71,7 +71,7 @@ class SetWallpaperActionExecutor @Inject constructor(
         if (source.startsWith("content://")) {
             // Legacy/imported flows may still hold a content URI whose source file the
             // user could have moved or deleted — surface that clearly instead of NPE-ing.
-            context.contentResolver.openInputStream(Uri.parse(source))
+            context.contentResolver.openInputStream(source.toUri())
                 ?: throw IllegalStateException(LogText.of("wallpaper_gone"))
         } else {
             val file = File(source)

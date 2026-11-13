@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Product name: the same in every language, so translators never see it. -->
     <string name="app_name" translatable="false">NexFlow</string>
     <string name="accessibility_service_description">NexFlow uses the Accessibility Service for three automation features: capturing the screen when a flow\'s screenshot action runs, saving the image to your device\'s Pictures/Screenshots folder; performing a tap or swipe gesture at the coordinates you specify when a flow runs a simulate-tap or simulate-swipe action; and detecting which app is brought to the foreground so your \"App Launched\" triggers can fire. Apart from the screenshots your flows take, it only reads the package name of the app in front: it does not read the text, buttons or passwords on screen, and it does not send any data to a server. It runs only after you manually enable it.</string>
@@ -754,7 +754,7 @@
     <string name="cfg_info_battery_trigger_body">Fires once, at the moment the level crosses this threshold — not again while the battery stays there. To check the level at some other moment (a scheduled run, say), add the Battery level condition under ONLY IF instead.</string>
     <string name="cfg_info_battery_condition_body">Checked just before every run, whatever fired the flow. It starts nothing by itself — unlike the Battery trigger, it only lets a run through or holds it back.</string>
     <string name="cfg_info_condition_label">Condition</string>
-    <string name="cfg_info_condition_body">Examples: {{battery}} &lt; 20 · {{status}} == ok · true. Supports ==, !=, &lt;, &gt;, &lt;=, &gt;= — numbers compare numerically. Close the block with an End If action.</string>
+    <string name="cfg_info_condition_body" tools:ignore="Typos">Examples: {{battery}} &lt; 20 · {{status}} == ok · true. Supports ==, !=, &lt;, &gt;, &lt;=, &gt;= — numbers compare numerically. Close the block with an End If action.</string>
 
     <!-- Dropdown / option labels -->
     <string name="opt_on">On</string>

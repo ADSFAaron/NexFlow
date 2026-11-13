@@ -15,11 +15,16 @@
  */
 package com.nexflow.trigger
 
+import android.Manifest
+import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.core.content.ContextCompat
 import com.nexflow.core.automation.model.Trigger
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.automation.trigger.TriggerEvent
@@ -44,6 +49,11 @@ class BluetoothTriggerHandler @Inject constructor(
 
     override val supportedType = TriggerType.BLUETOOTH
 
+    private fun canReadDeviceName(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) ==
+            PackageManager.PERMISSION_GRANTED
+
     override fun observe(trigger: Trigger): Flow<TriggerEvent> = callbackFlow {
         val targetDeviceName = trigger.config["device_name"]?.trim()
         val targetEvent = trigger.config["event"]?.uppercase() ?: "CONNECTED"
@@ -59,8 +69,11 @@ class BluetoothTriggerHandler @Inject constructor(
                 if (!eventMatches) return
 
                 val device = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
-                // Reading the name throws without BLUETOOTH_CONNECT on API 31+.
-                val deviceName = runCatching { device?.name }.getOrNull()
+                // Reading the name needs BLUETOOTH_CONNECT on API 31+ (before that it was an
+                // install-time permission). canReadDeviceName() checks it; lint only recognises a
+                // check written in the same function. Still guarded: some OEM stacks throw anyway.
+                @SuppressLint("MissingPermission")
+                val deviceName = if (canReadDeviceName()) runCatching { device?.name }.getOrNull() else null
 
                 if (!targetDeviceName.isNullOrBlank()) {
                     if (deviceName == null || !deviceName.contains(targetDeviceName, ignoreCase = true)) return

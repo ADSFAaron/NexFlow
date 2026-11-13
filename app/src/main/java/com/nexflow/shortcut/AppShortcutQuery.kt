@@ -21,6 +21,7 @@ import android.content.pm.PackageManager
 import android.content.res.Resources
 import android.graphics.drawable.Drawable
 import android.util.Xml
+import androidx.core.content.res.ResourcesCompat
 import org.xmlpull.v1.XmlPullParser
 
 /**
@@ -137,7 +138,7 @@ object AppShortcutQuery {
                         ?.let { runCatching { res.getString(it) }.getOrNull() }
                     icon = attrs.getAttributeResourceValue(ANDROID_NS, "icon", 0)
                         .takeIf { it != 0 }
-                        ?.let { runCatching { res.getDrawable(it, null) }.getOrNull() }
+                        ?.let { runCatching { ResourcesCompat.getDrawable(res, it, null) }.getOrNull() }
                 }
                 event == XmlPullParser.START_TAG && parser.name == "intent" -> {
                     lastIntent = runCatching { Intent.parseIntent(res, parser, attrs) }.getOrNull()

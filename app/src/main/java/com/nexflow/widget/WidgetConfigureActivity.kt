@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.core.content.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.glance.appwidget.GlanceAppWidgetManager
@@ -103,10 +104,10 @@ class WidgetConfigureActivity : ComponentActivity() {
     private suspend fun saveAndUpdate(appWidgetId: Int, flow: Flow, iconBitmap: Bitmap) {
         // Legacy copy: widgets placed before the Glance-state migration read these on
         // their next full session start.
-        getSharedPreferences(PREFS, MODE_PRIVATE).edit()
-            .putString("${KEY_FLOW_ID}_$appWidgetId", flow.id)
-            .putString("${KEY_FLOW_NAME}_$appWidgetId", flow.name)
-            .apply()
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit {
+            putString("${KEY_FLOW_ID}_$appWidgetId", flow.id)
+            putString("${KEY_FLOW_NAME}_$appWidgetId", flow.name)
+        }
 
         // Glance renders RemoteViews and cannot draw Compose ImageVectors, so the flow
         // icon is pre-rendered (white glyph) to a PNG here and loaded by the widget.

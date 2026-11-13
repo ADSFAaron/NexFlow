@@ -112,7 +112,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       # checkDependencies = true means this also lints :core:*, which have no lint step of
-      # their own. Pre-existing findings live in app/lint-baseline.xml; anything new fails.
+      # their own. No baseline and warnings count as errors, so any finding fails.
       # Both flavors, for the same reason the unit tests run twice — src/play and src/github
       # are different code.
       - name: Lint（兩個 flavor）

@@ -21,6 +21,8 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
+import androidx.annotation.RequiresApi
+import androidx.core.net.toUri
 import com.nexflow.core.automation.model.Flow
 import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.receiver.TimeAlarmReceiver
@@ -135,9 +137,10 @@ class TimeTriggerScheduler @Inject constructor(
 
     companion object {
         /** Intent that sends the user to the system "Alarms & reminders" grant screen. */
+        @RequiresApi(Build.VERSION_CODES.S)
         fun requestExactAlarmPermissionIntent(packageName: String): Intent =
             Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
-                .setData(android.net.Uri.parse("package:$packageName"))
+                .setData("package:$packageName".toUri())
 
         /**
          * Next firing instant (epoch millis) strictly after [fromMillis] that matches the

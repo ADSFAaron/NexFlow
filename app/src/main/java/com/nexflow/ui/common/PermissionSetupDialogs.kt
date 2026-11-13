@@ -17,7 +17,6 @@ package com.nexflow.ui.common
 
 import android.app.Activity
 import android.content.Intent
-import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -44,6 +43,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
+import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.nexflow.R
@@ -189,15 +189,13 @@ fun PermissionSetupDialogs(
                                 // send the user to its Play Store page; returning re-checks.
                                 val market = Intent(
                                     Intent.ACTION_VIEW,
-                                    Uri.parse("market://details?id=${step.packageToInstall}"),
+                                    "market://details?id=${step.packageToInstall}".toUri(),
                                 )
                                 runCatching { settingsLauncher.launch(market) }.recoverCatching {
                                     settingsLauncher.launch(
                                         Intent(
                                             Intent.ACTION_VIEW,
-                                            Uri.parse(
-                                                "https://play.google.com/store/apps/details?id=${step.packageToInstall}",
-                                            ),
+                                            "https://play.google.com/store/apps/details?id=${step.packageToInstall}".toUri(),
                                         ),
                                     )
                                 }.getOrElse { onSkip() }

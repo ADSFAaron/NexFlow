@@ -9,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.core.content.edit
 import com.nexflow.core.automation.model.Flow
 import com.nexflow.core.automation.repository.FlowRepository
 import com.nexflow.ui.common.FlowPickerPage
@@ -45,10 +46,10 @@ class TileConfigureActivity : ComponentActivity() {
     }
 
     private fun saveAndRefreshTile(flow: Flow) {
-        getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-            .putString(KEY_FLOW_ID, flow.id)
-            .putString(KEY_FLOW_NAME, flow.name)
-            .apply()
+        getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit {
+            putString(KEY_FLOW_ID, flow.id)
+            putString(KEY_FLOW_NAME, flow.name)
+        }
         // Ask the system to call onStartListening again so the tile label updates immediately
         TileService.requestListeningState(
             this,

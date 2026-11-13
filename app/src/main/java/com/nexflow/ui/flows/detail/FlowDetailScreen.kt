@@ -178,6 +178,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.pluralStringResource
@@ -321,6 +322,7 @@ private fun FlowDetailContent(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val resources = LocalResources.current
 
     val pinUnsupportedMessage = stringResource(R.string.fd_pin_shortcut_unsupported)
     val onPinShortcut: () -> Unit = {
@@ -336,8 +338,8 @@ private fun FlowDetailContent(
     val showDeletedSnackbar: (String, () -> Unit) -> Unit = { label, undo ->
         scope.launch {
             val result = snackbarHostState.showSnackbar(
-                message = context.getString(R.string.snackbar_deleted, label),
-                actionLabel = context.getString(R.string.action_undo),
+                message = resources.getString(R.string.snackbar_deleted, label),
+                actionLabel = resources.getString(R.string.action_undo),
                 duration = SnackbarDuration.Long,
             )
             if (result == SnackbarResult.ActionPerformed) undo()
@@ -359,9 +361,9 @@ private fun FlowDetailContent(
     LaunchedEffect(vm) {
         vm.setupComplete.collect { result ->
             val msg = if (result.allGranted) {
-                context.getString(R.string.flows_perm_setup_done, result.flowName)
+                resources.getString(R.string.flows_perm_setup_done, result.flowName)
             } else {
-                context.getString(R.string.flows_perm_setup_incomplete, result.flowName)
+                resources.getString(R.string.flows_perm_setup_incomplete, result.flowName)
             }
             snackbarHostState.showSnackbar(msg)
         }
@@ -434,7 +436,7 @@ private fun FlowDetailContent(
             putExtra(Intent.EXTRA_SUBJECT, "$safeName.flow")
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        context.startActivity(Intent.createChooser(intent, context.getString(R.string.fd_export_flow)))
+        context.startActivity(Intent.createChooser(intent, resources.getString(R.string.fd_export_flow)))
     }
 
     Scaffold(
@@ -531,11 +533,11 @@ private fun FlowDetailContent(
                 onEditWithAi = onEditWithAi,
                 onRun = {
                     vm.runNow()
-                    scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.fd_flow_started)) }
+                    scope.launch { snackbarHostState.showSnackbar(resources.getString(R.string.fd_flow_started)) }
                 },
                 onStop = {
                     vm.cancelRun()
-                    scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.fd_flow_stopped)) }
+                    scope.launch { snackbarHostState.showSnackbar(resources.getString(R.string.fd_flow_stopped)) }
                 },
             )
         },
@@ -784,7 +786,7 @@ private fun FlowDetailContent(
                     .filter { !(it == TriggerType.MANUAL && alreadyHasManual) }
                     .map {
                         val ti = it.info(context)
-                        PickerEntry(it, ti.label, ti.icon, ti.description, context.getString(it.category.labelRes), it.category.ordinal)
+                        PickerEntry(it, ti.label, ti.icon, ti.description, resources.getString(it.category.labelRes), it.category.ordinal)
                     }
             },
             searchPlaceholder = stringResource(R.string.fd_search_triggers),
@@ -806,7 +808,7 @@ private fun FlowDetailContent(
             entries = remember {
                 ConditionType.entries.map {
                     val ci = it.info(context)
-                    PickerEntry(it, ci.label, ci.icon, ci.description, context.getString(it.category.labelRes), it.category.ordinal)
+                    PickerEntry(it, ci.label, ci.icon, ci.description, resources.getString(it.category.labelRes), it.category.ordinal)
                 }
             },
             searchPlaceholder = stringResource(R.string.fd_search_conditions),
@@ -825,7 +827,7 @@ private fun FlowDetailContent(
                     .filter { it !in FlavorFeatures.hiddenActionTypes }
                     .map {
                         val ai = it.info(context)
-                        PickerEntry(it, ai.label, ai.icon, ai.description, context.getString(it.category.labelRes), it.category.ordinal)
+                        PickerEntry(it, ai.label, ai.icon, ai.description, resources.getString(it.category.labelRes), it.category.ordinal)
                     }
             },
             searchPlaceholder = stringResource(R.string.fd_search_actions),
@@ -1718,6 +1720,7 @@ internal fun ConfigDialog(
     onDelete: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     // Saveable: everything the user has typed must survive rotation. The map is
     // flattened to [k1, v1, k2, v2, …] because SnapshotStateMap itself isn't bundleable.
     val values = rememberSaveable(
@@ -2108,7 +2111,7 @@ internal fun ConfigDialog(
                                         (values[field.key] ?: "")
                                             .split(",")
                                             .filter { it.isNotBlank() }
-                                            .toMutableSet(),
+                                            .toSet(),
                                     )
                                 }
                                 Column {
@@ -2250,7 +2253,7 @@ internal fun ConfigDialog(
                                             locationError = it
                                         }
                                     } else {
-                                        locationError = context.getString(R.string.fd_location_denied)
+                                        locationError = resources.getString(R.string.fd_location_denied)
                                     }
                                 }
                                 Column {
@@ -2352,7 +2355,7 @@ internal fun ConfigDialog(
                                     mutableStateOf(
                                         runCatching {
                                             Json.decodeFromString<List<String>>(stored)
-                                        }.getOrElse { emptyList() }.toMutableList(),
+                                        }.getOrElse { emptyList() },
                                     )
                                 }
                                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -2932,11 +2935,11 @@ private fun ShowMenuConfigDialog(
 ) {
     var title by rememberSaveable { mutableStateOf(initialTitle) }
     val options = rememberSaveable(
-        saver = listSaver<MutableState<MutableList<String>>, String>(
-            save = { it.value.toList() },
-            restore = { mutableStateOf(it.toMutableList()) },
+        saver = listSaver<MutableState<List<String>>, String>(
+            save = { it.value },
+            restore = { mutableStateOf(it) },
         ),
-    ) { mutableStateOf(initialOptions.toMutableList()) }
+    ) { mutableStateOf(initialOptions) }
 
     val isValid = options.value.size >= 2 && options.value.all { it.isNotBlank() }
 
@@ -3005,7 +3008,7 @@ private fun ShowMenuConfigDialog(
                 }
                 TextButton(
                     onClick = {
-                        options.value = (options.value + "").toMutableList()
+                        options.value = options.value + ""
                     },
                     modifier = Modifier.fillMaxWidth(),
                 ) {

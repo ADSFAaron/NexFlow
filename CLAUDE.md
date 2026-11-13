@@ -130,7 +130,8 @@ core/flow-store-tools/      # 流程商店 CLI（validate／dry-run／build-inde
 
 - `./gradlew :app:lintGithubDebug :app:lintPlayDebug`，CI 會擋
 - `checkDependencies = true`，所以 `:core:*` 也一起被檢查
-- 既有問題放在 `app/lint-baseline.xml`。**修好一項就從 baseline 刪一項，不要為了讓新問題消音而整份重生**
+- **沒有 baseline，警告也算錯誤（`warningsAsErrors = true`）**：專案在 2026-11-13 清到零，任何新問題都會擋。確定是刻意的就在那一處加 `@SuppressLint`／`tools:ignore` 並寫明原因，不要關整個檢查、也不要再生一份 baseline
+- lint 看不懂抽到別的函式裡的權限檢查（`MissingPermission`），也看不到 `runCatching` 接住的 `SecurityException`；檢查確實存在時在該變數上 `@SuppressLint` 並註明是誰檢查的
 - `NewerVersionAvailable` / `GradleDependency` / `AndroidGradlePluginVersion` 已停用：它們要連網、而且會隨上游發版自己變動
 
 #### 實機驗證（手動）

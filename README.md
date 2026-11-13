@@ -359,7 +359,7 @@ shasum -a 256 "$APK" > SHA256SUMS.txt
 - `NexFlowDatabaseMigrationTest`（instrumented）— 每次改 schema 都要跑；`DatabaseModule` 沒有 destructive fallback，migration 失敗等於使用者一開 App 就當掉
 - `TimeTriggerEndToEndTest`（instrumented）— 在真實系統上走完「鬧鐘響 → 啟動服務 → 執行流程 → 寫入紀錄」
 
-Lint 也是 CI 的關卡：`./gradlew :app:lintGithubDebug :app:lintPlayDebug`。既有問題放在 `app/lint-baseline.xml`，修好一項就刪一項，不要整份重生。完整的測試規則見 [CONTRIBUTING.md](CONTRIBUTING.md)。
+Lint 也是 CI 的關卡：`./gradlew :app:lintGithubDebug :app:lintPlayDebug`。沒有 baseline，警告也算錯誤；刻意的例外在該處加 `@SuppressLint` 並註明原因。完整的測試規則見 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 ## 權限說明
 

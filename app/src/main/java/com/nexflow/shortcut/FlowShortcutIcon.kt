@@ -112,7 +112,7 @@ object FlowShortcutIcon {
         val sizePx = (CANVAS_DP * density).roundToInt().coerceAtLeast(1)
         val glyphPx = GLYPH_DP * density
 
-        val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+        val bitmap = createBitmap(sizePx, sizePx)
         val canvas = Canvas(bitmap)
         // Full-bleed background: adaptive icons are masked by the launcher, so painting only a
         // circle would leave transparent corners on square/squircle mask launchers.

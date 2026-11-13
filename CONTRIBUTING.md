@@ -106,7 +106,7 @@ play    → 上架 Google Play，依平台政策移除上述功能與權限
 ./gradlew :app:lintGithubDebug :app:lintPlayDebug
 ```
 
-既有問題放在 `app/lint-baseline.xml`。**修好一項就從 baseline 刪一項，不要為了讓新問題消音而整份重生。**
+沒有 baseline，警告也算錯誤：任何 lint 問題都會讓 CI 失敗。確定是刻意的，就在那一處加 `@SuppressLint`／`tools:ignore` 並寫明原因，不要關掉整個檢查。
 
 ### 裝置 instrumented 測試
 

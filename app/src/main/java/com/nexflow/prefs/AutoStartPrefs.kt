@@ -16,6 +16,7 @@
 package com.nexflow.prefs
 
 import android.content.Context
+import androidx.core.content.edit
 
 object AutoStartPrefs {
     private const val PREFS_NAME = "nexflow_settings"
@@ -27,8 +28,8 @@ object AutoStartPrefs {
 
     fun set(context: Context, enabled: Boolean) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit()
-            .putBoolean(KEY_AUTO_START, enabled)
-            .apply()
+            .edit {
+                putBoolean(KEY_AUTO_START, enabled)
+            }
     }
 }

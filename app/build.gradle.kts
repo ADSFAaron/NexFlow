@@ -61,6 +61,10 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = true
+            // Drops resources nothing references once R8 has removed the code that used them.
+            // Safe because nothing looks resources up by name (no getIdentifier); if that ever
+            // changes, list those in res/raw/keep.xml with tools:keep.
+            isShrinkResources = true
             // Bundle native debug symbols (from dependency .so files, e.g. androidx.graphics.path)
             // so Play can symbolicate native crash/ANR stack traces. Clears the Play Console
             // "no debug symbols" warning.
@@ -130,14 +134,14 @@ android {
 
     lint {
         // Lint runs as a CI gate, so a regression has to break the build instead of scrolling
-        // past in the log. Pre-existing findings are parked in lint-baseline.xml; delete
-        // entries from it as they get fixed, never regenerate it to silence something new.
+        // past in the log. There is no baseline: the project is at zero findings, warnings
+        // included, and stays there. A finding that is deliberate gets @SuppressLint /
+        // tools:ignore at that one spot with a comment saying why, never a project-wide switch.
         abortOnError = true
+        warningsAsErrors = true
         // checkDependencies pulls :core:* into the same run — otherwise the core modules,
         // which have no lint task wired into CI of their own, would never be checked.
         checkDependencies = true
-        baseline = file("lint-baseline.xml")
-        warningsAsErrors = false
         // These three query the network for newer artifact versions, so their findings change
         // whenever an upstream release happens rather than when this repo does. Baselining
         // them would mean a baseline that rots on its own; leaving them on would mean lint
