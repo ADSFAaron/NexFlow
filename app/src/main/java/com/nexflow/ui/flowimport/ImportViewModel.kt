@@ -18,8 +18,11 @@ package com.nexflow.ui.flowimport
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexflow.core.automation.interpreter.FlowInterpreter
+import com.nexflow.FlavorFeatures
+import com.nexflow.core.automation.model.ActionType
 import com.nexflow.core.automation.model.ConditionType
 import com.nexflow.core.automation.model.GlobalVariable
+import com.nexflow.core.automation.model.TriggerType
 import com.nexflow.core.automation.model.VariableType
 import com.nexflow.core.automation.repository.FlowRepository
 import com.nexflow.core.automation.repository.GlobalVariableRepository
@@ -29,6 +32,7 @@ import com.nexflow.core.flowschema.FlowSerializer
 import com.nexflow.core.flowschema.ImportItemKind
 import com.nexflow.core.flowschema.ImportWarning
 import com.nexflow.core.flowschema.ImportWarnings
+import com.nexflow.core.flowschema.ValidationError
 import com.nexflow.core.macrodroid.MdrToFlowConverter
 import com.nexflow.core.macrodroid.parser.MdrParser
 import com.nexflow.data.toDomain
@@ -45,7 +49,11 @@ data class ImportResult(
     val imported: Int = 0,
     val warnings: List<ImportWarning> = emptyList(),
     val error: String? = null,
-)
+    /** `field: message` for each schema error that made the file unsafe to store; nothing was saved. */
+    val rejected: List<String> = emptyList(),
+) {
+    val failed: Boolean get() = error != null || rejected.isNotEmpty()
+}
 
 @HiltViewModel
 class ImportViewModel @Inject constructor(
@@ -70,16 +78,21 @@ class ImportViewModel @Inject constructor(
 
             var imported = 0
             val allWarnings = mutableListOf<ImportWarning>()
+            val taken = mutableSetOf<String>()
 
             root.macros.forEach { macro ->
                 val conversion = MdrToFlowConverter.convert(macro)
-                // The id comes from the macro's guid, so importing the same file twice would
-                // otherwise land on the first copy — see withFreeId.
-                val flow = conversion.flow.withFreeId()
+                // The flow id comes from the macro's guid, so the same .mdr imported twice asks for
+                // the same id again.
+                val id = freeFlowId(conversion.flow.id, taken)
                 // The converter already tagged each warning with the flow and item it belongs to,
-                // and toDomain() keeps the item ids, so the review UI can open the exact row. Only
-                // the flow id may have changed above.
-                allWarnings += conversion.warnings.map { it.copy(flowId = flow.id) }
+                // and toDomain() keeps those ids, so the review UI can open the exact row.
+                val converted = conversion.warnings.map { if (it.flowId == conversion.flow.id) it.copy(flowId = id) else it }
+                allWarnings += converted
+                val flow = conversion.flow.copy(id = id)
+                // The converter has its own warning for tap/swipe, worded for MacroDroid users.
+                val explained = converted.filter { it.code == ImportWarnings.TAP_SWIPE_GITHUB_ONLY }.mapNotNull { it.itemId }.toSet()
+                allWarnings += typeWarnings(flow).filterNot { it.itemId in explained }
                 repository.save(flow.toDomain())
                 imported++
             }
@@ -90,18 +103,29 @@ class ImportViewModel @Inject constructor(
 
     fun importFlowJson(content: String) {
         viewModelScope.launch {
-            val flowJson = FlowSerializer.decode(content).getOrElse { e ->
+            val decoded = FlowSerializer.decode(content).getOrElse { e ->
                 _result.update { ImportResult(error = "Parse failed: ${e.message}") }
                 return@launch
-            }.withFreeId()
+            }
+            val flowJson = decoded.copy(id = freeFlowId(decoded.id))
 
             fun warning(code: String, vararg args: String, itemKind: ImportItemKind? = null, itemId: String? = null) =
                 ImportWarning(code, args.toList(), flowJson.id, flowJson.name, itemKind, itemId)
 
-            val warnings = FlowSchemaValidator.validate(flowJson)
+            val problems = FlowSchemaValidator.validate(flowJson)
+                .filter { it.severity != ValidationError.Severity.STRICT }
+            val (errors, schemaWarnings) = problems.partition { it.isError }
+            // Refuse before touching anything: not even the globals it declares are created.
+            if (errors.isNotEmpty()) {
+                _result.update { ImportResult(rejected = errors.map { "${it.field}: ${it.message}" }) }
+                return@launch
+            }
+
+            val warnings = schemaWarnings
                 .map { warning(ImportWarnings.SCHEMA_ERROR, it.field, it.message) }
                 .toMutableList()
             warnings += reconcileGlobals(flowJson).map { (code, name) -> warning(code, name) }
+            warnings += typeWarnings(flowJson)
             // Conditions are enforced now, so an unrecognised one is not a harmless leftover:
             // the engine refuses to run a flow whose constraint it cannot check.
             flowJson.conditions
@@ -119,14 +143,44 @@ class ImportViewModel @Inject constructor(
     }
 
     /**
-     * The flow as it should be saved: under its own id, unless this device already has a flow with
-     * that id — then as a new flow beside it. Saving is an upsert, so keeping a clashing id would
-     * silently replace the user's flow (and whatever they changed in it since) with the file's
-     * copy. The clash is the ordinary case, not an attack: re-importing your own export, a friend's
-     * flow shared twice, the same MacroDroid file read again.
+     * Triggers and actions this build cannot run. An unknown type (a file from a newer NexFlow) is
+     * kept as MANUAL / TOAST by the mapper, and a type this flavor hides (SMS on the Play build) is
+     * kept as is; either way the flow would quietly not do what its author meant.
      */
-    private suspend fun FlowJson.withFreeId(): FlowJson =
-        if (repository.getById(id) == null) this else copy(id = UUID.randomUUID().toString())
+    private fun typeWarnings(flow: FlowJson): List<ImportWarning> {
+        fun warning(code: String, type: String, kind: ImportItemKind, itemId: String) =
+            ImportWarning(code, listOf(type), flow.id, flow.name, kind, itemId)
+        val out = mutableListOf<ImportWarning>()
+        flow.triggers.forEach { t ->
+            val type = TriggerType.entries.find { it.name == t.type }
+            when {
+                type == null -> out += warning(ImportWarnings.UNKNOWN_TRIGGER_TYPE, t.type, ImportItemKind.TRIGGER, t.id)
+                type in FlavorFeatures.hiddenTriggerTypes ->
+                    out += warning(ImportWarnings.NOT_IN_THIS_BUILD, t.type, ImportItemKind.TRIGGER, t.id)
+            }
+        }
+        flow.actions.forEach { a ->
+            val type = ActionType.entries.find { it.name == a.type }
+            when {
+                type == null -> out += warning(ImportWarnings.UNKNOWN_ACTION_TYPE, a.type, ImportItemKind.ACTION, a.id)
+                type in FlavorFeatures.hiddenActionTypes ->
+                    out += warning(ImportWarnings.NOT_IN_THIS_BUILD, a.type, ImportItemKind.ACTION, a.id)
+            }
+        }
+        return out
+    }
+
+    /**
+     * [id] unless a flow already has it (or an earlier flow of this same import took it), in which
+     * case a fresh one. Saving is an upsert, so keeping a clashing id would silently replace the
+     * user's flow (and whatever they changed in it since) with the file's copy. The clash is the
+     * ordinary case, not an attack: re-importing your own export, a friend's flow shared twice, the
+     * same MacroDroid file read again. Item ids stay as they are: they are scoped to their flow.
+     */
+    private suspend fun freeFlowId(id: String, taken: MutableSet<String> = mutableSetOf()): String {
+        val free = id !in taken && repository.getById(id) == null
+        return (if (free) id else UUID.randomUUID().toString()).also { taken += it }
+    }
 
     /**
      * Creates the globals an imported flow declares but this device doesn't have yet, and reports

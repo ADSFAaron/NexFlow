@@ -16,6 +16,7 @@ app/                        # 主 App module（UI、executor、trigger、service
 core/automation/            # 核心模型、interpreter、repository 介面
 core/flow-schema/           # JSON schema（匯入/匯出格式）
 core/macrodroid-compat/     # MacroDroid .mdr 格式解析
+core/flow-store-tools/      # 流程商店 CLI（validate／dry-run／build-index／from-export），純 JVM，商店 repo 的 CI 用
 ```
 
 ---
@@ -62,6 +63,7 @@ core/macrodroid-compat/     # MacroDroid .mdr 格式解析
 | `registerReceiver` 註冊 sticky broadcast（Wi-Fi 狀態、`ACTION_HEADSET_PLUG`、`ACTION_BATTERY_CHANGED`） | 註冊當下系統會把目前的值「as if it had just been broadcast」送進 `onReceive`。引擎每次啟動都會重新註冊，所以不處理就會把「目前狀態」當成新事件觸發 | `isInitialStickyBroadcast` 為 true 時只記錄狀態、不觸發；Wi-Fi 還要比對前一次狀態，一次斷線會連發好幾個中間狀態 |
 | `GeofencingRequest` 的 initial trigger | 預設是 `INITIAL_TRIGGER_ENTER \| INITIAL_TRIGGER_DWELL`：註冊時人在圍欄內就立刻報 ENTER，每次重新註冊都會再報一次 | `setInitialTrigger(0)`：只報真正的進出 |
 | 外部文字送進 `BigDecimal` | `"1e999999999"` 能被解析，`toPlainString()` 直接 OOM（Error，`catch (Exception)` 接不到），加法也會跑上好幾秒 | 只接受純十進位、限制長度；算式的結構只取作者寫的模板，變數值永遠不當算式解析（`ExpressionEvaluator.arithmeticOrNull`） |
+| App 更新（`adb install -r`、Play 自動更新） | 更新會結束程序，前景服務跟著消失；如果只有 `BOOT_COMPLETED` 會把引擎叫回來，每次更新後所有靠引擎監聽的觸發器都靜默失效，直到使用者自己打開 App | `BootReceiver` 同時收 `ACTION_MY_PACKAGE_REPLACED`（官方列為可從背景啟動前景服務的例外）。它送給更新後的新版本，所以從舊版更新上來的那一次就有效。Glance 也有自己的同名 receiver，測試要用「包含」不要用「等於」 |
 | `Service.stopSelf()` | 不帶參數就是**無條件**停止，`onDestroy` 會取消 scope 裡所有還在跑的工作。「跑完就走」寫成每個請求結束都 `stopSelf()`，第二個請求一結束就把第一個殺掉 | 計數正在跑的請求，歸零時才用 `stopSelfResult(最新的 startId)`（見 `StopWhenIdle`） |
 
 ### 3. 測試
@@ -81,6 +83,17 @@ core/macrodroid-compat/     # MacroDroid .mdr 格式解析
 - 新增 JVM 測試模組時，`testRuntimeOnly(libs.junit5.platform.launcher)` 不能漏，否則 Gradle 9 會報 `Failed to load JUnit Platform`
 - **Robolectric 與 Compose 測試是 JUnit 4，整個專案卻是 `useJUnitPlatform()`**：靠 `testRuntimeOnly(libs.junit5.vintage.engine)` 才跑得起來，漏了會「測試不見了但 build 成功」
 - `app/src/test/resources/robolectric.properties` 釘了 `sdk=36`（Robolectric 4.16 沒有 API 37 的 image）與 `application=android.app.Application`（避免每個測試都去啟動 `@HiltAndroidApp` 的 `NexFlowApplication`）。要注入的 Robolectric 測試自己標 `@Config(application = HiltTestApplication::class)`
+
+#### 流程 catalog（`docs/flow-catalog.json`）
+
+- 從各觸發器／條件／動作編輯器的欄位產生的 golden 檔，流程商店的 CLI 靠它驗證投稿。**改了任何 `ConfigField`（新增、改名、改選項或範圍）都要重產**，否則 `FlowCatalogTest` 會失敗：
+
+  ```bash
+  ./gradlew :app:testGithubDebugUnitTest --tests '*FlowCatalogTest' -PupdateCatalog
+  ```
+
+- 新的 key 也要在 `core/flow-schema` 的 `FieldPolicy` 歸類（PERSONAL／SINKS／NEUTRAL），沒歸類 `FieldPolicyTest` 會失敗
+- `since` 由產生器自動填（新條目 = 目前的 versionName），**不要手改**；play 版隱藏哪些類型看 `FlavorGates`
 
 #### 截圖測試（Compose Preview Screenshot Testing）
 
@@ -199,6 +212,13 @@ adb shell am set-standby-bucket $PKG active
 - **沒有** gradle-play-publisher / fastlane，上傳是 Play Console 的人工步驟，不要嘗試自動化
 - Play Console 端的聲明（無障礙使用聲明、背景定位示範影片與表單、Data safety、隱私權政策 URL）**在 1.1.0 首次上架時就已完成並過審**，不是待辦事項。隱私權政策用公開 repo 的 GitHub blob URL 即可，Play 接受
 - Gemini 助手自 **1.1.0** 起就會把資料送到 Google，「對外傳輸」不是後來才新增的。只有在**傳輸內容的範圍**改變時（例如 1.3.0 開始把既有流程的完整設定值送出）才需要重新評估 Data safety 表單，而那是使用者才看得到的東西
+
+---
+
+## 進行中的大型功能
+
+- **Flow Store**（GitHub 上的流程商店）：定案設計、各 Phase 範圍、測試策略與進度都在
+  [`docs/flow-store/DESIGN.md`](docs/flow-store/DESIGN.md)。動手前先讀；實作和文件不一致時，先改文件並寫明原因
 
 ---
 

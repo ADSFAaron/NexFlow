@@ -374,6 +374,12 @@
     <string name="iw_global_undeclared_body">The flow uses “%1$s” but the file does not declare it. Create it in Settings → Global variables, or the flow fails when it writes to it.</string>
     <string name="iw_unknown_condition">Unknown condition type</string>
     <string name="iw_unknown_condition_body">This flow uses the condition “%1$s”, which this version of NexFlow does not know. The flow will not run until you remove it.</string>
+    <string name="iw_unknown_trigger">Unknown trigger type</string>
+    <string name="iw_unknown_trigger_body">This flow uses the trigger “%1$s”, which this version of NexFlow does not know. It was kept as Manual, so the flow only runs when you start it. Update NexFlow, or replace the trigger.</string>
+    <string name="iw_unknown_action">Unknown action type</string>
+    <string name="iw_unknown_action_body">This flow uses the action “%1$s”, which this version of NexFlow does not know. It was kept as a Toast that only shows a message. Update NexFlow, or replace the action.</string>
+    <string name="iw_not_in_this_build">Not available in this version of NexFlow</string>
+    <string name="iw_not_in_this_build_body">“%1$s” is only in the GitHub version of NexFlow. It was kept, but it will not work here: a trigger never fires, and an action fails with that reason in the run log.</string>
     <string name="iw_schema_error">The file does not match the flow format</string>
     <string name="iw_schema_error_body">%1$s: %2$s</string>
     <string name="flows_permissions_needed">Permissions needed</string>
