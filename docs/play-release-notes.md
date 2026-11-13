@@ -9,10 +9,10 @@
 
 ---
 
-# 上架用：1.7.2（versionCode 14）
+# 上架用：1.7.3（versionCode 15）
 
-Play 從 1.7.0 直接更新到這一版：1.7.1 打包了但沒有上 Play，所以文案涵蓋 1.7.1（安全性修正與介面改版）
-加上 1.7.2（定時流程沒能執行時會說明原因，以及 2026-11-09 審查找到的修正：編輯會清空紀錄、「一次」每天執行、背景選單卡住等）。1.7.0 的 AAB 打包於 `dc484f1`，之後的 commit 都在這一版。
+Play 從 1.7.0 直接更新到這一版：1.7.1 與 1.7.2 都打包了但沒有上 Play，所以文案涵蓋 1.7.1（安全性修正與介面改版）、
+1.7.3（App 更新後自動恢復執行；這一項正是讓「這次」更新就生效的理由，見 CHANGELOG）加上 1.7.2（定時流程沒能執行時會說明原因，以及 2026-11-09 審查找到的修正：編輯會清空紀錄、「一次」每天執行、背景選單卡住等）。1.7.0 的 AAB 打包於 `dc484f1`，之後的 commit 都在這一版。
 
 - **需要使用者動手**：「啟動 App 捷徑」或通知的「開啟 App 捷徑」若是用變數組成的，更新後會執行失敗，
   要重新從清單挑選。文案裡已寫明。
@@ -24,7 +24,7 @@ Play 從 1.7.0 直接更新到這一版：1.7.1 打包了但沒有上 Play，所
 
 ---
 
-## 繁體中文（zh-TW） — 419 字元
+## 繁體中文（zh-TW） — 471 字元
 
 ```
 【更安全地使用別人分享的流程】
@@ -39,6 +39,7 @@ Play 從 1.7.0 直接更新到這一版：1.7.1 打包了但沒有上 Play，所
 • AI 設定有自己的頁面，AI 輸入框整合成一個
 
 【修正】
+• App 更新後，自動化會自己恢復執行，不必再打開 App
 • 編輯流程不再清空它的執行紀錄
 • 「一次」的定時流程真的只執行一次
 • 背景開不出來的選單改用通知提醒您選擇
@@ -46,33 +47,34 @@ Play 從 1.7.0 直接更新到這一版：1.7.1 打包了但沒有上 Play，所
 • 定時流程沒能執行時，日誌會寫明原因並通知您
 • 橫向時新增按鈕不再蓋住流程開關
 • 無障礙服務的說明列出所有用途
+• 日誌裡的失敗原因改用您設定的語言顯示
 ```
 
 ---
 
-## English（en-US） — 497 字元
+## English（en-US） — 492 字元
 
 ```
 SAFER SHARED FLOWS
-• Shortcuts must be picked from the list; if yours used a variable, re-pick it
-• Write file can't write into NexFlow's own folder
+• Pick shortcuts from the list; re-pick any built from a variable
+• Write file can't target NexFlow's own folder
 • Per flow: max 5 SMS, 5 calls, 60 web requests a minute
 
 NEW LOOK
-• Android 16/17 style across the app
-• Logs grouped by day
+• Android 16/17 style; logs grouped by day
 
 FIXED
+• Automation restarts by itself after an update
 • Editing a flow no longer clears its logs
 • "Once" timers run once, not every day
-• Menus that can't open in the background notify you
-• Scheduled flows that can't run say why
+• Background menus now notify you instead
+• Timers that can't run say why
 • Accessibility notice lists every use
 ```
 
 ---
 
-## 日本語（ja-JP） — 410 字元
+## 日本語（ja-JP） — 470 字元
 
 ```
 【共有されたフローをより安全に】
@@ -86,16 +88,18 @@ FIXED
 ・フローエディタは行をタップして編集
 
 【修正】
+・アプリの更新後、自動化が自動で再開されます（アプリを開き直す必要はありません）
 ・フローを編集しても実行ログが消えなくなりました
 ・「1 回のみ」の時刻指定が毎日実行されなくなりました
 ・バックグラウンドで開けないメニューは通知でお知らせします
 ・時刻指定のフローが実行できなかったとき、理由をログに残して通知します
 ・ユーザー補助サービスの説明にすべての用途を記載
+・ログの失敗理由を設定した言語で表示
 ```
 
 ---
 
-## 简体中文（zh-CN） — 426 字元
+## 简体中文（zh-CN） — 478 字元
 
 ```
 【更安全地使用别人分享的流程】
@@ -110,6 +114,7 @@ FIXED
 • AI 设置有了自己的页面，AI 输入框合而为一
 
 【修正】
+• App 更新后，自动化会自己恢复运行，不必再打开 App
 • 编辑流程不再清空它的执行记录
 • 「一次」的定时流程真的只执行一次
 • 后台打不开的菜单改用通知提醒您选择
@@ -117,6 +122,7 @@ FIXED
 • 定时流程没能执行时，日志会写明原因并通知您
 • 横屏时新增按钮不再挡住流程开关
 • 无障碍服务的说明列出全部用途
+• 日志里的失败原因改用您设置的语言显示
 ```
 
 ---

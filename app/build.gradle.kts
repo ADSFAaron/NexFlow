@@ -28,8 +28,8 @@ android {
         applicationId = "com.adsf.nexflow"
         minSdk = 30
         targetSdk = 37
-        versionCode = 14
-        versionName = "1.7.2"
+        versionCode = 15
+        versionName = "1.7.3"
 
         testInstrumentationRunner = "com.nexflow.HiltTestRunner"
     }

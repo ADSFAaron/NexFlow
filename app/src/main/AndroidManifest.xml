@@ -147,12 +147,14 @@
                 android:value="task_automation" />
         </service>
 
-        <!-- Auto-start after device boot -->
+        <!-- Auto-start after device boot, and restart after the app is updated (an update kills
+             the process and nothing else would bring the engine back) -->
         <receiver
             android:name=".receiver.BootReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
 
