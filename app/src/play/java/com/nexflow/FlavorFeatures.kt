@@ -24,18 +24,6 @@ import com.nexflow.core.automation.model.TriggerType
  * restricts SMS/Call permissions to default handler apps).
  */
 object FlavorFeatures {
-    val hiddenTriggerTypes: Set<TriggerType> = setOf(
-        TriggerType.SMS_RECEIVED,
-        TriggerType.INCOMING_CALL,
-    )
-    val hiddenActionTypes: Set<ActionType> = setOf(
-        ActionType.SEND_SMS,
-        ActionType.CALL_PHONE,
-        // Needs WRITE_SECURE_SETTINGS, which the play flavor does not declare.
-        ActionType.AIRPLANE_TOGGLE,
-        // dispatchGesture ("performs actions on the user's behalf") would widen the Play
-        // accessibility-usage declaration beyond screenshots/app-detection — github only.
-        ActionType.SIMULATE_TAP,
-        ActionType.SIMULATE_SWIPE,
-    )
+    val hiddenTriggerTypes: Set<TriggerType> = FlavorGates.PLAY_HIDDEN_TRIGGERS
+    val hiddenActionTypes: Set<ActionType> = FlavorGates.PLAY_HIDDEN_ACTIONS
 }

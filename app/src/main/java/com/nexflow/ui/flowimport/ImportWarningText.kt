@@ -17,8 +17,12 @@ package com.nexflow.ui.flowimport
 
 import android.content.Context
 import com.nexflow.R
+import com.nexflow.core.automation.model.ActionType
+import com.nexflow.core.automation.model.TriggerType
+import com.nexflow.core.flowschema.ImportItemKind
 import com.nexflow.core.flowschema.ImportWarning
 import com.nexflow.core.flowschema.ImportWarnings
+import com.nexflow.ui.flows.detail.config.info
 
 /**
  * Turns an [ImportWarning] into what the user reads.
@@ -62,7 +66,22 @@ private val TEXTS: Map<String, WarningText> = mapOf(
     ImportWarnings.GLOBAL_UNDECLARED to WarningText(R.string.iw_global_undeclared, R.string.iw_global_undeclared_body),
     ImportWarnings.UNKNOWN_CONDITION_TYPES to WarningText(R.string.iw_unknown_condition, R.string.iw_unknown_condition_body),
     ImportWarnings.SCHEMA_ERROR to WarningText(R.string.iw_schema_error, R.string.iw_schema_error_body),
+    ImportWarnings.UNKNOWN_TRIGGER_TYPE to WarningText(R.string.iw_unknown_trigger, R.string.iw_unknown_trigger_body),
+    ImportWarnings.UNKNOWN_ACTION_TYPE to WarningText(R.string.iw_unknown_action, R.string.iw_unknown_action_body),
+    ImportWarnings.NOT_IN_THIS_BUILD to WarningText(R.string.iw_not_in_this_build, R.string.iw_not_in_this_build_body),
 )
+
+/** The args as the user should read them: a type this build knows by its label, not its enum name. */
+private fun ImportWarning.displayArgs(context: Context): List<String> {
+    if (code != ImportWarnings.NOT_IN_THIS_BUILD) return args
+    val name = args.firstOrNull() ?: return args
+    val label = when (itemKind) {
+        ImportItemKind.TRIGGER -> TriggerType.entries.find { it.name == name }?.info(context)?.label
+        ImportItemKind.ACTION -> ActionType.entries.find { it.name == name }?.info(context)?.label
+        else -> null
+    }
+    return listOf(label ?: name)
+}
 
 /** Short line naming what happened, e.g. "This action has no NexFlow equivalent". */
 fun ImportWarning.title(context: Context): String =
@@ -76,6 +95,6 @@ fun ImportWarning.title(context: Context): String =
  */
 fun ImportWarning.body(context: Context): String =
     TEXTS[code]?.let { text ->
-        runCatching { context.getString(text.bodyRes, *args.toTypedArray()) }
+        runCatching { context.getString(text.bodyRes, *displayArgs(context).toTypedArray()) }
             .getOrElse { context.getString(text.bodyRes) }
     } ?: args.joinToString()

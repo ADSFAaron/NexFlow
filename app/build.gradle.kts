@@ -153,6 +153,13 @@ room {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+
+    // FlowCatalogTest compares the editors against docs/flow-catalog.json, or rewrites it when
+    // run with -PupdateCatalog. Declared as an input so editing the file reruns the check.
+    val catalog = rootProject.file("docs/flow-catalog.json")
+    inputs.files(catalog).withPropertyName("flowCatalog")
+    systemProperty("nexflow.catalogFile", catalog.absolutePath)
+    systemProperty("nexflow.updateCatalog", providers.gradleProperty("updateCatalog").isPresent)
 }
 
 dependencies {

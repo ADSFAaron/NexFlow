@@ -24,7 +24,7 @@ import com.nexflow.core.flowschema.ActionJson
 import com.nexflow.core.flowschema.FlowJson
 import com.nexflow.core.flowschema.FlowSchemaValidator
 import com.nexflow.core.flowschema.TriggerJson
-import com.nexflow.ui.flows.detail.config.info
+import com.nexflow.validation.FlowConfigValidator
 import java.time.Instant
 import java.util.UUID
 import kotlinx.serialization.json.Json
@@ -127,7 +127,7 @@ object FlowDraftMapper {
                     }"
             }
         val config = parseConfig(obj["config"], "triggers[$index].config", errors)
-        validateConfig(config, type.info(context).fields, "triggers[$index]", type.name, isInstalled, errors)
+        errors += FlowConfigValidator(context, isInstalled).trigger(type, config, "triggers[$index]")
         return TriggerJson(id = UUID.randomUUID().toString(), type = type.name, config = config)
     }
 
@@ -151,7 +151,7 @@ object FlowDraftMapper {
                     }"
             }
         val config = parseConfig(obj["config"], "actions[$index].config", errors)
-        validateConfig(config, type.info(context).fields, "actions[$index]", type.name, isInstalled, errors)
+        errors += FlowConfigValidator(context, isInstalled).action(type, config, "actions[$index]")
         return ActionJson(
             id = UUID.randomUUID().toString(),
             type = type.name,
@@ -184,43 +184,6 @@ object FlowDraftMapper {
         else -> {
             errors += "$field: must be a JSON object (encoded as string)"
             JsonObject(emptyMap())
-        }
-    }
-
-    private fun validateConfig(
-        config: JsonObject,
-        fields: List<com.nexflow.ui.flows.detail.config.ConfigField>,
-        prefix: String,
-        typeName: String,
-        isInstalled: (String) -> Boolean,
-        errors: MutableList<String>,
-    ) {
-        val allowedKeys = AiCatalog.capturableKeys(fields)
-        val packageKeys = AiCatalog.packageKeys(fields)
-        config.forEach { (key, value) ->
-            if (key !in allowedKeys) {
-                errors += "$prefix.config: unknown key \"$key\" for $typeName. " +
-                    if (allowedKeys.isEmpty()) "$typeName takes no config."
-                    else "Allowed: ${allowedKeys.joinToString(",")}"
-                return@forEach
-            }
-            val content = (value as? JsonPrimitive)?.contentOrNull ?: value.toString()
-            AiCatalog.allowedValues(fields, key)?.let { allowed ->
-                if (content !in allowed) {
-                    errors += "$prefix.config.$key: invalid value \"$content\". " +
-                        "Allowed: ${allowed.joinToString(",")}"
-                }
-            }
-            AiCatalog.numericRange(fields, key)?.let { range ->
-                val n = content.toIntOrNull()
-                if (n == null || n !in range) {
-                    errors += "$prefix.config.$key: must be an integer in ${range.first}..${range.last}"
-                }
-            }
-            if (key in packageKeys && content.isNotBlank() && !isInstalled(content)) {
-                errors += "$prefix.config.$key: \"$content\" is not installed on this device. " +
-                    "Call search_installed_apps and use a package_name it returns."
-            }
         }
     }
 
