@@ -68,7 +68,7 @@ fun ImportReviewDialog(
         icon = {
             Icon(
                 imageVector = when {
-                    result.error != null -> Icons.Outlined.ErrorOutline
+                    result.failed -> Icons.Outlined.ErrorOutline
                     current != null -> Icons.Outlined.ReportProblem
                     else -> Icons.Outlined.CheckCircle
                 },
@@ -78,7 +78,7 @@ fun ImportReviewDialog(
         title = {
             Text(
                 when {
-                    result.error != null -> stringResource(R.string.flows_import_failed)
+                    result.failed -> stringResource(R.string.flows_import_failed)
                     current != null -> stringResource(R.string.import_review_title)
                     else -> stringResource(R.string.flows_import_complete)
                 },
@@ -88,6 +88,16 @@ fun ImportReviewDialog(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 when {
                     result.error != null -> Text(result.error)
+
+                    result.rejected.isNotEmpty() -> {
+                        Text(stringResource(R.string.iw_schema_error))
+                        // The details are for whoever wrote the file; they stay as the validator says them.
+                        Text(
+                            text = result.rejected.joinToString("\n") { "• $it" },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
 
                     current == null -> Text(
                         pluralStringResource(R.plurals.flows_imported_count, result.imported, result.imported),
@@ -128,7 +138,7 @@ fun ImportReviewDialog(
         },
         confirmButton = {
             when {
-                result.error != null || current == null ->
+                result.failed || current == null ->
                     TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_ok)) }
 
                 // Only offer to open the item when the warning knows which one it is about.
@@ -150,7 +160,7 @@ fun ImportReviewDialog(
         },
         dismissButton = {
             // Only when there is something else to offer: a lone "next" needs no twin.
-            if (result.error == null && current?.isFixable == true) {
+            if (!result.failed && current?.isFixable == true) {
                 TextButton(onClick = { if (isLast) onDismiss() else index++ }) {
                     Text(
                         stringResource(

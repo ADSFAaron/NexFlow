@@ -1,0 +1,1204 @@
+{
+  "catalog_version": 1,
+  "triggers": {
+    "AMBIENT_LIGHT": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "mode": {
+          "since": "1.7.1",
+          "input": "Dropdown",
+          "values": [
+            "BELOW",
+            "ABOVE"
+          ]
+        },
+        "threshold_lux": {
+          "since": "1.7.1",
+          "input": "TextInput"
+        }
+      }
+    },
+    "APP_LAUNCH": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "package_name": {
+          "since": "1.7.1",
+          "input": "AppPicker",
+          "personal": true,
+          "sink": true
+        }
+      }
+    },
+    "BATTERY": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "charging": {
+          "since": "1.7.1",
+          "input": "Dropdown",
+          "values": [
+            "ANY",
+            "CHARGING",
+            "DISCHARGING"
+          ]
+        },
+        "direction": {
+          "since": "1.7.1",
+          "input": "Dropdown",
+          "values": [
+            "BELOW",
+            "ABOVE"
+          ]
+        },
+        "level": {
+          "since": "1.7.1",
+          "input": "Slider",
+          "min": 0,
+          "max": 100
+        }
+      }
+    },
+    "BLUETOOTH": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "device_name": {
+          "since": "1.7.1",
+          "input": "TextInput",
+          "personal": true
+        },
+        "event": {
+          "since": "1.7.1",
+          "input": "Dropdown",
+          "values": [
+            "CONNECTED",
+            "DISCONNECTED"
+          ]
+        }
+      }
+    },
+    "DEVICE_BOOT": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {}
+    },
+    "GEOFENCE": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "event": {
+          "since": "1.7.1",
+          "input": "Dropdown",
+          "values": [
+            "ENTER",
+            "EXIT"
+          ]
+        },
+        "lat": {
+          "since": "1.7.1",
+          "input": "TextInput",
+          "personal": true
+        },
+        "lng": {
+          "since": "1.7.1",
+          "input": "TextInput",
+          "personal": true
+        },
+        "radius_m": {
+          "since": "1.7.1",
+          "input": "Slider",
+          "min": 50,
+          "max": 5000
+        }
+      }
+    },
+    "HEADSET_PLUG": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "event": {
+          "since": "1.7.1",
+          "input": "Dropdown",
+          "values": [
+            "CONNECTED",
+            "DISCONNECTED"
+          ]
+        }
+      }
+    },
+    "INCOMING_CALL": {
+      "since": "1.7.1",
+      "flavors": [
+        "github"
+      ],
+      "keys": {
+        "contact": {
+          "since": "1.7.1",
+          "input": "TextInput",
+          "personal": true
+        }
+      }
+    },
+    "MANUAL": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {}
+    },
+    "NFC_TAG": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "tag_id": {
+          "since": "1.7.1",
+          "input": "NfcTagScan",
+          "personal": true
+        }
+      }
+    },
+    "NOTIFICATION_RECEIVED": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "keyword": {
+          "since": "1.7.1",
+          "input": "TextInput"
+        },
+        "match_field": {
+          "since": "1.7.1",
+          "input": "Dropdown",
+          "values": [
+            "ANY",
+            "TITLE",
+            "TEXT"
+          ]
+        },
+        "match_mode": {
+          "since": "1.7.1",
+          "input": "Dropdown",
+          "values": [
+            "CONTAINS",
+            "EXACT",
+            "REGEX"
+          ]
+        },
+        "package_name": {
+          "since": "1.7.1",
+          "input": "AppPicker",
+          "personal": true,
+          "sink": true
+        }
+      }
+    },
+    "SCREEN": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "event": {
+          "since": "1.7.1",
+          "input": "Dropdown",
+          "values": [
+            "ON",
+            "OFF",
+            "UNLOCKED"
+          ]
+        }
+      }
+    },
+    "SHAKE": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "sensitivity": {
+          "since": "1.7.1",
+          "input": "Dropdown",
+          "values": [
+            "LOW",
+            "MEDIUM",
+            "HIGH"
+          ]
+        }
+      }
+    },
+    "SMS_RECEIVED": {
+      "since": "1.7.1",
+      "flavors": [
+        "github"
+      ],
+      "keys": {
+        "body_keyword": {
+          "since": "1.7.1",
+          "input": "TextInput"
+        },
+        "match_mode": {
+          "since": "1.7.1",
+          "input": "Dropdown",
+          "values": [
+            "CONTAINS",
+            "EXACT",
+            "REGEX"
+          ]
+        },
+        "sender": {
+          "since": "1.7.1",
+          "input": "TextInput",
+          "personal": true
+        }
+      }
+    },
+    "TIME": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "days": {
+          "since": "1.7.1",
+          "input": "DayPicker"
+        },
+        "repeat": {
+          "since": "1.7.1",
+          "input": "Dropdown",
+          "values": [
+            "DAILY",
+            "WEEKDAYS",
+            "WEEKENDS",
+            "CUSTOM",
+            "ONCE"
+          ]
+        },
+        "time": {
+          "since": "1.7.1",
+          "input": "TimePicker"
+        }
+      }
+    },
+    "WIFI": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "event": {
+          "since": "1.7.1",
+          "input": "Dropdown",
+          "values": [
+            "CONNECTED",
+            "DISCONNECTED"
+          ]
+        },
+        "ssid": {
+          "since": "1.7.1",
+          "input": "WifiSsidInput",
+          "personal": true
+        }
+      }
+    }
+  },
+  "conditions": {
+    "BATTERY_LEVEL": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "_negate": {
+          "since": "1.7.1",
+          "input": "Toggle",
+          "values": [
+            "true",
+            "false"
+          ]
+        },
+        "direction": {
+          "since": "1.7.1",
+          "input": "Dropdown",
+          "values": [
+            "BELOW",
+            "ABOVE"
+          ]
+        },
+        "level": {
+          "since": "1.7.1",
+          "input": "Slider",
+          "min": 0,
+          "max": 100
+        }
+      }
+    },
+    "BLUETOOTH_CONNECTED": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "_negate": {
+          "since": "1.7.1",
+          "input": "Toggle",
+          "values": [
+            "true",
+            "false"
+          ]
+        },
+        "device_name": {
+          "since": "1.7.1",
+          "input": "TextInput",
+          "personal": true
+        },
+        "state": {
+          "since": "1.7.1",
+          "input": "Dropdown",
+          "values": [
+            "CONNECTED",
+            "DISCONNECTED"
+          ]
+        }
+      }
+    },
+    "CHARGING": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "_negate": {
+          "since": "1.7.1",
+          "input": "Toggle",
+          "values": [
+            "true",
+            "false"
+          ]
+        },
+        "state": {
+          "since": "1.7.1",
+          "input": "Dropdown",
+          "values": [
+            "CHARGING",
+            "NOT_CHARGING"
+          ]
+        }
+      }
+    },
+    "DAY_OF_WEEK": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "_negate": {
+          "since": "1.7.1",
+          "input": "Toggle",
+          "values": [
+            "true",
+            "false"
+          ]
+        },
+        "days": {
+          "since": "1.7.1",
+          "input": "DayPicker"
+        }
+      }
+    },
+    "EXPRESSION": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "_negate": {
+          "since": "1.7.1",
+          "input": "Toggle",
+          "values": [
+            "true",
+            "false"
+          ]
+        },
+        "expression": {
+          "since": "1.7.1",
+          "input": "ConditionInput"
+        }
+      }
+    },
+    "SCREEN_STATE": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "_negate": {
+          "since": "1.7.1",
+          "input": "Toggle",
+          "values": [
+            "true",
+            "false"
+          ]
+        },
+        "state": {
+          "since": "1.7.1",
+          "input": "Dropdown",
+          "values": [
+            "ON",
+            "OFF"
+          ]
+        }
+      }
+    },
+    "TIME_RANGE": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "_negate": {
+          "since": "1.7.1",
+          "input": "Toggle",
+          "values": [
+            "true",
+            "false"
+          ]
+        },
+        "end": {
+          "since": "1.7.1",
+          "input": "TimePicker"
+        },
+        "start": {
+          "since": "1.7.1",
+          "input": "TimePicker"
+        }
+      }
+    },
+    "WIFI_CONNECTED": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "_negate": {
+          "since": "1.7.1",
+          "input": "Toggle",
+          "values": [
+            "true",
+            "false"
+          ]
+        },
+        "ssid": {
+          "since": "1.7.1",
+          "input": "WifiSsidInput",
+          "personal": true
+        },
+        "state": {
+          "since": "1.7.1",
+          "input": "Dropdown",
+          "values": [
+            "CONNECTED",
+            "DISCONNECTED"
+          ]
+        }
+      }
+    }
+  },
+  "actions": {
+    "AIRPLANE_TOGGLE": {
+      "since": "1.7.1",
+      "flavors": [
+        "github"
+      ],
+      "keys": {
+        "state": {
+          "since": "1.7.1",
+          "input": "Dropdown",
+          "values": [
+            "ON",
+            "OFF",
+            "TOGGLE"
+          ]
+        }
+      }
+    },
+    "BLUETOOTH_TOGGLE": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "state": {
+          "since": "1.7.1",
+          "input": "Dropdown",
+          "values": [
+            "ON",
+            "OFF",
+            "TOGGLE"
+          ]
+        }
+      }
+    },
+    "BRIGHTNESS_ADJUST": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "brightness_unit": {
+          "since": "1.7.1",
+          "input": "Unit",
+          "values": [
+            "PCT",
+            "RAW"
+          ]
+        },
+        "extra_dim": {
+          "since": "1.7.1",
+          "input": "Toggle",
+          "values": [
+            "true",
+            "false"
+          ]
+        },
+        "level": {
+          "since": "1.7.1",
+          "input": "UnitSlider",
+          "unit_ranges": {
+            "PCT": [
+              0,
+              100
+            ],
+            "RAW": [
+              0,
+              255
+            ]
+          }
+        }
+      }
+    },
+    "CALL_PHONE": {
+      "since": "1.7.1",
+      "flavors": [
+        "github"
+      ],
+      "keys": {
+        "number": {
+          "since": "1.7.1",
+          "input": "TextInput",
+          "personal": true,
+          "sink": true
+        }
+      }
+    },
+    "CLIPBOARD_COPY": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "text": {
+          "since": "1.7.1",
+          "input": "TextInput"
+        }
+      }
+    },
+    "DELAY": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "duration_unit": {
+          "since": "1.7.1",
+          "input": "Unit",
+          "values": [
+            "MS",
+            "SEC"
+          ]
+        },
+        "duration_value": {
+          "since": "1.7.1",
+          "input": "UnitSlider",
+          "unit_ranges": {
+            "MS": [
+              0,
+              60000
+            ],
+            "SEC": [
+              0,
+              3600
+            ]
+          }
+        }
+      }
+    },
+    "DND_TOGGLE": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "state": {
+          "since": "1.7.1",
+          "input": "Dropdown",
+          "values": [
+            "ON",
+            "OFF",
+            "TOGGLE"
+          ]
+        }
+      }
+    },
+    "ELSE_BLOCK": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {}
+    },
+    "END_IF": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {}
+    },
+    "END_MENU": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {}
+    },
+    "END_REPEAT": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {}
+    },
+    "HTTP_REQUEST": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "body": {
+          "since": "1.7.1",
+          "input": "TextInput"
+        },
+        "headers": {
+          "since": "1.7.1",
+          "input": "TextInput",
+          "personal": true
+        },
+        "json_path": {
+          "since": "1.7.1",
+          "input": "TextInput"
+        },
+        "method": {
+          "since": "1.7.1",
+          "input": "Dropdown",
+          "values": [
+            "GET",
+            "POST",
+            "PUT",
+            "DELETE",
+            "PATCH"
+          ]
+        },
+        "response_var": {
+          "since": "1.7.1",
+          "input": "TextInput",
+          "sink": true
+        },
+        "url": {
+          "since": "1.7.1",
+          "input": "TextInput",
+          "sink": true
+        }
+      }
+    },
+    "IF_BLOCK": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "expression": {
+          "since": "1.7.1",
+          "input": "ConditionInput"
+        }
+      }
+    },
+    "LAUNCH_SHORTCUT": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "intent_uri": {
+          "since": "1.7.1",
+          "input": "ShortcutPicker",
+          "personal": true,
+          "sink": true
+        },
+        "label": {
+          "since": "1.7.1",
+          "input": "ShortcutLabel",
+          "personal": true
+        },
+        "package_name": {
+          "since": "1.7.1",
+          "input": "ShortcutPackage",
+          "personal": true,
+          "sink": true
+        }
+      }
+    },
+    "MEDIA_PLAY_PAUSE": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "action": {
+          "since": "1.7.1",
+          "input": "Dropdown",
+          "values": [
+            "PLAY",
+            "PAUSE",
+            "TOGGLE"
+          ]
+        }
+      }
+    },
+    "MENU_CASE": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "option": {
+          "since": "1.7.1",
+          "input": "TextInput"
+        }
+      }
+    },
+    "NOTIFICATION": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "message": {
+          "since": "1.7.1",
+          "input": "TextInput"
+        },
+        "tap_action": {
+          "since": "1.7.1",
+          "input": "Dropdown",
+          "values": [
+            "NONE",
+            "OPEN_APP",
+            "OPEN_URL",
+            "OPEN_SHORTCUT"
+          ]
+        },
+        "tap_package": {
+          "since": "1.7.1",
+          "input": "AppPicker",
+          "personal": true,
+          "sink": true
+        },
+        "tap_shortcut_label": {
+          "since": "1.7.1",
+          "input": "ShortcutLabel",
+          "personal": true
+        },
+        "tap_shortcut_package": {
+          "since": "1.7.1",
+          "input": "ShortcutPackage",
+          "personal": true
+        },
+        "tap_shortcut_uri": {
+          "since": "1.7.1",
+          "input": "ShortcutPicker",
+          "personal": true,
+          "sink": true
+        },
+        "tap_url": {
+          "since": "1.7.1",
+          "input": "TextInput",
+          "sink": true
+        },
+        "title": {
+          "since": "1.7.1",
+          "input": "TextInput"
+        }
+      }
+    },
+    "OPEN_APP": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "package_name": {
+          "since": "1.7.1",
+          "input": "AppPicker",
+          "personal": true,
+          "sink": true
+        }
+      }
+    },
+    "OPEN_URL": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "url": {
+          "since": "1.7.1",
+          "input": "TextInput",
+          "sink": true
+        }
+      }
+    },
+    "REPEAT_BLOCK": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "count": {
+          "since": "1.7.1",
+          "input": "Slider",
+          "min": 1,
+          "max": 100
+        }
+      }
+    },
+    "SCREENSHOT": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {}
+    },
+    "SEND_SMS": {
+      "since": "1.7.1",
+      "flavors": [
+        "github"
+      ],
+      "keys": {
+        "message": {
+          "since": "1.7.1",
+          "input": "TextInput"
+        },
+        "number": {
+          "since": "1.7.1",
+          "input": "TextInput",
+          "personal": true,
+          "sink": true
+        }
+      }
+    },
+    "SET_VARIABLE": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "value": {
+          "since": "1.7.1",
+          "input": "TextInput"
+        },
+        "variable_name": {
+          "since": "1.7.1",
+          "input": "VariableNameInput",
+          "sink": true
+        }
+      }
+    },
+    "SET_WALLPAPER": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "image": {
+          "since": "1.7.1",
+          "input": "ImagePicker",
+          "personal": true
+        },
+        "target": {
+          "since": "1.7.1",
+          "input": "Dropdown",
+          "values": [
+            "BOTH",
+            "HOME",
+            "LOCK"
+          ]
+        }
+      }
+    },
+    "SHARE": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "text": {
+          "since": "1.7.1",
+          "input": "TextInput"
+        }
+      }
+    },
+    "SHOW_MENU": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "options": {
+          "since": "1.7.1",
+          "input": "MenuOptionList"
+        },
+        "title": {
+          "since": "1.7.1",
+          "input": "TextInput"
+        }
+      }
+    },
+    "SIMULATE_SWIPE": {
+      "since": "1.7.1",
+      "flavors": [
+        "github"
+      ],
+      "keys": {
+        "duration": {
+          "since": "1.7.1",
+          "input": "TextInput"
+        },
+        "x1": {
+          "since": "1.7.1",
+          "input": "TextInput",
+          "personal": true,
+          "sink": true
+        },
+        "x2": {
+          "since": "1.7.1",
+          "input": "TextInput",
+          "personal": true,
+          "sink": true
+        },
+        "y1": {
+          "since": "1.7.1",
+          "input": "TextInput",
+          "personal": true,
+          "sink": true
+        },
+        "y2": {
+          "since": "1.7.1",
+          "input": "TextInput",
+          "personal": true,
+          "sink": true
+        }
+      }
+    },
+    "SIMULATE_TAP": {
+      "since": "1.7.1",
+      "flavors": [
+        "github"
+      ],
+      "keys": {
+        "duration": {
+          "since": "1.7.1",
+          "input": "TextInput"
+        },
+        "x": {
+          "since": "1.7.1",
+          "input": "TextInput",
+          "personal": true,
+          "sink": true
+        },
+        "y": {
+          "since": "1.7.1",
+          "input": "TextInput",
+          "personal": true,
+          "sink": true
+        }
+      }
+    },
+    "SPEAKERPHONE": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "state": {
+          "since": "1.7.1",
+          "input": "Dropdown",
+          "values": [
+            "ON",
+            "OFF"
+          ]
+        }
+      }
+    },
+    "TOAST": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "message": {
+          "since": "1.7.1",
+          "input": "TextInput"
+        }
+      }
+    },
+    "TTS": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "text": {
+          "since": "1.7.1",
+          "input": "TextInput"
+        }
+      }
+    },
+    "VOLUME_ADJUST": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "stream": {
+          "since": "1.7.1",
+          "input": "Dropdown",
+          "values": [
+            "RING",
+            "MEDIA",
+            "ALARM",
+            "NOTIFICATION"
+          ]
+        },
+        "volume_percent": {
+          "since": "1.7.1",
+          "input": "Slider",
+          "min": 0,
+          "max": 100
+        }
+      }
+    },
+    "WIFI_TOGGLE": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "state": {
+          "since": "1.7.1",
+          "input": "Dropdown",
+          "values": [
+            "ON",
+            "OFF",
+            "TOGGLE"
+          ]
+        }
+      }
+    },
+    "WRITE_FILE": {
+      "since": "1.7.1",
+      "flavors": [
+        "github",
+        "play"
+      ],
+      "keys": {
+        "content": {
+          "since": "1.7.1",
+          "input": "TextInput"
+        },
+        "path": {
+          "since": "1.7.1",
+          "input": "TextInput",
+          "personal": true,
+          "sink": true
+        }
+      }
+    }
+  }
+}

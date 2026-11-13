@@ -16,6 +16,7 @@ app/                        # 主 App module（UI、executor、trigger、service
 core/automation/            # 核心模型、interpreter、repository 介面
 core/flow-schema/           # JSON schema（匯入/匯出格式）
 core/macrodroid-compat/     # MacroDroid .mdr 格式解析
+core/flow-store-tools/      # 流程商店 CLI（validate／dry-run／build-index／from-export），純 JVM，商店 repo 的 CI 用
 ```
 
 ---
@@ -81,6 +82,17 @@ core/macrodroid-compat/     # MacroDroid .mdr 格式解析
 - 新增 JVM 測試模組時，`testRuntimeOnly(libs.junit5.platform.launcher)` 不能漏，否則 Gradle 9 會報 `Failed to load JUnit Platform`
 - **Robolectric 與 Compose 測試是 JUnit 4，整個專案卻是 `useJUnitPlatform()`**：靠 `testRuntimeOnly(libs.junit5.vintage.engine)` 才跑得起來，漏了會「測試不見了但 build 成功」
 - `app/src/test/resources/robolectric.properties` 釘了 `sdk=36`（Robolectric 4.16 沒有 API 37 的 image）與 `application=android.app.Application`（避免每個測試都去啟動 `@HiltAndroidApp` 的 `NexFlowApplication`）。要注入的 Robolectric 測試自己標 `@Config(application = HiltTestApplication::class)`
+
+#### 流程 catalog（`docs/flow-catalog.json`）
+
+- 從各觸發器／條件／動作編輯器的欄位產生的 golden 檔，流程商店的 CLI 靠它驗證投稿。**改了任何 `ConfigField`（新增、改名、改選項或範圍）都要重產**，否則 `FlowCatalogTest` 會失敗：
+
+  ```bash
+  ./gradlew :app:testGithubDebugUnitTest --tests '*FlowCatalogTest' -PupdateCatalog
+  ```
+
+- 新的 key 也要在 `core/flow-schema` 的 `FieldPolicy` 歸類（PERSONAL／SINKS／NEUTRAL），沒歸類 `FieldPolicyTest` 會失敗
+- `since` 由產生器自動填（新條目 = 目前的 versionName），**不要手改**；play 版隱藏哪些類型看 `FlavorGates`
 
 #### 截圖測試（Compose Preview Screenshot Testing）
 
@@ -198,6 +210,13 @@ adb shell am set-standby-bucket $PKG active
 - **沒有** gradle-play-publisher / fastlane，上傳是 Play Console 的人工步驟，不要嘗試自動化
 - Play Console 端的聲明（無障礙使用聲明、背景定位示範影片與表單、Data safety、隱私權政策 URL）**在 1.1.0 首次上架時就已完成並過審**，不是待辦事項。隱私權政策用公開 repo 的 GitHub blob URL 即可，Play 接受
 - Gemini 助手自 **1.1.0** 起就會把資料送到 Google，「對外傳輸」不是後來才新增的。只有在**傳輸內容的範圍**改變時（例如 1.3.0 開始把既有流程的完整設定值送出）才需要重新評估 Data safety 表單，而那是使用者才看得到的東西
+
+---
+
+## 進行中的大型功能
+
+- **Flow Store**（GitHub 上的流程商店）：定案設計、各 Phase 範圍、測試策略與進度都在
+  [`docs/flow-store/DESIGN.md`](docs/flow-store/DESIGN.md)。動手前先讀；實作和文件不一致時，先改文件並寫明原因
 
 ---
 

@@ -368,6 +368,12 @@
     <string name="iw_global_undeclared_body">フローは「%1$s」を使っていますが、ファイルに宣言がありません。設定 → グローバル変数で作成しないと、書き込み時に失敗します。</string>
     <string name="iw_unknown_condition">不明な条件の種類</string>
     <string name="iw_unknown_condition_body">このフローは条件「%1$s」を使っていますが、このバージョンでは扱えません。削除するまでフローは実行されません。</string>
+    <string name="iw_unknown_trigger">不明なトリガーの種類</string>
+    <string name="iw_unknown_trigger_body">このフローはトリガー「%1$s」を使っていますが、このバージョンの NexFlow では扱えません。「手動」として残したので、自分で開始したときだけ実行されます。NexFlow を更新するか、別のトリガーに置き換えてください。</string>
+    <string name="iw_unknown_action">不明なアクションの種類</string>
+    <string name="iw_unknown_action_body">このフローはアクション「%1$s」を使っていますが、このバージョンの NexFlow では扱えません。メッセージを表示するだけの「トースト」として残しました。NexFlow を更新するか、別のアクションに置き換えてください。</string>
+    <string name="iw_not_in_this_build">このバージョンの NexFlow にはない機能です</string>
+    <string name="iw_not_in_this_build_body">「%1$s」は GitHub 版の NexFlow にしかありません。残してありますが、ここでは動作しません。トリガーは発火せず、アクションは失敗してその理由が実行ログに記録されます。</string>
     <string name="iw_schema_error">ファイルがフロー形式と一致しません</string>
     <string name="iw_schema_error_body">%1$s：%2$s</string>
     <string name="flows_permissions_needed">権限が必要です</string>

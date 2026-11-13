@@ -92,6 +92,12 @@ object ImportWarnings {
     const val GLOBAL_UNDECLARED = "global_undeclared"
     /** args: comma-separated type names */
     const val UNKNOWN_CONDITION_TYPES = "unknown_condition_types"
+    /** args: type name. The trigger was kept as MANUAL. */
+    const val UNKNOWN_TRIGGER_TYPE = "unknown_trigger_type"
+    /** args: type name. The action was kept as TOAST. */
+    const val UNKNOWN_ACTION_TYPE = "unknown_action_type"
+    /** args: type name; itemKind says whether it is a trigger or an action. */
+    const val NOT_IN_THIS_BUILD = "not_in_this_build"
     /** args: field, message */
     const val SCHEMA_ERROR = "schema_error"
 }
