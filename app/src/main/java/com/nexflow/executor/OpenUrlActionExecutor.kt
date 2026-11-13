@@ -24,6 +24,7 @@ import com.nexflow.core.automation.model.Action
 import com.nexflow.core.automation.model.ActionType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import com.nexflow.core.automation.LogText
 
 class OpenUrlActionExecutor @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -33,14 +34,14 @@ class OpenUrlActionExecutor @Inject constructor(
 
     override suspend fun execute(action: Action, variables: MutableMap<String, String>): ActionResult {
         val url = action.config["url"]?.takeIf { it.isNotBlank() }
-            ?: return ActionResult.Failure("No URL specified")
+            ?: return ActionResult.Failure(LogText.of("url_none"))
         return try {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
             ActionResult.Success
         } catch (e: Exception) {
-            ActionResult.Failure("Could not open URL: ${e.message}", e)
+            ActionResult.Failure(LogText.of("url_open_failed", e.message), e)
         }
     }
 }

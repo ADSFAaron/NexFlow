@@ -21,6 +21,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import com.nexflow.core.automation.LogText
 
 /**
  * Pulls a single value out of a JSON document with a dot path: `main.temp`, `items.0.name`.
@@ -47,27 +48,25 @@ internal object JsonPath {
         if (cleaned.isEmpty()) return Result.success(json)
 
         val root = runCatching { Json.parseToJsonElement(json) }.getOrElse {
-            return failure("the response is not valid JSON (${it.message})")
+            return failure("json_invalid", it.message)
         }
 
         var current: JsonElement = root
         val walked = StringBuilder()
         for (segment in cleaned.split('.')) {
-            if (segment.isEmpty()) return failure("\"$path\" has an empty path segment")
+            if (segment.isEmpty()) return failure("json_empty_segment", path)
             val next = when (val node = current) {
                 is JsonObject -> node[segment]
-                    ?: return failure(
-                        "no \"$segment\" in ${describe(walked)}; it has ${node.keys.joinToString(", ")}",
-                    )
+                    ?: return failure("json_missing_key", walked, segment, node.keys.joinToString(", "))
 
                 is JsonArray -> {
                     val index = segment.toIntOrNull()
-                        ?: return failure("${describe(walked)} is an array, so \"$segment\" must be a number")
+                        ?: return failure("json_not_number", walked, segment)
                     node.getOrNull(index)
-                        ?: return failure("${describe(walked)} has ${node.size} item(s), so index $index is out of range")
+                        ?: return failure("json_out_of_range", walked, node.size, index)
                 }
 
-                else -> return failure("${describe(walked)} is a single value, so \".$segment\" cannot be read from it")
+                else -> return failure("json_scalar", walked, segment)
             }
             current = next
             if (walked.isNotEmpty()) walked.append('.')
@@ -83,9 +82,10 @@ internal object JsonPath {
         else -> toString()
     }
 
-    private fun describe(walked: StringBuilder) =
-        if (walked.isEmpty()) "the response" else "\"$walked\""
-
-    private fun failure(message: String): Result<String> =
-        Result.failure(IllegalArgumentException(message))
+    /**
+     * The first argument is always where the walk had got to — empty at the top of the document,
+     * which the log renders as "the response" in the reader's language.
+     */
+    private fun failure(code: String, vararg args: Any?): Result<String> =
+        Result.failure(IllegalArgumentException(LogText.of(code, *args)))
 }

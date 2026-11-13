@@ -28,6 +28,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
+import com.nexflow.core.automation.LogText
 
 class WriteFileActionExecutor @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -37,16 +38,16 @@ class WriteFileActionExecutor @Inject constructor(
 
     override suspend fun execute(action: Action, variables: MutableMap<String, String>): ActionResult {
         val path = action.config["path"]?.trim()?.takeIf { it.isNotBlank() }
-            ?: return ActionResult.Failure("Write file: no path configured")
+            ?: return ActionResult.Failure(LogText.of("write_no_path"))
         val content = action.config["content"] ?: ""
 
         // Security: reject path-traversal segments. Combined with flow import, an unsanitised
         // path could otherwise escape its intended directory and overwrite app-private files.
         if (path.split('/').any { it == ".." }) {
-            return ActionResult.Failure("Write file: path must not contain '..'")
+            return ActionResult.Failure(LogText.of("write_dotdot"))
         }
         if (isAppPrivate(path)) {
-            return ActionResult.Failure("Write file: cannot write into NexFlow's own storage")
+            return ActionResult.Failure(LogText.of("write_private"))
         }
 
         return withContext(Dispatchers.IO) {
@@ -67,7 +68,7 @@ class WriteFileActionExecutor @Inject constructor(
                     }
                     val uri = context.contentResolver.insert(
                         MediaStore.Files.getContentUri("external"), values,
-                    ) ?: throw IllegalStateException("Could not create file via MediaStore")
+                    ) ?: throw IllegalStateException(LogText.of("write_mediastore"))
                     context.contentResolver.openOutputStream(uri)!!.use { out ->
                         out.write(content.toByteArray())
                     }
@@ -78,7 +79,7 @@ class WriteFileActionExecutor @Inject constructor(
                     file.writeText(content)
                 }
                 ActionResult.Success
-            }.getOrElse { ActionResult.Failure("Write file failed: ${it.message}") }
+            }.getOrElse { failureFrom("write_failed", it) }
         }
     }
 

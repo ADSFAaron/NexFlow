@@ -21,6 +21,7 @@ import com.nexflow.core.automation.model.ActionType
 import com.nexflow.core.automation.model.ExecutionLog
 import com.nexflow.core.automation.model.ExecutionStatus
 import com.nexflow.core.automation.model.ExecutionStep
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -150,4 +151,25 @@ class RunTranscriptTest {
         assertTrue("a truncated run must say so, or the paste reads as the whole run: $truncated",
             truncated.contains(notice))
     }
+
+    /**
+     * Failure reasons are stored as codes; the pasted text must carry the sentence, not the code
+     * with its control characters — both for the run and for the step that failed.
+     */
+    @Test
+    fun failureReasonsArePutIntoWords() {
+        val reason = com.nexflow.core.automation.LogText.of("unknown_global", "g:lowcount")
+        val text = transcriptOf(
+            context,
+            detail(
+                listOf(step(0, ActionType.SET_VARIABLE, ExecutionStatus.FAIL, error = reason)),
+                status = ExecutionStatus.FAIL,
+                error = reason,
+            ),
+        )
+        val sentence = "Unknown global variable \"g:lowcount\" — create it in Settings → Global variables first"
+        assertEquals(2, text.split(sentence).size - 1)
+        assertFalse(text, text.contains(com.nexflow.core.automation.LogText.MARK))
+    }
 }
+

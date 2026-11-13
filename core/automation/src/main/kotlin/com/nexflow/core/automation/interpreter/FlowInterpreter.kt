@@ -25,6 +25,7 @@ import com.nexflow.core.automation.model.Variable
 import kotlin.time.TimeSource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.yield
+import com.nexflow.core.automation.LogText
 
 /**
  * One action's outcome as the interpreter sees it, before a run has an id to file it under.
@@ -279,7 +280,7 @@ class FlowInterpreter(
 
                     // UI writes "variable_name"; older flows and MacroDroid imports may use "name"
                     val name = action.config["variable_name"] ?: action.config["name"]
-                        ?: return fail("SET_VARIABLE missing name")
+                        ?: return fail(LogText.of("set_var_no_name"))
                     val template = action.config["value"] ?: ""
                     val interpolated = interpolate(template, variables)
                     // "{{counter}} + 1" has to come out as a number, not as the text "5 + 1" that
@@ -289,15 +290,12 @@ class FlowInterpreter(
                     val newValue = try {
                         ExpressionEvaluator.arithmeticOrNull(template, variables) ?: interpolated
                     } catch (e: ArithmeticException) {
-                        return fail("SET_VARIABLE '$name': cannot evaluate \"$interpolated\" (${e.message})", e)
+                        return fail(LogText.of("set_var_eval", name, interpolated, e.message), e)
                     }
                     // `x = {{x}}{{x}}` inside a REPEAT doubles every round and is out of memory
                     // within forty. Fail the step long before that, while the message still fits.
                     if (newValue.length > MAX_VARIABLE_LENGTH) {
-                        return fail(
-                            "SET_VARIABLE '$name': the value is ${newValue.length} characters, more " +
-                                "than the $MAX_VARIABLE_LENGTH a variable can hold",
-                        )
+                        return fail(LogText.of("set_var_too_long", name, newValue.length, MAX_VARIABLE_LENGTH))
                     }
                     if (name.startsWith(GLOBAL_PREFIX)) {
                         // A g:-write must target a global the user actually declared. Failing here
@@ -331,13 +329,13 @@ class FlowInterpreter(
                 ActionType.SHOW_MENU -> {
                     val interpolatedAction = interpolateAction(action, variables)
                     val executor = executors[ActionType.SHOW_MENU]
-                        ?: return reportFailure(sink, action, depth, iteration, startedAt, "No executor for SHOW_MENU")
+                        ?: return reportFailure(sink, action, depth, iteration, startedAt, LogText.of("no_executor", ActionType.SHOW_MENU))
                     val result = try {
                         executor.execute(interpolatedAction, variables)
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
-                        ActionResult.Failure("SHOW_MENU threw: ${e.message}", e)
+                        ActionResult.Failure(LogText.of("action_threw", ActionType.SHOW_MENU, e.message), e)
                     }
                     if (result is ActionResult.Failure) {
                         return reportFailure(sink, action, depth, iteration, startedAt, result.message, result.cause)
@@ -409,13 +407,13 @@ class FlowInterpreter(
                     }
                     val interpolatedAction = interpolateAction(action, variables)
                     val executor = executors[action.type]
-                        ?: return reportFailure(sink, action, depth, iteration, startedAt, "No executor for ${action.type}")
+                        ?: return reportFailure(sink, action, depth, iteration, startedAt, LogText.of("no_executor", action.type))
                     val result = try {
                         executor.execute(interpolatedAction, variables)
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
-                        ActionResult.Failure("${action.type} threw: ${e.message}", e)
+                        ActionResult.Failure(LogText.of("action_threw", action.type, e.message), e)
                     }
                     if (result is ActionResult.Failure) {
                         return reportFailure(
@@ -564,7 +562,7 @@ class FlowInterpreter(
 
         /** Failure text for a SET_VARIABLE that targets a `g:` name no global variable declares. */
         fun unknownGlobalMessage(bareName: String): String =
-            "Unknown global variable '$GLOBAL_PREFIX$bareName' — create it in Settings → Global Variables first"
+            LogText.of("unknown_global", "$GLOBAL_PREFIX$bareName")
 
         // Tokens for StepReport.note. The UI turns these into localized text at render time, so a
         // log written in one language still reads correctly after the user switches to another.

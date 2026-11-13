@@ -29,6 +29,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.nexflow.core.automation.LogText
 
 @Singleton
 class MenuActionExecutor @Inject constructor(
@@ -44,7 +45,7 @@ class MenuActionExecutor @Inject constructor(
         val options = runCatching { Json.decodeFromString<List<String>>(optionsJson) }
             .getOrElse { emptyList() }
 
-        if (options.isEmpty()) return ActionResult.Failure("SHOW_MENU has no options")
+        if (options.isEmpty()) return ActionResult.Failure(LogText.of("menu_no_options"))
 
         // When a NexFlow window is already up (a shortcut run's transparent host, or the app
         // itself) it renders the sheet inline; only otherwise do we start the trampoline. If the

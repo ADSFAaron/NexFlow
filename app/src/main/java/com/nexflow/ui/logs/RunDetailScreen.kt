@@ -351,7 +351,7 @@ private fun RunSummary(detail: RunDetail, zone: ZoneId) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            val error = log.errorMessage
+            val error = LogMessages.render(LocalContext.current, log.errorMessage)
             if (error != null) {
                 Text(
                     error,
@@ -377,7 +377,7 @@ private fun StepRow(
     val context = LocalContext.current
     val step = row.step
     val (icon, tint) = statusVisual(step.status)
-    val detailText = step.errorMessage ?: step.resolvedConfig
+    val detailText = LogMessages.render(context, step.errorMessage) ?: step.resolvedConfig
     val canExpand = row.isRepeatHeader || detailText != null
     // Indent caps at three levels: past that the text column is narrower than the words in it,
     // and the guide lines already carry the nesting.
@@ -513,7 +513,7 @@ internal fun transcriptOf(context: Context, detail: RunDetail): String = buildSt
             SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).format(Date(log.triggeredAt)) +
             " · ${formatDuration(log.executionDurationMs)}",
     )
-    log.errorMessage?.let { appendLine(it) }
+    LogMessages.render(context, log.errorMessage)?.let { appendLine(it) }
     appendLine()
     detail.steps.forEach { step ->
         val indent = "  ".repeat(step.depth.coerceAtMost(MAX_INDENT_LEVELS))
@@ -526,7 +526,7 @@ internal fun transcriptOf(context: Context, detail: RunDetail): String = buildSt
         // noteText needs the row's round count, which only the repeat header has; the raw token
         // is honest here and keeps the transcript free of a second flattening pass.
         step.note?.let { appendLine("$indent    [$it]") }
-        step.errorMessage?.let { appendLine("$indent    $it") }
+        LogMessages.render(context, step.errorMessage)?.let { appendLine("$indent    $it") }
         step.resolvedConfig?.lineSequence()?.forEach { appendLine("$indent    $it") }
     }
     if (detail.droppedSteps > 0) {

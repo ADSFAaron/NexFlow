@@ -23,6 +23,7 @@ import com.nexflow.core.automation.model.Action
 import com.nexflow.core.automation.model.ActionType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import com.nexflow.core.automation.LogText
 
 class DndActionExecutor @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -33,9 +34,7 @@ class DndActionExecutor @Inject constructor(
     override suspend fun execute(action: Action, variables: MutableMap<String, String>): ActionResult {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (!nm.isNotificationPolicyAccessGranted) {
-            return ActionResult.Failure(
-                "Do Not Disturb access not granted — enable in Settings > Special app access > Do Not Disturb",
-            )
+            return ActionResult.Failure(LogText.of("dnd_access"))
         }
 
         val currentlyActive =

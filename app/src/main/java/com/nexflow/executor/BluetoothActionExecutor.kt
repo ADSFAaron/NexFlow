@@ -31,6 +31,7 @@ import com.nexflow.core.automation.model.Action
 import com.nexflow.core.automation.model.ActionType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import com.nexflow.core.automation.LogText
 
 class BluetoothActionExecutor @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -42,7 +43,7 @@ class BluetoothActionExecutor @Inject constructor(
     override suspend fun execute(action: Action, variables: MutableMap<String, String>): ActionResult {
         val bm = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
         val adapter: BluetoothAdapter = bm.adapter
-            ?: return ActionResult.Failure("No Bluetooth adapter on this device")
+            ?: return ActionResult.Failure(LogText.of("bt_no_adapter"))
 
         val current = adapter.isEnabled
         val targetOn = when (action.config["state"]?.uppercase()) {
@@ -68,12 +69,12 @@ class BluetoothActionExecutor @Inject constructor(
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT)
                 != PackageManager.PERMISSION_GRANTED
             ) {
-                return ActionResult.Failure("BLUETOOTH_CONNECT permission not granted — enable in Settings > Permissions")
+                return ActionResult.Failure(LogText.of("bt_permission"))
             }
         }
 
         @Suppress("DEPRECATION")
         val ok = if (targetOn) adapter.enable() else adapter.disable()
-        return if (ok) ActionResult.Success else ActionResult.Failure("Bluetooth toggle failed")
+        return if (ok) ActionResult.Success else ActionResult.Failure(LogText.of("bt_failed"))
     }
 }

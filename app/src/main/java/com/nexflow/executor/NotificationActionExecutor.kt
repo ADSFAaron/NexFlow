@@ -31,6 +31,7 @@ import com.nexflow.core.automation.model.Action
 import com.nexflow.core.automation.model.ActionType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import com.nexflow.core.automation.LogText
 
 /**
  * Posts a notification, optionally with somewhere to go when it is tapped (`tap_action`).
@@ -50,7 +51,7 @@ class NotificationActionExecutor @Inject constructor(
             ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS)
                 != PackageManager.PERMISSION_GRANTED
         ) {
-            return ActionResult.Failure("Notification permission not granted — go to Settings → Permissions to enable it")
+            return ActionResult.Failure(LogText.of("notif_permission"))
         }
 
         val title = action.config["title"]?.takeIf { it.isNotBlank() } ?: "NexFlow"
@@ -109,25 +110,25 @@ class NotificationActionExecutor @Inject constructor(
         val intent: Intent = when (action.config["tap_action"]?.trim()?.uppercase() ?: TAP_NONE) {
             TAP_OPEN_APP -> {
                 val pkg = action.config["tap_package"]?.takeIf { it.isNotBlank() }
-                    ?: return TapTarget.Broken("Notification tap: no app selected")
+                    ?: return TapTarget.Broken(LogText.of("notif_tap_no_app"))
                 context.packageManager.getLaunchIntentForPackage(pkg)
-                    ?: return TapTarget.Broken("Notification tap: app not found: $pkg")
+                    ?: return TapTarget.Broken(LogText.of("notif_tap_app_missing", pkg))
             }
             TAP_OPEN_URL -> {
                 val url = action.config["tap_url"]?.trim()?.takeIf { it.isNotEmpty() }
-                    ?: return TapTarget.Broken("Notification tap: no URL set")
+                    ?: return TapTarget.Broken(LogText.of("notif_tap_no_url"))
                 Intent(Intent.ACTION_VIEW, Uri.parse(url))
             }
             TAP_OPEN_SHORTCUT -> {
                 val uri = action.config["tap_shortcut_uri"]?.takeIf { it.isNotBlank() }
-                    ?: return TapTarget.Broken("Notification tap: no shortcut selected")
+                    ?: return TapTarget.Broken(LogText.of("notif_tap_no_shortcut"))
                 // The shortcut's app may have been uninstalled or changed since it was picked.
                 // Wrapped in our own PendingIntent below, so the tap runs as NexFlow: the same
                 // checks as LAUNCH_SHORTCUT, or a shared flow could reach our private activities.
                 when (val parsed = SafeIntents.parse(context, uri)) {
                     is SafeIntents.Parsed.Ok -> parsed.intent
-                    is SafeIntents.Parsed.Invalid -> return TapTarget.Broken("Notification tap: invalid shortcut")
-                    SafeIntents.Parsed.Blocked -> return TapTarget.Broken("Notification tap: shortcut not launchable")
+                    is SafeIntents.Parsed.Invalid -> return TapTarget.Broken(LogText.of("notif_tap_bad_shortcut"))
+                    SafeIntents.Parsed.Blocked -> return TapTarget.Broken(LogText.of("notif_tap_blocked_shortcut"))
                 }
             }
             else -> return TapTarget.None

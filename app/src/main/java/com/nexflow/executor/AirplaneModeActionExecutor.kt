@@ -26,6 +26,7 @@ import com.nexflow.core.automation.model.Action
 import com.nexflow.core.automation.model.ActionType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import com.nexflow.core.automation.LogText
 
 class AirplaneModeActionExecutor @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -43,10 +44,9 @@ class AirplaneModeActionExecutor @Inject constructor(
         ) == PackageManager.PERMISSION_GRANTED
 
         if (!hasPermission) {
-            return ActionResult.Failure(
-                "WRITE_SECURE_SETTINGS not granted — run once: " +
-                    "adb shell pm grant com.nexflow android.permission.WRITE_SECURE_SETTINGS",
-            )
+            // The real package name: this used to say "com.nexflow" (the namespace), and the
+            // copied command then failed with "Unknown package".
+            return ActionResult.Failure(LogText.of("airplane_adb", context.packageName))
         }
 
         val cr = context.contentResolver
@@ -68,7 +68,7 @@ class AirplaneModeActionExecutor @Inject constructor(
             )
             ActionResult.Success
         } catch (e: SecurityException) {
-            ActionResult.Failure("Airplane mode toggle failed: ${e.message}")
+            ActionResult.Failure(LogText.of("airplane_failed", e.message))
         }
     }
 }

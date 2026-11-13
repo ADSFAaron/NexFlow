@@ -26,6 +26,7 @@ import com.nexflow.service.ScreenshotCoordinator
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CompletableDeferred
 import javax.inject.Inject
+import com.nexflow.core.automation.LogText
 
 class ScreenshotActionExecutor @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -36,18 +37,15 @@ class ScreenshotActionExecutor @Inject constructor(
 
     override suspend fun execute(action: Action, variables: MutableMap<String, String>): ActionResult {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-            return ActionResult.Failure("Screenshot requires Android 12 or higher")
+            return ActionResult.Failure(LogText.of("screenshot_os"))
         }
         if (!isAccessibilityEnabled()) {
-            return ActionResult.Failure(
-                "Screenshot requires NexFlow Accessibility Service — " +
-                    "enable it in Settings > Accessibility > Installed apps > NexFlow",
-            )
+            return ActionResult.Failure(LogText.of("needs_accessibility", ActionType.SCREENSHOT))
         }
         val deferred = CompletableDeferred<Boolean>()
         coordinator.channel.send(deferred)
         return if (deferred.await()) ActionResult.Success
-        else ActionResult.Failure("Screenshot capture failed")
+        else ActionResult.Failure(LogText.of("screenshot_failed"))
     }
 
     private fun isAccessibilityEnabled(): Boolean {

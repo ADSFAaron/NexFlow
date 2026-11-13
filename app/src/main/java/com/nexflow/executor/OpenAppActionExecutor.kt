@@ -23,6 +23,7 @@ import com.nexflow.core.automation.model.Action
 import com.nexflow.core.automation.model.ActionType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import com.nexflow.core.automation.LogText
 
 class OpenAppActionExecutor @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -32,15 +33,15 @@ class OpenAppActionExecutor @Inject constructor(
 
     override suspend fun execute(action: Action, variables: MutableMap<String, String>): ActionResult {
         val pkg = action.config["package_name"]?.takeIf { it.isNotBlank() }
-            ?: return ActionResult.Failure("No package name specified")
+            ?: return ActionResult.Failure(LogText.of("app_no_package"))
         val intent = context.packageManager.getLaunchIntentForPackage(pkg)
-            ?: return ActionResult.Failure("App not found: $pkg")
+            ?: return ActionResult.Failure(LogText.of("app_not_found", pkg))
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         return try {
             context.startActivity(intent)
             ActionResult.Success
         } catch (e: Exception) {
-            ActionResult.Failure("Could not launch $pkg: ${e.message}", e)
+            ActionResult.Failure(LogText.of("app_launch_failed", pkg, e.message), e)
         }
     }
 }

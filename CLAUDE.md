@@ -235,6 +235,8 @@ ActionExecutor (interface)
 
 新增 ActionExecutor 後必須在 `ExecutionModule.kt` 加 `@Binds @IntoSet`。
 
+**失敗與略過的原因一律用 `LogText.of("代碼", 參數…)`，不要寫英文句子**：紀錄存代碼，`ui/logs/LogMessages` 在顯示時依 App 語言組字。新代碼要在四個 `strings.xml` 加 `logmsg_<代碼>` 並登記到 `LogMessages.SPECS`——`LogMessagesTest` 會掃原始碼，漏了就失敗。包住例外用 `failureFrom(代碼, e)`（已經是代碼的訊息會原樣傳出，不會被包第二層）；要補前置資訊（例如 URL）用 `LogText.prefixed`，不要把一則訊息當成另一則的參數。
+
 ### 特殊權限需求
 
 | 功能 | 需要使用者手動開啟 |

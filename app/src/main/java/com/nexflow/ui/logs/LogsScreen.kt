@@ -56,6 +56,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
@@ -318,7 +319,7 @@ private fun LogEntryItem(
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 Text("$time · $duration")
-                val errorMessage = entry.log.errorMessage
+                val errorMessage = LogMessages.render(LocalContext.current, entry.log.errorMessage)
                 if (entry.log.status == ExecutionStatus.FAIL && errorMessage != null) {
                     Text(errorMessage, color = MaterialTheme.colorScheme.error)
                 }

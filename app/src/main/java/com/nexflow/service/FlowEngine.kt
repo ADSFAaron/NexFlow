@@ -61,6 +61,7 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.nexflow.core.automation.LogText
 
 @Singleton
 class FlowEngine @Inject constructor(
@@ -284,7 +285,7 @@ class FlowEngine @Inject constructor(
                 variables = conditionVariables(flow, globals, triggerValues),
             )
             if (gate is ConditionResult.Unsatisfied) {
-                Log.d(TAG, "Flow '${flow.name}' skipped: ${gate.reason}")
+                Log.d(TAG, "Flow '${flow.name}' skipped: ${LogText.debug(gate.reason)}")
                 repository.saveExecutionLog(
                     ExecutionLog(
                         id = UUID.randomUUID().toString(),
@@ -346,7 +347,7 @@ class FlowEngine @Inject constructor(
                 }
                 throw e
             } catch (e: Exception) {
-                InterpreterResult.Failure("Unexpected error in flow '${flow.name}': ${e.message}", e)
+                InterpreterResult.Failure(LogText.of("unexpected", e.message), e)
             }
             val durationMs = System.currentTimeMillis() - startMs
             val status = when (result) {

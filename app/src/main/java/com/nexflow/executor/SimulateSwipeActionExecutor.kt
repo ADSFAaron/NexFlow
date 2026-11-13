@@ -27,6 +27,7 @@ import com.nexflow.executor.GestureActionSupport.durationMs
 import com.nexflow.service.GestureCoordinator
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import com.nexflow.core.automation.LogText
 
 /**
  * Drags one finger from (x1, y1) to (x2, y2) over `duration` ms. The duration is what the
@@ -46,13 +47,13 @@ class SimulateSwipeActionExecutor @Inject constructor(
         val x2 = action.coordinate("x2")
         val y2 = action.coordinate("y2")
         if (x1 == null || y1 == null || x2 == null || y2 == null) {
-            return ActionResult.Failure("Simulate swipe needs numeric x1, y1, x2 and y2 screen coordinates")
+            return ActionResult.Failure(LogText.of("swipe_coords"))
         }
         if (x1 == x2 && y1 == y2) {
-            return ActionResult.Failure("Simulate swipe needs a start and end point that differ")
+            return ActionResult.Failure(LogText.of("swipe_same_point"))
         }
         if (!GestureActionSupport.accessibilityEnabled(context)) {
-            return GestureActionSupport.accessibilityFailure("Simulate swipe")
+            return GestureActionSupport.accessibilityFailure(ActionType.SIMULATE_SWIPE)
         }
         val dispatched = GestureActionSupport.dispatch(
             coordinator,
@@ -60,6 +61,6 @@ class SimulateSwipeActionExecutor @Inject constructor(
             action.durationMs("duration", DEFAULT_SWIPE_DURATION_MS),
         )
         return if (dispatched) ActionResult.Success
-        else ActionResult.Failure("Swipe gesture was not dispatched")
+        else ActionResult.Failure(LogText.of("swipe_not_dispatched"))
     }
 }

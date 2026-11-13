@@ -26,6 +26,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.suspendCancellableCoroutine
 import javax.inject.Inject
 import kotlin.coroutines.resume
+import com.nexflow.core.automation.LogText
 
 class TtsActionExecutor @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -41,7 +42,7 @@ class TtsActionExecutor @Inject constructor(
             var tts: TextToSpeech? = null
             tts = TextToSpeech(context) { status ->
                 if (status != TextToSpeech.SUCCESS) {
-                    cont.resume(ActionResult.Failure("TTS initialisation failed (status=$status)"))
+                    cont.resume(ActionResult.Failure(LogText.of("tts_init", status)))
                     return@TextToSpeech
                 }
                 val engine = tts ?: return@TextToSpeech
@@ -54,7 +55,7 @@ class TtsActionExecutor @Inject constructor(
                     @Deprecated("Deprecated in API level 21")
                     override fun onError(id: String?) {
                         engine.stop(); engine.shutdown()
-                        cont.resume(ActionResult.Failure("TTS speech error"))
+                        cont.resume(ActionResult.Failure(LogText.of("tts_error")))
                     }
                 })
                 engine.speak(text, TextToSpeech.QUEUE_FLUSH, null, "nf_${System.currentTimeMillis()}")

@@ -24,6 +24,7 @@ import com.nexflow.core.automation.model.Action
 import com.nexflow.core.automation.model.ActionType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import com.nexflow.core.automation.LogText
 
 class CallPhoneActionExecutor @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -33,7 +34,7 @@ class CallPhoneActionExecutor @Inject constructor(
 
     override suspend fun execute(action: Action, variables: MutableMap<String, String>): ActionResult {
         val number = action.config["number"]?.trim()?.takeIf { it.isNotBlank() }
-            ?: return ActionResult.Failure("Call: no phone number configured")
+            ?: return ActionResult.Failure(LogText.of("call_no_number"))
 
         return runCatching {
             val intent = Intent(Intent.ACTION_CALL, Uri.parse("tel:$number")).apply {
@@ -41,6 +42,6 @@ class CallPhoneActionExecutor @Inject constructor(
             }
             context.startActivity(intent)
             ActionResult.Success
-        }.getOrElse { ActionResult.Failure("Call failed: ${it.message}") }
+        }.getOrElse { failureFrom("call_failed", it) }
     }
 }

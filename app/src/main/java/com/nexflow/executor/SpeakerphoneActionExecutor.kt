@@ -25,6 +25,7 @@ import com.nexflow.core.automation.model.Action
 import com.nexflow.core.automation.model.ActionType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import com.nexflow.core.automation.LogText
 
 /**
  * Routes communication audio to the built-in speaker (or back). API 31+ uses
@@ -49,7 +50,7 @@ class SpeakerphoneActionExecutor @Inject constructor(
             if (on) {
                 val speaker = audioManager.availableCommunicationDevices
                     .firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }
-                    ?: return ActionResult.Failure("No built-in speaker available for communication audio")
+                    ?: return ActionResult.Failure(LogText.of("speaker_none"))
                 audioManager.setCommunicationDevice(speaker)
             } else {
                 audioManager.clearCommunicationDevice()
@@ -63,6 +64,6 @@ class SpeakerphoneActionExecutor @Inject constructor(
         }
 
         return if (ok) ActionResult.Success
-        else ActionResult.Failure("Speakerphone routing was rejected by the system")
+        else ActionResult.Failure(LogText.of("speaker_rejected"))
     }
 }

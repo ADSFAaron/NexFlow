@@ -18,6 +18,7 @@ package com.nexflow.core.automation.interpreter
 import com.nexflow.core.automation.model.Action
 import com.nexflow.core.automation.model.ActionType
 import com.nexflow.core.automation.model.Flow
+import com.nexflow.core.automation.LogText
 
 /**
  * Config values that must be a literal, never built from a variable.
@@ -43,7 +44,7 @@ object ActionPolicy {
     )
 
     fun literalOnlyMessage(key: String) =
-        "Blocked: '$key' must be picked, not built from a variable"
+        LogText.of("literal_only", key)
 }
 
 /** What a rate-limited action counts against; actions of one kind share a budget per flow. */
