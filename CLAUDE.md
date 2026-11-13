@@ -88,6 +88,7 @@ core/macrodroid-compat/     # MacroDroid .mdr 格式解析
 - 參考圖在 `app/src/screenshotTestGithubDebug/reference/`，**要進 repo**。UI 改動是有意的就重跑 `./gradlew :app:updateGithubDebugScreenshotTest` 並一起 commit
 - 只維護 github flavor 的參考圖；被截圖的 composable 都與 flavor 無關，`validatePlayDebugScreenshotTest` 沒有參考圖可比
 - 預覽用 `NexFlowTheme(dynamicColor = false)`——動態色會讓不同機器算出不同顏色，圖就永遠對不起來
+- **CI 是 Linux、參考圖是 Mac 產的**：layoutlib 兩邊算半透明與漸層的取整差 1/255，會讓 AI 聊天那幾張在 CI 上「差 0.5% 像素」。plugin 的 `threshold` 只算「多少像素不同」，分不出這種雜訊與真的改字（改一行字也才 0.64%），所以**不要設 threshold**。CI 在精確比對失敗時改跑 `tools/ScreenshotTolerance.java`：每個通道差 ≤1 才放行，缺圖、尺寸不符、超過 1 都算失敗。本機照舊精確比對
 - **`AlertDialog` 截不到**：layoutlib 下 dialog 是獨立 window，畫面會是空的。對話框要驗就用 Robolectric 斷言，別用截圖
 
 #### Instrumented（實體／模擬器）

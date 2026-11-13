@@ -61,8 +61,20 @@ jobs:
       # so this needs no emulator and belongs in the fast job. Reference images are only kept
       # for the github flavor — nothing previewed here is flavor-specific.
       # Regenerate after an intentional UI change: ./gradlew :app:updateGithubDebugScreenshotTest
+      # Reference images are made on macOS, and layoutlib on Linux rounds alpha blending a hair
+      # differently: translucent text and gradients land 1/255 off in a channel. The plugin's
+      # threshold counts differing *pixels*, which can't separate that from a real change (the noise
+      # touched 0.54% of a preview, rewording one label 0.64%), so an exact failure gets a second
+      # look that measures how *far* pixels moved instead. See tools/ScreenshotTolerance.java.
       - name: Compose 截圖測試（4 語系 × 深淺色）
-        run: ./gradlew :app:validateGithubDebugScreenshotTest
+        run: |
+          if ! ./gradlew :app:validateGithubDebugScreenshotTest; then
+            echo "Exact comparison failed; checking whether every difference is within 1/255 per channel."
+            java tools/ScreenshotTolerance.java \
+              app/src/screenshotTestGithubDebug/reference \
+              app/build/outputs/screenshotTest-results/preview/debug/github/rendered \
+              1
+          fi
 
       - name: 上傳測試報告（失敗時）
         if: failure()
