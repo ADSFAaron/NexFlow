@@ -16,6 +16,7 @@
 package com.nexflow.prefs
 
 import android.content.Context
+import androidx.core.content.edit
 
 /** Tracks whether the first-run onboarding has been completed. */
 object OnboardingPrefs {
@@ -28,8 +29,8 @@ object OnboardingPrefs {
 
     fun setCompleted(context: Context) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit()
-            .putBoolean(KEY_ONBOARDING_DONE, true)
-            .apply()
+            .edit {
+                putBoolean(KEY_ONBOARDING_DONE, true)
+            }
     }
 }

@@ -73,6 +73,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -124,6 +125,7 @@ fun SettingsScreen(
     importVm: ImportViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     var autoStart by remember { mutableStateOf(AutoStartPrefs.get(context)) }
     var executionToast by remember { mutableStateOf(ExecutionFeedbackPrefs.isToastEnabled(context)) }
     var detailedLog by remember { mutableStateOf(DetailedLogPrefs.isEnabled(context)) }
@@ -330,7 +332,7 @@ fun SettingsScreen(
                     clipboard.setPrimaryClip(ClipData.newPlainText("ADB command", adbCommand))
                     showAdbDialog = false
                     scope.launch {
-                        snackbarHostState.showSnackbar(context.getString(R.string.settings_command_copied))
+                        snackbarHostState.showSnackbar(resources.getString(R.string.settings_command_copied))
                     }
                 }) { Text(stringResource(R.string.settings_copy_command)) }
             },

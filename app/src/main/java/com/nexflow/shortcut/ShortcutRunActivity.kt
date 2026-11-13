@@ -24,6 +24,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.lifecycle.lifecycleScope
 import com.nexflow.service.FlowExecutionService
 import com.nexflow.ui.menu.MenuPickerBridge
@@ -62,6 +63,12 @@ class ShortcutRunActivity : ComponentActivity() {
         if (flowId == null) {
             finish()
             return
+        }
+
+        // Launchers rank their shortcut suggestions by this. Only on a real tap: a recreated
+        // instance is the same tap coming back.
+        if (savedInstanceState == null) {
+            runCatching { ShortcutManagerCompat.reportShortcutUsed(this, PinShortcutHelper.shortcutId(flowId)) }
         }
 
         setPassThrough(true)

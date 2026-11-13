@@ -17,6 +17,7 @@ package com.nexflow.prefs
 
 import android.content.Context
 import androidx.annotation.StringRes
+import androidx.core.content.edit
 import com.nexflow.R
 
 enum class LogRetentionOption(
@@ -42,8 +43,8 @@ object LogRetentionPrefs {
 
     fun set(context: Context, option: LogRetentionOption) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit()
-            .putString(KEY, option.name)
-            .apply()
+            .edit {
+                putString(KEY, option.name)
+            }
     }
 }

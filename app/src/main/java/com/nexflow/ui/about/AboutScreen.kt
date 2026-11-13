@@ -16,7 +16,6 @@
 package com.nexflow.ui.about
 
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
@@ -163,7 +162,7 @@ fun AboutScreen(onBack: () -> Unit) {
                             context.startActivity(
                                 Intent(
                                     Intent.ACTION_VIEW,
-                                    Uri.parse("https://github.com/ADSFAaron/NexFlow"),
+                                    "https://github.com/ADSFAaron/NexFlow".toUri(),
                                 ),
                             )
                         },
@@ -175,7 +174,7 @@ fun AboutScreen(onBack: () -> Unit) {
                             context.startActivity(
                                 Intent(
                                     Intent.ACTION_VIEW,
-                                    Uri.parse("https://github.com/ADSFAaron/NexFlow/issues"),
+                                    "https://github.com/ADSFAaron/NexFlow/issues".toUri(),
                                 ),
                             )
                         },

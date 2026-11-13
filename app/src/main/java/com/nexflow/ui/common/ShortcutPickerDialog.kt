@@ -52,6 +52,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -64,6 +65,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.createBitmap
 import com.nexflow.R
 import com.nexflow.shortcut.AppShortcutQuery
 import com.nexflow.shortcut.ConfigurableShortcutSource
@@ -202,7 +204,7 @@ private fun ShortcutList(
 ) {
     val context = LocalContext.current
     var staticShortcuts by remember { mutableStateOf<List<StaticShortcut>>(emptyList()) }
-    var hiddenCount by remember { mutableStateOf(0) }
+    var hiddenCount by remember { mutableIntStateOf(0) }
     var configurable by remember { mutableStateOf<List<ConfigurableShortcutSource>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
 
@@ -368,11 +370,7 @@ internal fun loadLaunchableApps(context: android.content.Context): List<Installe
 
 private fun Drawable.toBitmapSafe(): Bitmap {
     if (this is BitmapDrawable && bitmap != null) return bitmap
-    val bmp = Bitmap.createBitmap(
-        intrinsicWidth.coerceAtLeast(1),
-        intrinsicHeight.coerceAtLeast(1),
-        Bitmap.Config.ARGB_8888,
-    )
+    val bmp = createBitmap(intrinsicWidth.coerceAtLeast(1), intrinsicHeight.coerceAtLeast(1))
     val canvas = Canvas(bmp)
     setBounds(0, 0, canvas.width, canvas.height)
     draw(canvas)

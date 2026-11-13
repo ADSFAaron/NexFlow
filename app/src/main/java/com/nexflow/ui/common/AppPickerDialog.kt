@@ -54,6 +54,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.createBitmap
 import com.nexflow.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -171,11 +172,7 @@ fun AppPickerDialog(
 
 private fun Drawable.toBitmap(): Bitmap {
     if (this is BitmapDrawable && bitmap != null) return bitmap
-    val bmp = Bitmap.createBitmap(
-        intrinsicWidth.coerceAtLeast(1),
-        intrinsicHeight.coerceAtLeast(1),
-        Bitmap.Config.ARGB_8888,
-    )
+    val bmp = createBitmap(intrinsicWidth.coerceAtLeast(1), intrinsicHeight.coerceAtLeast(1))
     val canvas = Canvas(bmp)
     setBounds(0, 0, canvas.width, canvas.height)
     draw(canvas)

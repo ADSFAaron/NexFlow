@@ -16,6 +16,7 @@
 package com.nexflow.prefs
 
 import android.content.Context
+import androidx.core.content.edit
 
 /**
  * Whether flow executions announce themselves with a Toast. Default ON — background
@@ -32,8 +33,8 @@ object ExecutionFeedbackPrefs {
 
     fun setToastEnabled(context: Context, enabled: Boolean) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit()
-            .putBoolean(KEY_TOAST, enabled)
-            .apply()
+            .edit {
+                putBoolean(KEY_TOAST, enabled)
+            }
     }
 }

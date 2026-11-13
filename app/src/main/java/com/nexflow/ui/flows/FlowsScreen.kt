@@ -19,6 +19,8 @@ import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.animation.AnimatedContent
@@ -120,8 +122,8 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -143,6 +145,7 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.window.core.layout.WindowSizeClass
 import com.nexflow.R
 import com.nexflow.core.automation.model.Flow
 import com.nexflow.event.ImportEventSource
@@ -189,9 +192,12 @@ fun FlowsScreen(
     var permissionReminder by remember { mutableStateOf<PermissionReminder?>(null) }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val listState = rememberLazyListState()
-    // Phone in landscape (< 480dp tall). Decides both the FAB's size and the list's gutter.
-    val compactHeight = LocalConfiguration.current.screenHeightDp < 480
+    // Phone in landscape: the compact-height window size class (< 480dp tall). Decides both the
+    // FAB's size and the list's gutter.
+    val compactHeight = !currentWindowAdaptiveInfo().windowSizeClass
+        .isHeightAtLeastBreakpoint(WindowSizeClass.HEIGHT_DP_MEDIUM_LOWER_BOUND)
     val context = LocalContext.current
+    val resources = LocalResources.current
     var fabMenuExpanded by rememberSaveable { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -267,9 +273,9 @@ fun FlowsScreen(
     LaunchedEffect(vm) {
         vm.setupComplete.collect { result ->
             val msg = if (result.allGranted) {
-                context.getString(R.string.flows_perm_setup_done, result.flowName)
+                resources.getString(R.string.flows_perm_setup_done, result.flowName)
             } else {
-                context.getString(R.string.flows_perm_setup_incomplete, result.flowName)
+                resources.getString(R.string.flows_perm_setup_incomplete, result.flowName)
             }
             snackbarHostState.showSnackbar(msg)
         }
@@ -277,7 +283,7 @@ fun FlowsScreen(
     // Corrects the "running…" snackbar shown on tap when the flow's conditions held it back.
     LaunchedEffect(vm) {
         vm.runSkipped.collect {
-            snackbarHostState.showSnackbar(context.getString(R.string.fd_flow_skipped))
+            snackbarHostState.showSnackbar(resources.getString(R.string.fd_flow_skipped))
         }
     }
 
@@ -390,7 +396,7 @@ fun FlowsScreen(
                     }
                 }
                 items(currentFlows, key = { it.id }) { flow ->
-                    var lastRunMs by remember { mutableStateOf(0L) }
+                    var lastRunMs by remember { mutableLongStateOf(0L) }
                     // positionalThreshold is left at the spec default (56dp) — the previous 15%
                     // fraction made accidental swipes delete flows. Deletion is also recoverable
                     // via the snackbar's Undo action below.
@@ -402,7 +408,7 @@ fun FlowsScreen(
                                     if (now - lastRunMs > 500L) {
                                         lastRunMs = now
                                         vm.runFlow(flow.id)
-                                        scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.flows_running, flow.name)) }
+                                        scope.launch { snackbarHostState.showSnackbar(resources.getString(R.string.flows_running, flow.name)) }
                                     }
                                     false
                                 }
@@ -410,8 +416,8 @@ fun FlowsScreen(
                                     vm.deleteFlow(flow.id)
                                     scope.launch {
                                         val result = snackbarHostState.showSnackbar(
-                                            message = context.getString(R.string.snackbar_deleted, flow.name),
-                                            actionLabel = context.getString(R.string.action_undo),
+                                            message = resources.getString(R.string.snackbar_deleted, flow.name),
+                                            actionLabel = resources.getString(R.string.action_undo),
                                             duration = SnackbarDuration.Long,
                                         )
                                         if (result == SnackbarResult.ActionPerformed) vm.restoreFlow(flow)

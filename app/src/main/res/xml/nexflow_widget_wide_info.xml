@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- The sizing and preview attributes are API 31+ and simply ignored on API 30, where the
+     launcher falls back to minWidth/minHeight and the static preview image. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:ignore="UnusedAttribute"
     android:description="@string/widget_wide_description"
     android:minWidth="109dp"
     android:minHeight="56dp"

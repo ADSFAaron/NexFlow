@@ -21,6 +21,7 @@ import androidx.compose.material.icons.outlined.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.key
+import androidx.core.net.toUri
 import com.nexflow.ui.common.inContainerColors
 import androidx.compose.material.icons.outlined.RestartAlt
 import com.nexflow.ui.common.SettingsGroupTitle
@@ -1073,7 +1074,7 @@ private fun ApiKeyMissingContent(onOpenSettings: () -> Unit, modifier: Modifier 
                         context.startActivity(
                             android.content.Intent(
                                 android.content.Intent.ACTION_VIEW,
-                                android.net.Uri.parse("https://aistudio.google.com/apikey"),
+                                "https://aistudio.google.com/apikey".toUri(),
                             ),
                         )
                     }
@@ -1336,6 +1337,7 @@ private fun MessageBubble(
     text: String,
     timestamp: Long,
     fromUser: Boolean,
+    modifier: Modifier = Modifier,
     onEdit: (() -> Unit)? = null,
     renderMarkdown: Boolean = false,
     /** Set on the newest assistant reply so TalkBack reads it once when it lands. */
@@ -1345,7 +1347,6 @@ private fun MessageBubble(
     showTimestamp: Boolean = true,
     /** Images the user attached, shown above the text. */
     images: List<File> = emptyList(),
-    modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current

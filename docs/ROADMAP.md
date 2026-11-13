@@ -1,6 +1,6 @@
 # NexFlow 遠期計畫
 
-這份文件記錄**已經評估過、但要等外部條件成熟才做**的項目，以及評估後決定不做的項目。每一項都寫明「什麼時候該重新拿出來看」，避免下次又從頭研究一次。
+這份文件記錄**已經評估過、但要等外部條件成熟才做**的項目、**想做但不急**的改進，以及評估後決定不做的項目。每一項都寫明「什麼時候該重新拿出來看」，避免下次又從頭研究一次。
 
 ---
 
@@ -44,6 +44,26 @@
 - [Overview of AppFunctions | Android Developers](https://developer.android.com/ai/appfunctions)
 - [AppFunctions sample](https://github.com/android/appfunctions)、[AppFunctions agent skill](https://github.com/android/skills/tree/main/device-ai/appfunctions)
 - [Use Gemini on your smartwatch – Google Help](https://support.google.com/gemini/answer/16401122?hl=en)
+
+---
+
+## 想做，不急
+
+### AI 修改預覽：更聰明的差異比對（FlowDiff）
+
+- **評估日期**：2026-11-13
+- **狀態**：💡 有空再做，沒有使用者回報
+
+AI 助手提議修改流程時，預覽會標出哪些步驟是新增、刪除或修改（`app/.../ui/ai/FlowDiff.kt`）。做法是：
+
+1. 先用 LCS 找出「類型和設定都一樣」的步驟當錨點，錨點之間的就是刪除或新增；
+2. 再把「刪除緊接著同類型的新增」合併成一列「修改」，顯示前後差異。
+
+第 2 步只看**緊鄰**的一對。AI 連續改了兩個步驟（A→A′、B→B′）時，LCS 會排成「刪 A、刪 B、增 A′、增 B′」，沒有任何一對緊鄰，預覽就變成四列刪增，而不是兩列修改。結果不會錯，只是不好讀。
+
+**改法方向**：在每一段錨點之間，把刪除和新增**依類型配對**（同類型依順序配；同類型有多個時可再比設定相似度），配不上的才留成刪除或新增。範圍只在 `pairChanges`，`FlowDiffTest` 已有基礎可以加案例。
+
+**重新評估的時機**：使用者回報預覽看不懂，或 AI 一次改多個步驟變成常見用法。
 
 ---
 

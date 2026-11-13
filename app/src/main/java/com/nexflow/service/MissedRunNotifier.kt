@@ -21,6 +21,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.nexflow.MainActivity
@@ -44,7 +45,9 @@ class MissedRunNotifier(private val context: Context) {
         ) {
             return // the run log still says why
         }
-        val target = if (canScheduleExact) {
+        // Below API 31 exact alarms cannot be refused (canScheduleExact is always true there) and
+        // the grant screen does not exist; the version check says so where lint can see it.
+        val target = if (canScheduleExact || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
             Intent(context, MainActivity::class.java)
         } else {
             TimeTriggerScheduler.requestExactAlarmPermissionIntent(context.packageName)

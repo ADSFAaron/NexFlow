@@ -15,6 +15,7 @@
  */
 package com.nexflow.executor
 
+import android.annotation.SuppressLint
 import android.content.ContentValues
 import android.content.Context
 import android.os.Environment
@@ -52,11 +53,10 @@ class WriteFileActionExecutor @Inject constructor(
 
         return withContext(Dispatchers.IO) {
             runCatching {
-                if (path.startsWith("/storage/emulated/0/") || path.startsWith("/sdcard/")) {
+                val sharedRoot = SHARED_STORAGE_ROOTS.firstOrNull { path.startsWith(it) }
+                if (sharedRoot != null) {
                     // Use MediaStore for scoped storage on Android 10+
-                    val relativePath = path
-                        .removePrefix("/storage/emulated/0/")
-                        .removePrefix("/sdcard/")
+                    val relativePath = path.removePrefix(sharedRoot)
                     val fileName = relativePath.substringAfterLast('/')
                     val dir = relativePath.substringBeforeLast('/', "")
                     val mediaDir = if (dir.isBlank()) Environment.DIRECTORY_DOCUMENTS else dir
@@ -98,5 +98,15 @@ class WriteFileActionExecutor @Inject constructor(
             runCatching { context.createDeviceProtectedStorageContext().dataDir }.getOrNull(),
         ).map { it.canonicalPath }
         return roots.any { root -> target == root || target.startsWith("$root/") }
+    }
+
+    private companion object {
+        /**
+         * How people write shared storage in a flow. Only ever compared as text to pick the
+         * MediaStore path — never opened as a file — so the hardcoded /sdcard/ lint warns about
+         * is the point here.
+         */
+        @SuppressLint("SdCardPath")
+        val SHARED_STORAGE_ROOTS = listOf("/storage/emulated/0/", "/sdcard/")
     }
 }

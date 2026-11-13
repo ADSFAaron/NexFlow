@@ -28,6 +28,7 @@ package com.nexflow.prefs
  *    is off the service runs the single flow and stops itself again.
  */
 import android.content.Context
+import androidx.core.content.edit
 
 object ServiceEnabledPrefs {
     private const val PREFS_NAME = "nexflow_settings"
@@ -39,8 +40,8 @@ object ServiceEnabledPrefs {
 
     fun set(context: Context, enabled: Boolean) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit()
-            .putBoolean(KEY_SERVICE_ENABLED, enabled)
-            .apply()
+            .edit {
+                putBoolean(KEY_SERVICE_ENABLED, enabled)
+            }
     }
 }

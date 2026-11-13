@@ -17,7 +17,7 @@ package com.nexflow.executor
 
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
+import androidx.core.net.toUri
 import com.nexflow.core.automation.executor.ActionExecutor
 import com.nexflow.core.automation.executor.ActionResult
 import com.nexflow.core.automation.model.Action
@@ -37,7 +37,7 @@ class CallPhoneActionExecutor @Inject constructor(
             ?: return ActionResult.Failure(LogText.of("call_no_number"))
 
         return runCatching {
-            val intent = Intent(Intent.ACTION_CALL, Uri.parse("tel:$number")).apply {
+            val intent = Intent(Intent.ACTION_CALL, "tel:$number".toUri()).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }
             context.startActivity(intent)

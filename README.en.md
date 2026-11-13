@@ -359,7 +359,7 @@ A few tests worth knowing:
 - `NexFlowDatabaseMigrationTest` (instrumented) — run it on every schema change; `DatabaseModule` has no destructive fallback, so a failed migration means the app crashes on launch for existing users
 - `TimeTriggerEndToEndTest` (instrumented) — walks "alarm fires → service starts → flow runs → log written" on a real system
 
-Lint is a CI gate too: `./gradlew :app:lintGithubDebug :app:lintPlayDebug`. Existing findings live in `app/lint-baseline.xml`; remove an entry when you fix it, and never regenerate the whole file. The full testing rules are in [CONTRIBUTING.md](CONTRIBUTING.md) (Traditional Chinese).
+Lint is a CI gate too: `./gradlew :app:lintGithubDebug :app:lintPlayDebug`. There is no baseline and warnings count as errors; a deliberate exception gets `@SuppressLint` at that spot with a comment saying why. The full testing rules are in [CONTRIBUTING.md](CONTRIBUTING.md) (Traditional Chinese).
 
 ## Permissions
 

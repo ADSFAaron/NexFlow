@@ -1,5 +1,6 @@
 package com.nexflow.service
 
+import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.Intent
 import android.graphics.drawable.Icon
@@ -58,8 +59,15 @@ class NexFlowTileService : TileService() {
                 PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
             )
         } else {
-            @Suppress("DEPRECATION")
-            startActivityAndCollapse(intent)
+            startActivityAndCollapseBelow34(intent)
         }
     }
+
+    /**
+     * The PendingIntent overload only exists from API 34, and the Intent one only starts throwing
+     * there; [openConfigureActivity] calls this below 34 only.
+     */
+    @SuppressLint("StartActivityAndCollapseDeprecated")
+    @Suppress("DEPRECATION")
+    private fun startActivityAndCollapseBelow34(intent: Intent) = startActivityAndCollapse(intent)
 }
